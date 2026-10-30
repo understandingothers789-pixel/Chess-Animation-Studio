@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## 0.2.7
+
+[Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.7/Chess-Animation-Studio-0.2.7-Windows-Portable.zip). Replaces the knight logo with a cyan frame, coral play symbol and cream spark. Updates editor branding, favicon and running window icon. Adds undoable group resets across effect controls, with individual resets for snow, board-effect and move-motion numeric settings. Selected moves reset to their own preset defaults, preserving unrelated settings. All 16 tests and native Windows logo/reset/Undo and export checks passed; published ZIP integrity and bundled logo assets were independently verified.
+
 ## 0.2.6
 
 [Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.6/Chess-Animation-Studio-0.2.6-Windows-Portable.zip). Adds a selectable Intro clip with four openers and editable timing/framing. Fixes inspector presets, motion, camera, appearance and Paste to affect every selected move. Snow defaults to inside the board with an optional full-scene toggle; count, size, speed and transparency controls appear first in Scene, and flake sizes follow board zoom. The guide links a free 101 BPM funk track with attribution and import instructions. All 16 tests and native Windows packaged editing/export checks passed; published ZIP integrity was independently verified.

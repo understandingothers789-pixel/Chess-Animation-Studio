@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.6
+# Chess Animation Studio · 0.2.7
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
-![Fresh editor](docs/images/editor.png)
+![Editor with the new frame-and-motion logo and reset controls](docs/images/logo-reset-027.png)
 
 ## Windows downloads
+
+**[Download 0.2.7 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.7/Chess-Animation-Studio-0.2.7-Windows-Portable.zip).** Replaces the knight logo with a cyan frame, coral play symbol and cream spark in the editor, favicon and running window icon. Adds **Reset** beside effect sections and individual **↺** buttons for snow, board-effect and move-motion numeric settings. Resets are undoable and selected moves restore their own preset defaults. Built and tested natively on Windows: 16 tests plus packaged logo/reset/Undo checks and all export-format checks passed. Published ZIP SHA-256: `a06e9fb93584ac8de3f1493962ba4edff36ab7587e28fea1b9ba7f80b3d35518`.
 
 **[Download 0.2.6 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.6/Chess-Animation-Studio-0.2.6-Windows-Portable.zip).** Adds a clickable **Intro** clip before the first move with four selectable openers and editable timing/framing. Fixes inspector preset and motion changes to affect **every selected move**, including Half sway. Snow stays inside the board by default, with an optional full-scene toggle; amount, size, transparency and speed controls now appear first in **Scene**. Includes a [free funk music recommendation and import guide](docs/USER_GUIDE.md#free-funk-track-for-music-testing). Built and tested natively on Windows: 16 tests plus packaged editing, launch, save/open, all export formats, cancellation and presentation passed. Published ZIP SHA-256: `4e9708e7f9e1b16f889c8b061fa7c2afd4e78f368a54c25759641cda607e4c3b`.
 

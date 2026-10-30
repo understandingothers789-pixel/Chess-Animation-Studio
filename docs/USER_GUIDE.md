@@ -98,3 +98,13 @@ The creator offers it under **Creative Commons Attribution 4.0**. It is free wit
 > https://creativecommons.org/licenses/by/4.0/
 
 Download the MP3, then open **Music → + Import music → Analyze waveform & likely beats**. Play it, review/correct the suggested beat markers, and use the timing preview before applying alignment. For regular board color pulses, set **Scene → Board atmosphere & intro → Pulse BPM** to 101. The BPM clock starts at project time zero; music-marker pulses are preferable when you need the pulses to follow the track’s exact beat phase. No third-party track is bundled or automatically downloaded by the app.
+
+## Resetting effects (0.2.7)
+
+Use **Reset** beside an effect section’s heading to restore that group. Snow has a group Reset plus **↺** buttons beside each numeric setting, so you can restore particle size or count without changing the rest. Board-effect and move-motion numeric sliders also have individual reset buttons. Hover a reset button for its description.
+
+Movement and timing restore the defaults for each selected move’s current preset. For example, Half sway resets to its own 1.6-second duration rather than changing to Clean slide. Resets apply to all selected moves and preserve settings in other groups. Camera reset affects the current output format; other formats keep their cameras. Use **Undo** to reverse a reset.
+
+Reset is also available for the opener, capture impact, highlights/trails, badges, keyframes, board/piece appearance, composition, board atmosphere, dark-square pulses and music/audio settings. Music reset keeps the imported track; sound reset keeps the sound library. These controls change the project, not the source files.
+
+The app’s new cyan-frame/coral-play logo replaces the knight in the header, favicon and running window icon. The official runtime executable is still copied unchanged; its embedded executable metadata is not resource-patched.

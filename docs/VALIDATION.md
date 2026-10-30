@@ -1,5 +1,15 @@
 # Validation and scope
 
+## Release 0.2.7 update checks
+
+- Native Windows run [41137860700](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41137860700) passed all 16 tests plus packaged logo, individual/group snow reset, Undo, selection-wide preset-aware movement reset, intro/selection controls, launch/save/open, backward seeking, H.264/AAC at 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation.
+- Source `5aad8b02200ee746097e2d4e87a4facb3be594f0`, clean Windows checkout. Independently downloaded the published ZIP: all CRCs passed, both new logo assets were present, BUILD.json matched source/version/clean state, and runtime EXE SHA-256 retained the official value `9ba4530b08adeae75c13324a95b0fc8e87c5aa2889cfdc894474f8684b9f6c59`.
+- Published ZIP SHA-256: `a06e9fb93584ac8de3f1493962ba4edff36ab7587e28fea1b9ba7f80b3d35518` (140,467,260 bytes). The portable application remains unsigned; native CI launch does not establish Smart App Control approval on the user's PC. Earlier releases were retained.
+
+- Production build and all 16 core/service tests passed locally.
+- Actual Electron UI checks passed for the new vector logo, numeric snow count reset, full snow reset, Undo after reset, resetting three selected Half sway moves to their 1.6-second preset defaults, and resetting the opener to Zoom & turn. The [editor screenshot](images/logo-reset-027.png) and 256px native-window icon were visually inspected.
+- The native-window PNG is rendered from the same SVG as the editor mark. The official Electron executable retains its original bytes; no PE-resource icon patch is applied.
+
 ## Release 0.2.6 update checks
 
 - Native Windows run [41136225861](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41136225861) passed all 16 tests and packaged launch, vector rendering, backward seeks, selectable intro presets, multi-move Half sway/duration changes, board-only snow controls, save/open, H.264/AAC at 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation.

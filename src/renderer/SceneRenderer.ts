@@ -358,7 +358,7 @@ export class SceneRenderer {
       const key = `${p.style.pieceSet ?? "lichess"}-${v.id}-${v.type}-${v.color}`;
       let mesh = this.pieces.get(key);
       if (!mesh) {
-        mesh = pieceMesh(v.type, v.color, p.style.pieceSet ?? "lichess");
+        mesh = pieceMesh(v.type, v.color);
         this.pieces.set(key, mesh);
         this.root.add(mesh);
       }

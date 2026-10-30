@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.1.6
+# Chess Animation Studio · 0.1.7
 
 A local desktop editor for chess videos. Import a PGN/FEN, play an animated first draft, refine individual moves, align landings to music, and render an MP4. Built with Electron, React, TypeScript, Three.js, chess.js, and FFmpeg.
 
@@ -7,6 +7,8 @@ A local desktop editor for chess videos. Import a PGN/FEN, play an animated firs
 ![Desktop editor](docs/images/editor.png)
 
 ## Windows downloads
+
+**[Download 0.1.7 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.7.zip).** Restores the original drawn piece renderer and removes imported Lichess/Nibbler image files. Retains the Slow sway change and original assemble-and-run launcher. Build and archive integrity passed; Windows launch remains unverified. ZIP SHA-256: `1061830758fd26cd1b2c4f8ed5ef523965823d4b824f6227109602f57057a2fa`.
 
 **[Download 0.1.6 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.6.zip).** Replaces the fast Wiggle preset with Slow sway: one broad 24-degree lean each way over 2.2 seconds, smooth reversals, and an upright finish. Sway timing follows the full move duration. Angle, cycles, duration and keyframes remain editable. Reapply Slow sway to existing moves to use the new defaults. All 11 core animation/chess tests passed; build and ZIP integrity passed. Windows launch is unverified. Portable app ZIP SHA-256: `d70dd3616108f117bcb6d552a2bfff6de70ca0d9424bf7fbcbcad3a45ccfa5cd`.
 

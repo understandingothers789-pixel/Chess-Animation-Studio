@@ -1,5 +1,9 @@
 # Version history
 
+## 0.1.5 — original portable launcher
+
+[Download portable Windows 0.1.5](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.5.zip). Restores the two-file assemble-and-run launcher used in portable 0.1.0, with paths and checksum updated for this version. Retains the Lichess Cburnett and Nibbler/Merida artwork. Windows launch and Smart App Control behavior have not been independently verified.
+
 ## 0.1.4 — portable Windows build
 
 [Download portable Windows 0.1.4](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.4.zip). Restores the assemble-and-run download format and includes the Lichess Cburnett and Nibbler/Merida vector artwork from Nocturne Chess, rendered as higher-resolution textures. Piece sets can be selected in Design; board colors and dark-square music pulses remain configurable. The build and portable ZIP integrity check passed. Windows launch was not independently tested for this version. The pieces currently have flat faces during turns; restoring a solid thin edge remains unfinished.

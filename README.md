@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.1.4
+# Chess Animation Studio · 0.1.5
 
 A local desktop editor for chess videos. Import a PGN/FEN, play an animated first draft, refine individual moves, align landings to music, and render an MP4. Built with Electron, React, TypeScript, Three.js, chess.js, and FFmpeg.
 
@@ -8,7 +8,7 @@ A local desktop editor for chess videos. Import a PGN/FEN, play an animated firs
 
 ## Windows downloads
 
-**[Download portable 0.1.4 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.4.zip).** Includes the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne Chess, rendered at higher resolution, plus selectable piece sets and configurable board colors. Uses the assemble-and-run portable layout. The app build and ZIP integrity check passed; this specific build has not been tested on Windows. Portable app ZIP SHA-256: `47cb427ee7a02cf5af87641d55eb9aa188a88aa16fd9ea9758461d7e235c8aed`.
+**[Download portable 0.1.5 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.5.zip).** Includes the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne Chess, rendered at higher resolution, plus selectable piece sets and configurable board colors. Restores the original 0.1.0 two-file assemble-and-run launcher using absolute paths. The app build and ZIP integrity check passed; this specific build has not been tested on Windows. Portable app ZIP SHA-256: `bd1f0002e02f40fd62a8a543bf688e98ec40cef7aa9d5168ec90a7716bcc591d`.
 
 See the [version history](CHANGELOG.md) for earlier downloads and changes.
 
@@ -16,7 +16,7 @@ See the [version history](CHANGELOG.md) for earlier downloads and changes.
 
 1. Download the versioned ZIP above and extract it completely.
 2. Open the extracted folder and double-click **Assemble-and-run.cmd**. It rebuilds the portable app ZIP, checks it, extracts the app, and starts it.
-3. To start it later, open the extracted **Chess Animation Studio 0.1.4** folder and launch **Chess Animation Studio.exe**. Keep its files together.
+3. To start it later, open the extracted **Chess Animation Studio** folder and launch **Chess Animation Studio.exe**. Keep its files together.
 
 The app is unsigned and Windows Application Control may block it. Node.js and Git are not needed for the prebuilt app. Configure FFmpeg (and optional Stockfish) in Settings using the download guidance below.
 

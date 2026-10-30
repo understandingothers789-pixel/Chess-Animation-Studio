@@ -129,8 +129,32 @@ export function App() {
     },
     [stop],
   );
+  const selectionAnchor = useRef(0);
   const select = useCallback(
-    (i: number) => {
+    (
+      i: number,
+      modifiers?: { ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean },
+    ) => {
+      const ctrl = modifiers?.ctrlKey || modifiers?.metaKey;
+      setChecked((old) => {
+        const next = ctrl ? new Set(old) : new Set<string>();
+        if (modifiers?.shiftKey) {
+          for (
+            let j = Math.min(selectionAnchor.current, i);
+            j <= Math.max(selectionAnchor.current, i);
+            j++
+          )
+            if (latest.current.moves[j]) next.add(latest.current.moves[j].id);
+        } else {
+          const id = latest.current.moves[i]?.id;
+          if (id) {
+            if (ctrl && next.has(id)) next.delete(id);
+            else next.add(id);
+          }
+          selectionAnchor.current = i;
+        }
+        return next;
+      });
       const seq = segments(latest.current);
       if (!seq[i]) return;
       setSelected(i);
@@ -773,6 +797,7 @@ export function App() {
             project={p}
             time={time}
             selected={selected}
+            checked={checked}
             select={select}
             seek={seek}
             edit={edit}

@@ -23,7 +23,10 @@ export interface PanelProps {
   selected: number;
   checked: Set<string>;
   setChecked: (s: Set<string>) => void;
-  select: (i: number) => void;
+  select: (
+    i: number,
+    modifiers?: { ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean },
+  ) => void;
   time: number;
   seek: (t: number) => void;
   assets: Record<string, string>;
@@ -168,7 +171,7 @@ export function GamePanel(q: PanelProps) {
                 q.setChecked(s);
               }}
             />
-            <button onClick={() => q.select(i)}>
+            <button onClick={(event) => q.select(i, event)}>
               <span className="muted">
                 {i % 2 === 0 ? Math.floor(i / 2) + 1 + "." : "…"}
               </span>
@@ -227,6 +230,7 @@ export function StylesPanel(q: PanelProps) {
                     soft: "⌁",
                     spin: "⟳",
                     sway: "〰",
+                    "sway-half": "◜",
                     hop: "⌒",
                     dramatic: "✦",
                     capture: "◎",
@@ -247,6 +251,21 @@ export function StylesPanel(q: PanelProps) {
           ))}
         </div>
       </Section>
+      <button
+        className="wide primary"
+        onClick={() =>
+          q.edit("Apply selected to all and default", (p) => {
+            const e = p.moves[q.selected]?.effect;
+            if (!e) return;
+            p.defaults = structuredClone(e);
+            p.moves.forEach((m) => {
+              m.effect = structuredClone(e);
+            });
+          })
+        }
+      >
+        Apply selected action to all moves & default
+      </button>
       <Section title="Your saved presets">
         {q.project.presets.length ? (
           q.project.presets.map((v, i) => (
@@ -280,7 +299,7 @@ export function StylesPanel(q: PanelProps) {
             })
           }
         >
-          Use selected move as import default
+          Use selected move as default for new imports
         </button>
       </Section>
     </>
@@ -627,6 +646,7 @@ export function ScenePanel(q: PanelProps) {
           value={p.style.pieceSet}
           options={[
             ["merida", "Nibbler (Merida)"],
+            ["neo", "Neo"],
             ["cburnett", "Lichess (Cburnett)"],
           ]}
           onChange={(v) =>
@@ -768,7 +788,7 @@ export function ScenePanel(q: PanelProps) {
               k === "count"
                 ? 400
                 : k === "size"
-                  ? 0.12
+                  ? 0.35
                   : k === "seed"
                     ? 1000000
                     : k === "opacity" || k === "softness"

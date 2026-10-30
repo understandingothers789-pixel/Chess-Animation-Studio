@@ -41,6 +41,7 @@ export function curve(keys: Key[] | undefined, u: number, fallback: number) {
 }
 export function sway(u: number, cycles = 1) {
   if (u <= 0 || u >= 1) return 0;
+  if (cycles === 0.5) return Math.sin(Math.PI * ease(u));
   const t = (u * cycles) % 1;
   if (t < 0.25) return ease(t * 4);
   if (t < 0.75) return mix(1, -1, ease((t - 0.25) * 2));

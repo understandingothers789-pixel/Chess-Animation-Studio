@@ -17,6 +17,7 @@ export const presetLabels: Record<Preset, string> = {
   soft: "Soft landing",
   spin: "Thin-edge spin",
   sway: "Slow sway",
+  "sway-half": "Half sway",
   hop: "Soft hop",
   dramatic: "Dramatic landing",
   capture: "Capture impact",
@@ -172,7 +173,7 @@ export function Inspector({
               />
               {range("rotation", "Rotation", -720, 720, 5, "°")}
               {range("sway", "Sway angle", 0, 45, 1, "°")}
-              {range("cycles", "Sway cycles", 1, 6, 1)}
+              {range("cycles", "Sway cycles", 0.5, 6, 0.5)}
               {range("hop", "Hop height", 0, 3)}
               {range("scale", "Maximum size", 1, 3)}
               {range("path", "Curved path", -3, 3)}

@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.3
+# Chess Animation Studio · 0.2.4
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
 ![Fresh editor](docs/images/editor.png)
 
 ## Windows downloads
+
+**[Download 0.2.4 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.4/Chess-Animation-Studio-0.2.4-Windows-Portable.zip).** Makes ambient snow visible with larger editable flakes and prevents camera culling. Adds a smooth one-sided Half sway, Ctrl/Shift move selection in the list and timeline, an explicit apply-to-all/default action, and a sharp contour reconstruction of the Neo reference pieces. The Neo references are 140px PNGs; reconstructed artwork is not claimed pixel-identical to high-resolution originals. Native validation is recorded below after the build.
 
 **[Download 0.2.3 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.3/Chess-Animation-Studio-0.2.3-Windows-Portable.zip).** Final fresh implementation with Nocturne's vector artwork and solid edges, slow sway, full local editor, audio/beat editing, analysis, recovery and direct export. Isolates new recovery/settings data from the older app, validates a fresh ZIP in a path with spaces, and identifies the presentation window explicitly during validation. Includes the recovery and engine lifecycle safeguards developed in checkpoint 0.2.2. Built and tested natively on Windows from a fresh ZIP extraction in a path with spaces: 13 core/service tests and packaged launch/export checks passed. The published download was independently downloaded and checksum/CRC checked. ZIP SHA-256: `1754d9dd3e392bbbc9f940825f85c33cf9dfac6be7a1e2c9f8b958764709982c`. See [validation](docs/VALIDATION.md) for evidence and Windows policy limitations.
 

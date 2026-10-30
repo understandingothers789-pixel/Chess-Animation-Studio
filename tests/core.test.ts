@@ -146,3 +146,14 @@ describe("audio markers and alignment", () => {
     expect(result.waveform.length).toBeLessThanOrEqual(1600);
   });
 });
+
+it("half sway leans once without reversing and settles smoothly", () => {
+  const p = importPgn(blank(), "1. e4");
+  p.moves[0].effect = effect("sway-half");
+  expect(p.moves[0].effect.cycles).toBe(0.5);
+  expect(sway(0.5, 0.5)).toBeCloseTo(1);
+  for (let i = 0; i <= 100; i++)
+    expect(sway(i / 100, 0.5)).toBeGreaterThanOrEqual(0);
+  expect(sway(1, 0.5)).toBe(0);
+  expect(parseProject(p).moves[0].effect.cycles).toBe(0.5);
+});

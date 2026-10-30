@@ -1,6 +1,6 @@
 import * as T from "three";
 import { contours } from "d3-contour";
-export type PieceSet = "merida" | "cburnett";
+export type PieceSet = "merida" | "cburnett" | "neo";
 type Artwork = { geometry: T.ExtrudeGeometry; texture: T.CanvasTexture };
 const assets = new Map<string, Promise<Artwork>>();
 export async function artwork(
@@ -22,6 +22,64 @@ export async function artwork(
             canvas.width = canvas.height = 2048;
             const ctx = canvas.getContext("2d")!;
             ctx.drawImage(image, 0, 0, 2048, 2048);
+            if (set === "neo") {
+              const source = document.createElement("canvas");
+              source.width = source.height = 140;
+              const sc = source.getContext("2d", { willReadFrequently: true })!;
+              sc.drawImage(image, 0, 0, 140, 140);
+              const rgba = sc.getImageData(0, 0, 140, 140).data;
+              ctx.clearRect(0, 0, 2048, 2048);
+              ctx.save();
+              ctx.scale(2048 / 140, 2048 / 140);
+              const layers: [number, string][] = [
+                [256, "#fafafa"],
+                [244, "#e9e9e9"],
+                [215, "#cccccc"],
+                [170, "#999999"],
+                [125, "#777775"],
+                [98, "#595957"],
+                [75, "#494947"],
+                [55, "#333333"],
+              ];
+              for (const [threshold, fill] of layers) {
+                const values = Array.from({ length: 140 * 140 }, (_, i) =>
+                  rgba[i * 4 + 3] > 80 &&
+                  (rgba[i * 4] + rgba[i * 4 + 1] + rgba[i * 4 + 2]) / 3 <
+                    threshold
+                    ? 1
+                    : 0,
+                );
+                const polygons = contours().size([140, 140]).thresholds([0.5])(
+                  values,
+                )[0].coordinates;
+                ctx.beginPath();
+                for (const polygon of polygons)
+                  for (const ring of polygon) {
+                    if (ring.length < 4) continue;
+                    const start = ring[0],
+                      last = ring[ring.length - 2];
+                    ctx.moveTo(
+                      (last[0] + start[0]) / 2,
+                      (last[1] + start[1]) / 2,
+                    );
+                    for (let j = 0; j < ring.length - 1; j++) {
+                      const v = ring[j],
+                        next = ring[(j + 1) % (ring.length - 1)];
+                      ctx.quadraticCurveTo(
+                        v[0],
+                        v[1],
+                        (v[0] + next[0]) / 2,
+                        (v[1] + next[1]) / 2,
+                      );
+                    }
+                    ctx.closePath();
+                  }
+                ctx.fillStyle = fill;
+                ctx.fill("evenodd");
+              }
+              ctx.restore();
+            }
+
             const mask = document.createElement("canvas");
             mask.width = mask.height = 256;
             const m = mask.getContext("2d", { willReadFrequently: true })!;
@@ -74,7 +132,7 @@ export async function artwork(
           }
         };
         image.src = new URL(
-          `pieces/${set}/${color}${type.toUpperCase()}.svg`,
+          `pieces/${set}/${color}${type.toUpperCase()}.${set === "neo" ? "png" : "svg"}`,
           document.baseURI,
         ).href;
       }),
@@ -83,7 +141,7 @@ export async function artwork(
 }
 export async function preloadPieces() {
   await Promise.all(
-    (["merida", "cburnett"] as const).flatMap((set) =>
+    (["merida", "cburnett", "neo"] as const).flatMap((set) =>
       ["w", "b"].flatMap((c) =>
         "kqrbnp".split("").map((t) => artwork(set, c, t)),
       ),

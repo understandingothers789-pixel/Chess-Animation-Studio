@@ -181,14 +181,16 @@ export class Scene {
       );
     };
     this.snow = makePoints(400);
+    this.snow.frustumCulled = false;
     this.bursts = makePoints(36);
+    this.bursts.frustumCulled = false;
     this.scene.add(this.snow);
     this.root.add(this.bursts);
     this.ready = this.prepare();
   }
   private async prepare() {
     await preloadPieces();
-    for (const set of ["merida", "cburnett"] as PieceSet[])
+    for (const set of ["merida", "cburnett", "neo"] as PieceSet[])
       for (const color of ["w", "b"])
         for (const type of "kqrbnp") {
           const m = await createPiece(set, color, type);

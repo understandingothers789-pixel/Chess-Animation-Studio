@@ -7,6 +7,7 @@ export function Timeline({
   project: p,
   time,
   selected,
+  checked,
   select,
   seek,
   edit,
@@ -14,7 +15,11 @@ export function Timeline({
   project: Project;
   time: number;
   selected: number;
-  select: (i: number) => void;
+  checked: Set<string>;
+  select: (
+    i: number,
+    modifiers?: { ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean },
+  ) => void;
   seek: (t: number) => void;
   edit: Edit;
 }) {
@@ -128,13 +133,19 @@ export function Timeline({
               {seq.map((s, i) => (
                 <button
                   key={p.moves[i].id}
-                  className={selected === i ? "selected" : ""}
+                  className={
+                    selected === i
+                      ? "selected"
+                      : checked.has(p.moves[i].id)
+                        ? "checked"
+                        : ""
+                  }
                   style={{
                     left: x(s.start),
                     width: Math.max(14, x(s.end - s.start) - 2),
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => select(i)}
+                  onClick={(event) => select(i, event)}
                 >
                   <strong>{p.moves[i].san}</strong>
                   <small>{p.moves[i].effect.preset}</small>
@@ -146,7 +157,7 @@ export function Timeline({
                 <button
                   key={i}
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => select(i)}
+                  onClick={(event) => select(i, event)}
                   style={{
                     left: x(s.start),
                     width: Math.max(8, x(s.end - s.start) - 3),
@@ -161,7 +172,7 @@ export function Timeline({
                 <button
                   key={i}
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => select(i)}
+                  onClick={(event) => select(i, event)}
                   style={{
                     left: x(s.start),
                     width: Math.max(8, x(s.end - s.start) - 3),

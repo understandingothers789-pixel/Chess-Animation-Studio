@@ -22,3 +22,5 @@ Video references from the product brief: https://www.youtube.com/watch?v=wDOUOIr
 YouTube format guidance: https://support.google.com/youtube/answer/15424877 . Square/vertical eligibility and duration affect Shorts classification; do not assume that square exports and square content within a vertical canvas display identically. No claims are made about Instagram/TikTok cropping or native OBS/Resolve compatibility without practical checks.
 
 Runtime third-party packages and their actual installed license files are collected in THIRD_PARTY.md. Electron's LICENSE and Chromium notice files remain alongside the runtime in portable packages.
+
+Neo reference PNGs: https://github.com/GiorgioMegrelli/chess.com-boards-and-pieces/tree/master/pieces/neo . These are the actual Neo images mirrored from Chess.com, 140×140 pixels. The renderer reconstructs smooth grayscale contour layers at a larger texture resolution; that does not recover missing original detail or establish pixel-identical vector equivalence. Neo artwork retains its original ownership; the app's GPL license does not relicense third-party Neo art or imply official affiliation.

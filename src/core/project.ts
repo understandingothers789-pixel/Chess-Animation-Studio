@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const VERSION = "0.2.3";
+export const VERSION = "0.2.4";
 export const formats = [
   "landscape",
   "vertical",
@@ -18,6 +18,7 @@ export const presets = [
   "soft",
   "spin",
   "sway",
+  "sway-half",
   "hop",
   "dramatic",
   "capture",
@@ -100,7 +101,7 @@ export const effectSchema = z.object({
   axis: z.enum(["x", "y", "z"]),
   rotation: n(-1440, 1440),
   sway: n(0, 45),
-  cycles: n(1, 6).int(),
+  cycles: n(0.5, 6),
   hop: n(0, 3),
   path: n(-3, 3),
   overshoot: n(0, 0.3),
@@ -220,6 +221,14 @@ export function effect(preset: Preset = "slide"): Effect {
     Object.assign(e, { rotation: 360, axis: "y", hop: 0.25, scale: 1.08 });
   if (preset === "sway")
     Object.assign(e, { duration: 2.2, sway: 24, landing: 0.88, settle: 0.12 });
+  if (preset === "sway-half")
+    Object.assign(e, {
+      duration: 1.6,
+      sway: 24,
+      cycles: 0.5,
+      landing: 0.88,
+      settle: 0.12,
+    });
   if (preset === "hop") Object.assign(e, { hop: 0.85, scale: 1.1 });
   if (preset === "dramatic")
     Object.assign(e, {
@@ -287,7 +296,7 @@ export const projectSchema = z.object({
     .max(3000),
   defaults: effectSchema,
   style: z.object({
-    pieceSet: z.enum(["cburnett", "merida"]),
+    pieceSet: z.enum(["cburnett", "merida", "neo"]),
     light: color,
     dark: color,
     rim: color,
@@ -310,7 +319,7 @@ export const projectSchema = z.object({
   ambient: z.object({
     enabled: z.boolean(),
     count: n(0, 400).int(),
-    size: n(0.01, 0.12),
+    size: n(0.01, 0.35),
     opacity: n(0, 1),
     speed: n(0, 2),
     drift: n(0, 2),
@@ -418,9 +427,9 @@ export function blank(): Project {
     ) as Project["layouts"],
     ambient: {
       enabled: true,
-      count: 55,
-      size: 0.025,
-      opacity: 0.28,
+      count: 100,
+      size: 0.065,
+      opacity: 0.55,
       speed: 0.18,
       drift: 0.3,
       direction: 0,
@@ -428,7 +437,7 @@ export function blank(): Project {
       softness: 0.5,
       color: "#ffffff",
       seed: 4729,
-      layer: "both",
+      layer: "over",
     },
     pulse: {
       enabled: false,

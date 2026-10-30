@@ -1076,3 +1076,16 @@ progress {
     padding-top: 4px;
   }
 }
+
+.move-row:has(input:checked) {
+  background: #344a30;
+  outline: 1px solid #667f4e;
+}
+.move-row:has(input:checked) strong {
+  color: #e6f2cb;
+}
+
+.move-track button.checked {
+  border-color: #a4be78;
+  background: #405836;
+}

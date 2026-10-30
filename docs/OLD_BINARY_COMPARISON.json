@@ -1,0 +1,68 @@
+{
+  "0.1.0_archived": {
+    "sha256": "e3a8cc6f1ee61dca35c63f53ef34a90c942490240d7f138469467f1ef258a447",
+    "bytes": 210896896,
+    "pe_certificate_directory": [
+      0,
+      0
+    ],
+    "sections": {
+      ".text": "51858c2cc757e29d193d36bc5223a5fbcd8ef36dd91f0eff145a9cf804c73154",
+      ".rdata": "a8ada89b986606baa426c7789ba967f502ca6b03c508a301a4388e19548eb17b",
+      ".data": "bd417804d225176b7678dce3f3e3df9e56afb88d60b4e80684636a90a3cc0fc2",
+      ".pdata": "cf1acd7bea7aad3dec20d75e49ff3ff59c146e7ea27f40fe6d775555e6974009",
+      ".fptable": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+      ".rodata": "7df404718763bb60863b1eeef438092b1ae7bf5509fb0f36c09ba6495d8ccc22",
+      ".tls": "8ff7b598ef435087a8651bc68460a200e55fc942d8e3e142cecf0783360f3cfb",
+      "CPADinfo": "911d1a12eca8935990172cfcd6768f9c6351ed94b700833b2cf0cf457a1d752d",
+      "LZMADEC": "caf8ae633e0f04bd3d5bd49c4b30a5ab0bde47e1d3b1a3540d65dea6223c9329",
+      "_RDATA": "2ad15fdb9e061729e75dbcae1bf9e0613f8e5f0dde9b0b1ab03e17a7bfab2f9d",
+      "malloc_h": "8ab7ee0e9c401cfe0e5cc179466ca4f3334a13d25e789f11f063b201890bd71c",
+      "prot": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+      ".rsrc": "727d7ee6ca9b018a89d359bdf79d6906d10e4562b70ab45871697e340eb6e6dc",
+      ".reloc": "a4685f713709d700126a9d07819b506999c7a645e9ef3248fd939ad3f06b343b"
+    }
+  },
+  "0.1.4_blocked": {
+    "sha256": "b297b1fa3a82560379a9ad96af9c3b83f0212261f810dce652d4ac6ee48f7392",
+    "bytes": 210896896,
+    "pe_certificate_directory": [
+      0,
+      0
+    ],
+    "sections": {
+      ".text": "51858c2cc757e29d193d36bc5223a5fbcd8ef36dd91f0eff145a9cf804c73154",
+      ".rdata": "a8ada89b986606baa426c7789ba967f502ca6b03c508a301a4388e19548eb17b",
+      ".data": "bd417804d225176b7678dce3f3e3df9e56afb88d60b4e80684636a90a3cc0fc2",
+      ".pdata": "cf1acd7bea7aad3dec20d75e49ff3ff59c146e7ea27f40fe6d775555e6974009",
+      ".fptable": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+      ".rodata": "7df404718763bb60863b1eeef438092b1ae7bf5509fb0f36c09ba6495d8ccc22",
+      ".tls": "8ff7b598ef435087a8651bc68460a200e55fc942d8e3e142cecf0783360f3cfb",
+      "CPADinfo": "911d1a12eca8935990172cfcd6768f9c6351ed94b700833b2cf0cf457a1d752d",
+      "LZMADEC": "caf8ae633e0f04bd3d5bd49c4b30a5ab0bde47e1d3b1a3540d65dea6223c9329",
+      "_RDATA": "2ad15fdb9e061729e75dbcae1bf9e0613f8e5f0dde9b0b1ab03e17a7bfab2f9d",
+      "malloc_h": "8ab7ee0e9c401cfe0e5cc179466ca4f3334a13d25e789f11f063b201890bd71c",
+      "prot": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+      ".rsrc": "374401158391d2fcbddced7d9a1c510de9091e38c5545ac1876f0c860bb39c35",
+      ".reloc": "a4685f713709d700126a9d07819b506999c7a645e9ef3248fd939ad3f06b343b"
+    }
+  },
+  "identical_sections": [
+    ".text",
+    ".rdata",
+    ".data",
+    ".pdata",
+    ".fptable",
+    ".rodata",
+    ".tls",
+    "CPADinfo",
+    "LZMADEC",
+    "_RDATA",
+    "malloc_h",
+    "prot",
+    ".reloc"
+  ],
+  "different_sections": [
+    ".rsrc"
+  ]
+}

@@ -1,0 +1,19 @@
+# Fresh implementation history
+
+## 0.2.3
+
+[Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.3/Chess-Animation-Studio-0.2.3-Windows-Portable.zip). Native Windows build with 13 passing core/service tests and successful packaged-app checks from a fresh ZIP extraction in a path with spaces. Includes Nocturne vector pieces with solid edges, slow sway, per-move editing/keyframes/cameras, audio/beat editing, analysis, recovery, presentation and direct MP4 export. Separates fresh app data from the previous implementation; serializes final recovery writes; cleans up engine wait listeners; identifies the correct presentation renderer in validation. Publishes a permanent versioned release ZIP, checksum and signature-status evidence. The application remains unsigned and Smart App Control approval is not guaranteed.
+
+## 0.2.2 candidate
+
+Not published as a portable download. Launch and exports passed, but a presentation-window selector in the validation harness timed out. The corrected selection is included in 0.2.3.
+
+## 0.2.1
+
+[Windows artifact](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41019103040/artifacts/12961316388). Corrected image/audio asset separation, sample music playback checks, new-project save paths, restored-file cache refreshes, inline reusable preset names, live presentation state, ribbon widths and badge glow. Native tests and packaged checks passed. The optional Release upload failed on an empty signature-evidence file; the workflow artifact remained available.
+
+## 0.2.0 checkpoint
+
+[Windows artifact](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41017597591/artifacts/12960905632). First fresh implementation with native Windows packaging and packaged desktop/export checks. Superseded by the stability fixes above.
+
+Earlier 0.1.x source and downloads remain preserved on their original branches and tags.

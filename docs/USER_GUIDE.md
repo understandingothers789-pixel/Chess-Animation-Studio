@@ -20,7 +20,7 @@ At a displayed chess position, click a movable piece and then a legal destinatio
 
 ## Audio and beats
 
-Import a music file in Music and wait for decoding. Analyze waveform & likely beats finds first-channel transients, not authoritative BPM/downbeats. Drag beat markers on the waveform or edit their numeric times, accents and enabled state. Double-click the timeline to add a marker; arrow keys move a focused marker by 0.01 seconds.
+Import a music file in Music and wait for decoding. Pause/restart playback after changing soundtrack, cue or timing settings so queued audio is rescheduled. Analyze waveform & likely beats finds first-channel transients, not authoritative BPM/downbeats. Drag beat markers on the waveform or edit their numeric times, accents and enabled state. Double-click the timeline to add a marker; arrow keys move a focused marker by 0.01 seconds.
 
 Source-timed markers follow source trim and project offset edits. Corrections update their source-time anchor. Preview timing arrangement shows how many moves can land on usable markers while respecting locks and 0.5–5 second duration limits. Apply is one undoable edit; Cancel preserves the project. A move may also choose a specific enabled landing marker. If it is unreachable within the limits, it is left unmatched.
 
@@ -47,3 +47,7 @@ Present opens a clean companion window controlled by the editor. F11 toggles ful
 ## Export
 
 Choose Export MP4, select a range and output path, then render. Frames are evaluated at exact timestamps at 60 FPS; the last frame count rounds upward for a partial frame. FFmpeg writes H.264 yuv420p with AAC audio. Auto encoding probes actual hardware encoder execution and falls back to libx264. Cancellation stops the worker and encoder, removes temporary files, and preserves the project and any previous destination file. A hard process kill can leave a temporary export folder beside the destination.
+
+## Local data location
+
+The fresh implementation uses `%APPDATA%\ChessAnimationStudio-Fresh` on Windows. Settings, one recovery snapshot, encrypted optional credentials, caches and rotating logs are stored there. It does not reuse or overwrite the older implementation's recovery/settings directory. Project files remain wherever you save them.

@@ -1,8 +1,18 @@
 # Validation and scope
 
-## Release 0.2.1
+## Release 0.2.3 — verified native Windows build
 
-The final native Windows workflow result and download identifiers are recorded here after the release run. Compilation and Linux checks alone do not establish a successful Windows launch or Smart App Control approval.
+- Source commit: `807239a8c0e7af334e3f0deb629ce9ae6480a943`, clean checkout.
+- Native run: https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41020652349 — completed successfully.
+- Environment: Windows x64 hosted runner, Node 24.19.0, official Electron 39.8.10.
+- All **13** core/service tests passed on Windows, including a pinned real Stockfish 17.1 query and a measured FFmpeg AAC trim/offset pulse check.
+- The packaged ZIP was freshly extracted to **Portable launch with spaces**. The actual extracted EXE launched; the sample/music opened, both vector sets rendered, backward seeks matched pixels, save/open preserved relative assets, H.264/AAC 640×360 video exported at 60 FPS, and native-sized 1080×1920 / 1080×1080 / square-in-vertical exports passed. Cancellation cleaned partial files; the clean presentation window loaded without editor controls. No renderer exceptions were recorded.
+- The official runtime executable matched its source bytes: SHA-256 `9ba4530b08adeae75c13324a95b0fc8e87c5aa2889cfdc894474f8684b9f6c59`. Native signature inspection reported **NotSigned**. This is not a trusted-signature or Smart App Control approval claim.
+- Release: https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/tag/studio-v0.2.3 . The published ZIP was downloaded again and checked independently: every CRC passed, BUILD.json matched the version/source/clean state, EXE bytes matched the recorded runtime hash, and both SVG sets were included.
+- Published ZIP SHA-256: `1754d9dd3e392bbbc9f940825f85c33cf9dfac6be7a1e2c9f8b958764709982c` (138,931,185 bytes). Server Content-Disposition supplies `Chess-Animation-Studio-0.2.3-Windows-Portable.zip`.
+- Validation evidence: https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41020652349/artifacts/12961677737 . Workflow artifacts require GitHub login and expire after 90 days. The separate release asset is the persistent download.
+
+The earlier 0.2.2 candidate passed launch and exports but was withheld after its presentation check selected the wrong renderer window. The final harness finds the presentation output URL explicitly. The 0.2.1 checkpoint passed native checks but its optional Release upload failed on an empty signature-evidence file; 0.2.3 records that evidence directly in the native workflow and its Release upload succeeded. No previously published binary was replaced.
 
 ## Completed local checks
 
@@ -24,6 +34,7 @@ The official Electron 39.8.10 runtime executable was recorded as **NotSigned** b
 - Beat detection is first-channel transient analysis, not authoritative BPM/downbeat inference. Automatic timing is a proposed arrangement; review marker corrections and apply alignment again when desired.
 - PGN raw text and SAN variations are preserved. Only the current line's effect map is stored; effects unique to a different inactive branch are not separately archived. Full PGN annotation/comment editing is not implemented.
 - Keyframes use numeric times/values and easing, not a graphical Bezier curve editor. Very large games and one-hour decoded audio may consume substantial memory; imports and assets have explicit bounds.
+- Pause/restart playback after soundtrack, cue or timing edits to reschedule already queued WebAudio events. Export always evaluates the saved settings.
 - One recovery slot is retained; it is not a backup history. A hard kill during export may leave a .chess-studio-export directory, while normal cancellation removes it.
 - Project schema 2 is a fresh format; old schema-1 projects require manual PGN/asset reimport rather than an unverified conversion.
 - Portal intros, cutaways, character faces/props, slash/reload presets and animated-media attachments are deferred. No unsupported controls are shown for them.

@@ -1209,3 +1209,41 @@ Provide:
 The intended result is a practical editor that starts with an attractive chess
 animation, lets me refine individual moves precisely, exports finished videos,
 and can grow into cinematic scenes inspired by future references.
+## 31A. Repeatable Windows builds and delivery requirements
+
+These requirements clarify Windows delivery and apply to every future change.
+
+### A runnable app is part of delivery
+
+- Build the Windows portable app for me. Do not require me to install Node.js, npm, Git, compilers, or run a source build.
+- My preference is an unsigned portable app. Do not assume I want to obtain a signing certificate or disable Windows protections. Explain any platform restriction that prevents this preference from working.
+- Use a documented, repeatable packaging process with pinned dependencies. Record the source commit, application version, Electron/runtime version, build environment, packaging configuration, and SHA-256 checksums for each artifact.
+- Prefer a native Windows build environment for Windows release artifacts. A successful Linux cross-build is not evidence that the executable launches on Windows.
+- Keep the last known-working download available unchanged. Record exactly which artifact the user successfully ran; do not infer this solely from an ambiguous version label or screenshot. If the exact build is uncertain, state that uncertainty.
+
+### Version numbers, downloads, and change history
+
+- Every new distributable must receive a new version number. Keep the application UI, executable metadata, package version, archive name, and release notes consistent.
+- The filename supplied by the actual download server must contain the version, for example `Chess-Animation-Studio-0.1.8-Windows-Portable.zip`. Verify the downloaded filename; version text in a hyperlink alone is insufficient.
+- Provide a direct, version-specific GitHub download. Preserve previous version links and never replace an existing version with different bytes.
+- Follow Nocturne Chess's README presentation: consecutive entries beginning with **Download VERSION for Windows**, followed immediately by a clear description of that version's changes, actual validation, and relevant limitations. Keep the latest entry first.
+- Use `main` for source and at most one maintained download branch if needed. Reuse that branch and preserve versions using tags or immutable artifacts; do not create a branch per build.
+
+### Portable launcher and release verification
+
+- Keep the portable launcher and packaging structure stable unless a demonstrated defect requires changing them. Keep launcher/build scripts in source control; do not depend on ad hoc scripts stored only in a temporary workspace.
+- Make the build-to-download process reproducible with one documented command or workflow. Include all runtime files and assets, plus required notices.
+- If GitHub's normal file-size limits require split files, provide a launcher that assembles them using absolute paths, verifies the complete artifact checksum, extracts it, and launches the correct executable. Handle missing parts, corrupt downloads, spaces in paths, and repeat launches with clear errors.
+- Prefer ordinary versioned release assets or workflow artifacts where supported. If upload authentication fails, report the precise failure and use an agreed distribution method; do not silently proliferate branches or change the user's launch procedure.
+- Before publishing, verify archive integrity and packaged runtime assets. When Windows execution is available, launch the packaged app from a fresh extraction, including a path containing spaces, and exercise the changed feature. Report exactly which checks ran and on which platform.
+- Do not call a release "working on Windows" based on compilation, archive checks, Linux tests, or the user's successful launch of an older build.
+
+### Diagnose blocked launches before changing the app
+
+- An archive that verifies and extracts successfully has passed those stages. An Application Control failure at executable launch is a separate issue.
+- Use the exact Windows error and CodeIntegrity event details to identify the blocked file and policy. Do not blame PNG/SVG assets, animation changes, ZIP layout, or the launcher without supporting evidence.
+- Compare a blocked artifact with the exact known-working artifact: executable hash and signature, runtime version, executable resource edits, dependencies, packaging flags, and launch procedure. Document material differences before proposing another build.
+- Do not repeatedly repackage unchanged unsigned executables and imply this will solve a signing-policy block. Do not remove requested features as a speculative fix.
+- Do not strip download security metadata, modify application-control policies, or disable security features as part of the launcher or build process.
+- Explain that unsigned software cannot be guaranteed to pass Smart App Control or other Windows policies. If compliance requires signing or another deployment route, explain the constraint honestly rather than promising a packaging-only fix.
+- If the user chooses to change Windows security settings, explain the actual consequences first, including any restrictions on re-enabling the setting. Never make that choice for them.

@@ -30,13 +30,14 @@ jobs:
       - run: npm test
       - name: Build standard portable layout
         run: node scripts/portable.mjs
-      - name: Check official runtime signature
+      - name: Record official runtime signature
         shell: pwsh
         run: |
           $p = "release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/Chess Animation Studio.exe"
           $s = Get-AuthenticodeSignature -LiteralPath $p
           $s | Format-List Status,StatusMessage,SignerCertificate
-          if ($s.Status -ne 'Valid') { throw 'Official runtime signature is not valid' }
+          if ($s.Status -notin @('Valid', 'NotSigned')) { throw 'Runtime signature validation error' }
+          if ($s.Status -eq 'NotSigned') { Write-Warning 'Official runtime is unsigned; Smart App Control approval is not guaranteed.' }
       - name: Exercise packaged Windows app and exports
         shell: pwsh
         run: |

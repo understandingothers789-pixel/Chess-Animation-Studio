@@ -188,7 +188,7 @@ export function App() {
       run(async () => {
         try {
           const url = await window.studio.assetData(a);
-          if (!alive) return;
+          if (!latest.current.assets.some(v => v.id === a.id && v.path === a.path)) return;
           if (!url) {
             setMissing((s) => new Set(s).add(a.id));
             return;
@@ -258,23 +258,12 @@ export function App() {
       audio.current?.stop();
     };
   }, [playing]);
+  const lastPresentation = useRef(0);
   useEffect(() => {
-    const timer = setTimeout(
-      () =>
-        window.studio.present({
-          project: p,
-          time,
-          playing,
-          assets: Object.fromEntries(
-            p.assets
-              .filter((a) => a.kind === "image" && assets[a.id])
-              .map((a) => [a.id, assets[a.id]]),
-          ),
-        }),
-      playing ? 100 : 0,
-    );
-    return () => clearTimeout(timer);
-  }, [p, time, playing, assets]);
+    if (playing && performance.now() - lastPresentation.current < 100) return;
+    lastPresentation.current = performance.now();
+    window.studio.present({project:p,time,playing,assets:Object.fromEntries(p.assets.filter(a=>a.kind==='image'&&assets[a.id]).map(a=>[a.id,assets[a.id]]))});
+  },[p,time,playing,assets]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (

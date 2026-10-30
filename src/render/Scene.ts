@@ -64,7 +64,7 @@ export class Scene {
         vertexShader:
           "varying vec2 v; void main(){v=uv;gl_Position=vec4(position,1.);}",
         fragmentShader:
-          "varying vec2 v;uniform vec3 top;uniform vec3 bottom;void main(){vec3 c=mix(bottom,top,v.y*.7+.3);c*=1.-.22*length(v-.5);gl_FragColor=vec4(c,1.);}",
+          "varying vec2 v;uniform vec3 top;uniform vec3 bottom;void main(){vec3 c=mix(bottom,top,v.y*.7+.3);c*=1.-.22*length(v-.5);gl_FragColor=vec4(pow(c,vec3(1./2.2)),1.);}",
       }),
     );
     this.backgroundScene.add(this.background);

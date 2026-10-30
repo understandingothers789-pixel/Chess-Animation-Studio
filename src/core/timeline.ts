@@ -295,6 +295,10 @@ export function evaluate(
   }
   const previous = cameraTarget(p, g, index - 1, format, true),
     target = cameraTarget(p, g, index, format, u >= 1);
+  if (e && (e.cameras[format]?.mode === 'follow')) {
+    const subject=pieces.find(v=>v.id===step.pieceId);
+    if(subject){target.x=subject.x+(e.cameras[format]?.x??0);target.y=subject.y+(e.cameras[format]?.y??0);}
+  }
   if (e) {
     for (const ch of ["cameraX", "cameraY", "cameraZoom"] as const) {
       const k = ch === "cameraX" ? "x" : ch === "cameraY" ? "y" : "zoom";

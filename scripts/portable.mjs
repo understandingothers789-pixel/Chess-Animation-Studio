@@ -88,7 +88,7 @@ await fs.writeFile(
 );
 await fs.writeFile(
   path.join(target, "START-HERE.txt"),
-  `Chess Animation Studio ${pkg.version}\r\nExtract all files, then open Chess Animation Studio.exe. Keep the files together.\r\nThe runtime retains its upstream vendor signature; this application payload is unsigned. Windows policy approval is not guaranteed.\r\nChoose FFmpeg in Files to enable MP4 export. Stockfish is optional.\r\n`,
+  `Chess Animation Studio ${pkg.version}\r\nExtract all files, then open Chess Animation Studio.exe. Keep the files together.\r\nThe official runtime bytes are unchanged. This runtime and application are unsigned unless BUILD/signature evidence states otherwise. Windows policy approval is not guaranteed.\r\nChoose FFmpeg in Files to enable MP4 export. Stockfish is optional.\r\n`,
 );
 const zip = target + ".zip";
 if (process.platform === "win32") {

@@ -1,5 +1,15 @@
 # Validation and scope
 
+## Release 0.2.8 update checks
+
+- Native Windows run [41145830234](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41145830234) passed all 16 tests and packaged palette/tooltip checks across every settings panel, logo/resets/Undo, selection editing, intro, snow controls, backward seeks, save/open, H.264/AAC at 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation.
+- Source `ff794df73dd5328de4ea24b1e1eb09d95cf80c90`, clean Windows checkout. Independently downloaded the published ZIP: all archive CRCs passed, BUILD.json matched version/source/clean state, and runtime EXE SHA-256 remained the official value `9ba4530b08adeae75c13324a95b0fc8e87c5aa2889cfdc894474f8684b9f6c59`.
+- Published ZIP SHA-256: `5ec5ec999c0ae3643cf313c41355cdb7c1f73488169b42442e913556f0cb58e0` (140,737,635 bytes). The portable application remains unsigned; native CI launch does not establish Smart App Control approval on the user's PC. Earlier releases were retained.
+
+- Production build and all 16 core/service tests passed locally.
+- Actual Electron UI audit passed across Game, Styles, Music, Scene, Analysis, Files, Motion, Camera, Look, generated keyframe points and Intro. Every rendered setting input had a nonempty explanatory title and accessible description; no generic fallback help remained in these states. The palette controls reported exactly #B88762 and #EDD6B0 (case-insensitive). The [palette screenshot](images/palette-help-028.png) was visually inspected.
+- Default palette comes from the project owner's supplied reference values. New projects and style reset use it; parsing a saved project does not rewrite its chosen colors. Hover help is native HTML title text, with aria-description for assistive technology.
+
 ## Release 0.2.7 update checks
 
 - Native Windows run [41137860700](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41137860700) passed all 16 tests plus packaged logo, individual/group snow reset, Undo, selection-wide preset-aware movement reset, intro/selection controls, launch/save/open, backward seeking, H.264/AAC at 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation.

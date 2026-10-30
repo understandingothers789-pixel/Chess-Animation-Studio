@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.7
+# Chess Animation Studio · 0.2.8
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
-![Editor with the new frame-and-motion logo and reset controls](docs/images/logo-reset-027.png)
+![Editor with the brown/beige default board palette](docs/images/palette-help-028.png)
 
 ## Windows downloads
+
+**[Download 0.2.8 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.8/Chess-Animation-Studio-0.2.8-Windows-Portable.zip).** Sets the requested default board colors to **brown #B88762** (dark squares) and **beige #EDD6B0** (light squares). Adds explanatory hover tooltips and accessible descriptions across all setting inputs, including units and numeric ranges. New compositions and Board & pieces reset use the palette; saved custom board colors stay intact. All 16 tests and native Windows palette/tooltip, editing and export checks passed. Published ZIP SHA-256: `5ec5ec999c0ae3643cf313c41355cdb7c1f73488169b42442e913556f0cb58e0`.
 
 **[Download 0.2.7 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.7/Chess-Animation-Studio-0.2.7-Windows-Portable.zip).** Replaces the knight logo with a cyan frame, coral play symbol and cream spark in the editor, favicon and running window icon. Adds **Reset** beside effect sections and individual **↺** buttons for snow, board-effect and move-motion numeric settings. Resets are undoable and selected moves restore their own preset defaults. Built and tested natively on Windows: 16 tests plus packaged logo/reset/Undo checks and all export-format checks passed. Published ZIP SHA-256: `a06e9fb93584ac8de3f1493962ba4edff36ab7587e28fea1b9ba7f80b3d35518`.
 

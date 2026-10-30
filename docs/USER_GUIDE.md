@@ -108,3 +108,9 @@ Movement and timing restore the defaults for each selected move’s current pres
 Reset is also available for the opener, capture impact, highlights/trails, badges, keyframes, board/piece appearance, composition, board atmosphere, dark-square pulses and music/audio settings. Music reset keeps the imported track; sound reset keeps the sound library. These controls change the project, not the source files.
 
 The app’s new cyan-frame/coral-play logo replaces the knight in the header, favicon and running window icon. The official runtime executable is still copied unchanged; its embedded executable metadata is not resource-patched.
+
+## Default board palette and tooltips (0.2.8)
+
+The owner-specified brown/beige palette is now the app default: **dark squares #B88762** and **light squares #EDD6B0**. New compositions and **Scene → Board & pieces → Reset** use these exact base colors. Existing saved projects keep their own colors; you can enter the two colors individually to keep other style choices. Shimmer and beat pulses can temporarily tint the base colors during playback.
+
+Hover a setting label or its input to read an explanation. Numeric controls also show their allowed range; the same help is supplied as an accessible description for assistive technology. Help covers all settings panels, the move inspector, keyframes, intro, timeline and export settings. Reset buttons have their own restoration tooltip.

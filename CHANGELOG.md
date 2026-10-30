@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## 0.2.8
+
+[Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.8/Chess-Animation-Studio-0.2.8-Windows-Portable.zip). Saves the requested brown/beige default board palette: dark #B88762, light #EDD6B0. Adds explanatory hover tooltips and accessible descriptions to every setting input across the editor, including numeric ranges. Existing saved board colors remain intact; new compositions and board-style reset use the new palette. All 16 tests and native Windows palette/tooltip, editing and export checks passed; published ZIP integrity was independently verified.
+
 ## 0.2.7
 
 [Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.7/Chess-Animation-Studio-0.2.7-Windows-Portable.zip). Replaces the knight logo with a cyan frame, coral play symbol and cream spark. Updates editor branding, favicon and running window icon. Adds undoable group resets across effect controls, with individual resets for snow, board-effect and move-motion numeric settings. Selected moves reset to their own preset defaults, preserving unrelated settings. All 16 tests and native Windows logo/reset/Undo and export checks passed; published ZIP integrity and bundled logo assets were independently verified.

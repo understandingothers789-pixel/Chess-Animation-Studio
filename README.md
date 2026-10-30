@@ -10,7 +10,16 @@ A local desktop editor for chess videos. Import a PGN/FEN, play an animated firs
 
 **[Download portable 0.1.5 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.5.zip).** Includes the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne Chess, rendered at higher resolution, plus selectable piece sets and configurable board colors. Restores the original 0.1.0 two-file assemble-and-run launcher using absolute paths. The app build and ZIP integrity check passed; this specific build has not been tested on Windows. Portable app ZIP SHA-256: `bd1f0002e02f40fd62a8a543bf688e98ec40cef7aa9d5168ec90a7716bcc591d`.
 
-See the [version history](CHANGELOG.md) for earlier downloads and changes.
+The download link above saves as **Chess-Animation-Studio-windows-v0.1.5.zip**. Use the versioned download link to get the filename with its version number.
+
+### Earlier versions and changes
+
+- **[0.1.4 — portable Windows download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.4.zip):** Added the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne, higher-resolution textures, and the assemble-and-run layout. The pieces currently appear flat during turns.
+- **[0.1.3 — Windows download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.3.zip):** Tried a direct app-file layout. Windows Application Control still blocked it for the user.
+- **[0.1.2 — Windows download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.2.zip):** Added a distinct application and download version number. The app remained unsigned.
+- **[0.1.0 — initial portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/portable-v0.1.0.zip):** Initial editor with animation, music, analysis, saving, presentation, and MP4 export. Some early builds reused the same version number.
+
+The [full version history](CHANGELOG.md) also records these changes.
 
 ## Run on Windows
 

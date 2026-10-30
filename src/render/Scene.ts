@@ -378,7 +378,7 @@ export class Scene {
     this.camera.updateProjectionMatrix();
     (this.rim.material as T.MeshStandardMaterial).color.set(p.style.rim);
     (this.rim.material as T.MeshStandardMaterial).emissive
-      .set(p.style.accent)
+      .set(fx.rimColor ?? p.style.accent)
       .multiplyScalar(
         fx.enabled
           ? fx.rim * (0.5 + 0.5 * Math.sin(time * fx.rimSpeed * 6.283))

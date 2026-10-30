@@ -157,3 +157,14 @@ it("half sway leans once without reversing and settles smoothly", () => {
   expect(sway(1, 0.5)).toBe(0);
   expect(parseProject(p).moves[0].effect.cycles).toBe(0.5);
 });
+
+it("board effects have bounded non-blackout defaults and a first-move sway", () => {
+  const p = importPgn(blank(), "1. e4 e5");
+  expect(p.moves[0].effect.preset).toBe("sway");
+  expect(p.lead).toBeGreaterThanOrEqual(p.boardFX.introDuration);
+  expect(p.boardFX.shimmer).toBeLessThan(0.2);
+  expect(p.boardFX.introTurn).toBe(45);
+  const old = JSON.parse(JSON.stringify(p));
+  delete old.boardFX;
+  expect(parseProject(old).boardFX.intro).toBe(true);
+});

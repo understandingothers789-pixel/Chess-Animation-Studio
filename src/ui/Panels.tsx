@@ -856,15 +856,19 @@ export function ScenePanel(q: PanelProps) {
             }
             value={p.boardFX[k]}
             min={
-              k === "introTurn"
-                ? -90
-                : k === "bpm"
-                  ? 20
-                  : k === "introZoom"
-                    ? 0.2
-                    : k.includes("Speed")
-                      ? 0.05
-                      : 0
+              k === "introDuration"
+                ? 0.2
+                : k === "beatDecay"
+                  ? 0.05
+                  : k === "introTurn"
+                    ? -90
+                    : k === "bpm"
+                      ? 20
+                      : k === "introZoom"
+                        ? 0.2
+                        : k.includes("Speed")
+                          ? 0.05
+                          : 0
             }
             max={
               k === "introTurn"

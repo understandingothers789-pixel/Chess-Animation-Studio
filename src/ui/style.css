@@ -1084,3 +1084,16 @@ progress {
   border-color: #a4be78;
   background: #405836;
 }
+
+.control-reset {
+  min-height: 22px;
+  padding: 2px 6px;
+  font-size: 10px;
+  margin-left: 6px;
+  color: #a8dfe3;
+  border-color: #48636a;
+  flex-shrink: 0;
+}
+.section summary > span {
+  flex: 1;
+}

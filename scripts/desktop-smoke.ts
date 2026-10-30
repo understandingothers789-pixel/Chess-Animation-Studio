@@ -170,6 +170,52 @@ try {
     snowInside,
   );
   await page.getByLabel("Inside board only", { exact: true }).check();
+  await page
+    .getByRole("button", { name: "Reset Particle count", exact: true })
+    .click();
+  assert.equal(
+    await page.getByLabel("Particle count value", { exact: true }).inputValue(),
+    "100",
+  );
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.equal(
+    await page.getByLabel("Particle count value", { exact: true }).inputValue(),
+    "300",
+  );
+  await page
+    .getByRole("button", {
+      name: "Reset Snow particles · amount & appearance",
+      exact: true,
+    })
+    .click();
+  assert.equal(
+    await page.getByLabel("Particle count value", { exact: true }).inputValue(),
+    "100",
+  );
+  assert.equal(
+    await page.getByLabel("Particle size value", { exact: true }).inputValue(),
+    "0.065",
+  );
+  await page.locator(".move-track button").nth(1).click();
+  await page
+    .locator(".move-track button")
+    .nth(3)
+    .click({ modifiers: ["Shift"] });
+  await page
+    .getByRole("button", { name: "Reset Movement", exact: true })
+    .click();
+  for (let i = 1; i <= 3; i++) {
+    await page.locator(".move-track button").nth(i).click();
+    assert.equal(
+      await page.getByLabel("Duration value", { exact: true }).inputValue(),
+      "1.6",
+    );
+  }
+  const brand = page.locator("img.brand-icon");
+  assert.ok((await brand.getAttribute("src"))?.includes("studio-mark.svg"));
+  console.log(
+    "PASS: new logo, individual/group snow reset, Undo and selection-wide preset-aware movement reset.",
+  );
   console.log(
     "PASS: selectable intro presets, multi-move Half sway and duration edits, board-only snow controls.",
   );

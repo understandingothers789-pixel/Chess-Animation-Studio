@@ -51,6 +51,14 @@ export function Inspector({
     checked.size ? p.moves.filter((m) => checked.has(m.id)) : [p.moves[index]];
   const each = (p: Project, fn: (e: Effect) => void) =>
     targets(p).forEach((m) => fn(m.effect));
+  const resetFields = (keys: (keyof Effect)[]) =>
+    edit("Reset " + keys.join(","), (p) =>
+      each(p, (e) => {
+        const defaults = effect(e.preset);
+        for (const key of keys)
+          (e as any)[key] = structuredClone(defaults[key]);
+      }),
+    );
   const e = move.effect,
     change = <K extends keyof Effect>(key: K, value: Effect[K]) =>
       edit(String(key), (p) => {
@@ -84,6 +92,7 @@ export function Inspector({
       key={key}
       label={label}
       value={e[key]}
+      onReset={() => resetFields([key])}
       onChange={(v) => change(key, v)}
       min={min}
       max={max}
@@ -153,7 +162,24 @@ export function Inspector({
       <div className="inspector-content">
         {tab === "motion" && (
           <>
-            <Section title="Movement">
+            <Section
+              title="Movement"
+              onReset={() =>
+                resetFields([
+                  "duration",
+                  "intensity",
+                  "easing",
+                  "axis",
+                  "rotation",
+                  "sway",
+                  "cycles",
+                  "hop",
+                  "scale",
+                  "path",
+                  "overshoot",
+                ])
+              }
+            >
               <Select
                 label="Move preset"
                 value={e.preset}
@@ -199,7 +225,20 @@ export function Inspector({
               {range("path", "Curved path", -3, 3)}
               {range("overshoot", "Overshoot", 0, 0.3)}
             </Section>
-            <Section title="Timing & landing">
+            <Section
+              title="Timing & landing"
+              onReset={() =>
+                resetFields([
+                  "delay",
+                  "hold",
+                  "landing",
+                  "settle",
+                  "peak",
+                  "locked",
+                  "landingBeat",
+                ])
+              }
+            >
               {range("delay", "Departure delay", 0, 10, 0.05, "s")}
               {range("hold", "Hold after move", 0, 10, 0.05, "s")}
               {range("landing", "Landing phase", 0.25, 0.98)}
@@ -228,7 +267,11 @@ export function Inspector({
                 onChange={(v) => change("landingBeat", v || null)}
               />
             </Section>
-            <Section title="Capture impact" open={e.preset === "capture"}>
+            <Section
+              title="Capture impact"
+              open={e.preset === "capture"}
+              onReset={() => resetFields(["capture"])}
+            >
               {(
                 [
                   "grow",
@@ -339,7 +382,16 @@ export function Inspector({
                 });
               });
             return (
-              <Section title={`Camera · ${project.format}`}>
+              <Section
+                title={`Camera · ${project.format}`}
+                onReset={() =>
+                  edit("Reset camera", (p) =>
+                    each(p, (e) => {
+                      delete e.cameras[p.format];
+                    }),
+                  )
+                }
+              >
                 <Select
                   label="Camera framing"
                   value={c.mode}
@@ -413,7 +465,10 @@ export function Inspector({
           })()}
         {tab === "look" && (
           <>
-            <Section title="Highlights & trail">
+            <Section
+              title="Highlights & trail"
+              onReset={() => resetFields(["highlight"])}
+            >
               {(
                 [
                   "showSource",
@@ -482,7 +537,7 @@ export function Inspector({
                 onChange={(v) => look("fade", v)}
               />
             </Section>
-            <Section title="Move badge">
+            <Section title="Move badge" onReset={() => resetFields(["badge"])}>
               <Select
                 label="Badge override"
                 value={e.badge.manual ?? "auto"}
@@ -562,7 +617,10 @@ export function Inspector({
           </>
         )}
         {tab === "keys" && (
-          <Section title="Normalized keyframes">
+          <Section
+            title="Normalized keyframes"
+            onReset={() => resetFields(["keys"])}
+          >
             <p className="hint">
               Key times run from 0 to 1 within this move. Duration edits
               preserve the curve. Rotation values use degrees; positions use

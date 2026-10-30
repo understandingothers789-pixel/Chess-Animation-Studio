@@ -1,4 +1,4 @@
-import type { Project } from "../core/project";
+import { blank, type Project } from "../core/project";
 import type { Edit } from "./state";
 import { Section, Select, Range, Toggle } from "./controls";
 export function IntroInspector({
@@ -19,7 +19,23 @@ export function IntroInspector({
         </p>
       </div>
       <div className="inspector-content">
-        <Section title="Opener">
+        <Section
+          title="Opener"
+          onReset={() =>
+            edit("Reset opener", (p) => {
+              const d = blank();
+              p.lead = d.lead;
+              for (const k of [
+                "intro",
+                "introPreset",
+                "introDuration",
+                "introZoom",
+                "introTurn",
+              ] as const)
+                (p.boardFX as any)[k] = d.boardFX[k];
+            })
+          }
+        >
           <Toggle
             label="Animate intro"
             checked={p.boardFX.intro}

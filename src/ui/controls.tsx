@@ -3,14 +3,33 @@ export function Section({
   title,
   children,
   open = true,
+  onReset,
 }: {
   title: string;
   children: ReactNode;
   open?: boolean;
+  onReset?: () => void;
 }) {
   return (
     <details className="section" open={open}>
-      <summary>{title}</summary>
+      <summary>
+        <span>{title}</span>
+        {onReset && (
+          <button
+            type="button"
+            className="control-reset"
+            aria-label={`Reset ${title}`}
+            title="Restore defaults"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onReset();
+            }}
+          >
+            Reset
+          </button>
+        )}
+      </summary>
       <div className="section-body">{children}</div>
     </details>
   );
@@ -23,6 +42,8 @@ export function Range({
   max,
   step = 0.01,
   unit = "",
+  resetValue,
+  onReset,
 }: {
   label: string;
   value: number;
@@ -31,11 +52,30 @@ export function Range({
   max: number;
   step?: number;
   unit?: string;
+  resetValue?: number;
+  onReset?: () => void;
 }) {
   return (
     <label className="range-field">
       <span>
-        {label}
+        <span>
+          {label}
+          {(onReset || resetValue !== undefined) && (
+            <button
+              type="button"
+              className="control-reset"
+              aria-label={`Reset ${label}`}
+              title="Restore default"
+              onClick={(e) => {
+                e.preventDefault();
+                if (onReset) onReset();
+                else onChange(resetValue!);
+              }}
+            >
+              ↺
+            </button>
+          )}
+        </span>
         <span className="number-wrap">
           <input
             aria-label={label + " value"}

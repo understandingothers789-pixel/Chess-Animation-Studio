@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   effect,
+  blank,
   presets,
   formats,
   badgeNames,
@@ -327,7 +328,19 @@ export function MusicPanel(q: PanelProps) {
     });
   return (
     <>
-      <Section title="Music">
+      <Section
+        title="Music"
+        onReset={() =>
+          edit("Reset music settings", (p) => {
+            p.music = {
+              ...blank().music,
+              asset: p.music.asset,
+              sourceDuration: p.music.sourceDuration,
+            };
+            p.beats = syncMarkers(p).beats;
+          })
+        }
+      >
         <button
           className="wide primary"
           onClick={() => q.run(() => q.importAsset("audio", "music"))}
@@ -506,7 +519,14 @@ export function MusicPanel(q: PanelProps) {
           ))}
         </div>
       </Section>
-      <Section title="Sound library">
+      <Section
+        title="Sound library"
+        onReset={() =>
+          edit("Reset audio", (p) => {
+            p.audio = blank().audio;
+          })
+        }
+      >
         <Toggle
           label="Automatic move & capture cues"
           checked={p.audio.automatic}
@@ -642,7 +662,14 @@ export function ScenePanel(q: PanelProps) {
   const layout = p.layouts[p.format];
   return (
     <>
-      <Section title="Snow particles · amount & appearance">
+      <Section
+        title="Snow particles · amount & appearance"
+        onReset={() =>
+          edit("Reset ambient", (p) => {
+            p.ambient = blank().ambient;
+          })
+        }
+      >
         <p className="hint">
           Adjust the number, size, speed and transparency of the snow here.
         </p>
@@ -691,6 +718,7 @@ export function ScenePanel(q: PanelProps) {
             key={k}
             label={"Particle " + k}
             value={p.ambient[k]}
+            resetValue={blank().ambient[k]}
             min={
               k === "size"
                 ? 0.01
@@ -729,7 +757,14 @@ export function ScenePanel(q: PanelProps) {
           }
         />
       </Section>
-      <Section title="Board & pieces">
+      <Section
+        title="Board & pieces"
+        onReset={() =>
+          edit("Reset style", (p) => {
+            p.style = blank().style;
+          })
+        }
+      >
         <Select
           label="Piece artwork"
           value={p.style.pieceSet}
@@ -790,7 +825,14 @@ export function ScenePanel(q: PanelProps) {
           }
         />
       </Section>
-      <Section title={"Composition · " + p.format}>
+      <Section
+        title={"Composition · " + p.format}
+        onReset={() =>
+          edit("Reset composition", (p) => {
+            p.layouts[p.format] = blank().layouts[p.format];
+          })
+        }
+      >
         <Select
           label="Background treatment"
           value={layout.background}
@@ -827,7 +869,15 @@ export function ScenePanel(q: PanelProps) {
           it within the vertical canvas.
         </p>
       </Section>
-      <Section title="Board atmosphere & intro">
+      <Section
+        title="Board atmosphere & intro"
+        onReset={() =>
+          edit("Reset board atmosphere", (p) => {
+            p.boardFX = blank().boardFX;
+            p.lead = blank().lead;
+          })
+        }
+      >
         <Toggle
           label="Board effects"
           checked={p.boardFX.enabled}
@@ -943,6 +993,7 @@ export function ScenePanel(q: PanelProps) {
               }[k]
             }
             value={p.boardFX[k]}
+            resetValue={blank().boardFX[k]}
             min={
               k === "introDuration"
                 ? 0.2
@@ -986,7 +1037,14 @@ export function ScenePanel(q: PanelProps) {
           />
         ))}
       </Section>
-      <Section title="Dark-square beat pulse">
+      <Section
+        title="Dark-square beat pulse"
+        onReset={() =>
+          edit("Reset pulse", (p) => {
+            p.pulse = blank().pulse;
+          })
+        }
+      >
         <Toggle
           label="Pulse dark squares"
           checked={p.pulse.enabled}

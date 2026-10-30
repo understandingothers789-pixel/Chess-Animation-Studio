@@ -6,9 +6,19 @@ A local desktop editor for chess videos. Import a PGN/FEN, play an animated firs
 
 ![Desktop editor](docs/images/editor.png)
 
+## Windows downloads
+
+**[Download portable 0.1.4 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.4.zip).** Includes the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne Chess, rendered at higher resolution, plus selectable piece sets and configurable board colors. Uses the assemble-and-run portable layout. The app build and ZIP integrity check passed; this specific build has not been tested on Windows. Portable app ZIP SHA-256: `47cb427ee7a02cf5af87641d55eb9aa188a88aa16fd9ea9758461d7e235c8aed`.
+
+See the [version history](CHANGELOG.md) for earlier downloads and changes.
+
 ## Run on Windows
 
-If you use the supplied portable Windows archive, extract **all** of its files and launch `Chess Animation Studio.exe`. Node.js and Git are not needed for that prebuilt app. Configure FFmpeg (and optional Stockfish) in Settings using the download guidance below.
+1. Download the versioned ZIP above and extract it completely.
+2. Open the extracted folder and double-click **Assemble-and-run.cmd**. It rebuilds the portable app ZIP, checks it, extracts the app, and starts it.
+3. To start it later, open the extracted **Chess Animation Studio 0.1.4** folder and launch **Chess Animation Studio.exe**. Keep its files together.
+
+The app is unsigned and Windows Application Control may block it. Node.js and Git are not needed for the prebuilt app. Configure FFmpeg (and optional Stockfish) in Settings using the download guidance below.
 
 To run from source:
 
@@ -38,7 +48,7 @@ On a successful native build, the unsigned x64 NSIS installer is written under `
 
 ## Try the sample
 
-Choose **Game → Open sample with original music**. It loads the 33-ply Opera Game, including a thin-edge knight spin, a dramatic landing, capture growth/glow, a manual brilliant badge, corrected/selected beat markers, subtle snow, and an original synthesized pulse track. The synthesized sounds are original; the Cburnett and Nibbler/Merida piece artwork is distributed under its own GPL terms. See docs/piece-licenses.
+Choose **Game → Open sample with original music**. It loads the 33-ply Opera Game, including a knight spin, a dramatic landing, capture growth/glow, a manual brilliant badge, corrected/selected beat markers, subtle snow, and an original synthesized pulse track. The synthesized sounds are original; the Cburnett and Nibbler/Merida piece artwork is distributed under its own GPL terms. See docs/piece-licenses.
 
 - [Sample project](samples/Opera-Game.castudio)
 - [Short user guide](docs/USER_GUIDE.md)

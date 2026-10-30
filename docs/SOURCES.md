@@ -30,7 +30,7 @@ These are documented **application heuristics** at finite search limits. Differe
 
 ## Original and optional assets
 
-The silhouettes/details in `src/renderer/pieces.ts`, procedural badge artwork, icon in `build/`, generated move/capture sounds, and the synthesized `samples/Opera-original.wav` are original to this project, under the repository’s MIT license. No copyrighted song, creator’s audio, portrait, or third-party chess artwork is bundled. The Opera Game move score is historical game data.
+The procedural badge artwork, icon, generated sounds, and synthesized sample music are original to this project. The Cburnett and shaded Merida piece SVGs come from Nocturne Chess and carry GPL-2.0-or-later terms; see `docs/piece-licenses` for attribution and license texts. The Opera Game move score is historical game data.
 
 [Chess.com brand resources](https://www.chess.com/article/view/chess-com-brand-resources) was supplied in the product brief. The page returned HTTP 403 to the build environment, so current downloadable pack terms could not be inspected. **No official pack was downloaded or redistributed.** Local PNG/WebP/JPEG imports can replace classification artwork. Preserve its source and any accompanying guidance in the asset metadata; verify current official terms yourself before redistributing a pack. Functional original alternatives remain available offline.
 

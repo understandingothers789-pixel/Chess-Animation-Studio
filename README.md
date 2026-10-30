@@ -38,7 +38,7 @@ On a successful native build, the unsigned x64 NSIS installer is written under `
 
 ## Try the sample
 
-Choose **Game → Open sample with original music**. It loads the 33-ply Opera Game, including a thin-edge knight spin, a dramatic landing, capture growth/glow, a manual brilliant badge, corrected/selected beat markers, subtle snow, and an original synthesized pulse track. These sounds and the illustrated pieces are original MIT-licensed assets.
+Choose **Game → Open sample with original music**. It loads the 33-ply Opera Game, including a thin-edge knight spin, a dramatic landing, capture growth/glow, a manual brilliant badge, corrected/selected beat markers, subtle snow, and an original synthesized pulse track. The synthesized sounds are original; the Cburnett and Nibbler/Merida piece artwork is distributed under its own GPL terms. See docs/piece-licenses.
 
 - [Sample project](samples/Opera-Game.castudio)
 - [Short user guide](docs/USER_GUIDE.md)

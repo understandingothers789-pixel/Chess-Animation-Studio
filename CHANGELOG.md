@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## 0.2.5
+
+[Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.5/Chess-Animation-Studio-0.2.5-Windows-Portable.zip). Adds a configurable zoom-and-turn intro, first-move Slow sway, subtle always-lit shimmer, BPM-driven dark-square color pulses, breathing rim light, traveling light sweep and vignette breathing. Amounts, speeds, colors and intro timing are editable in Scene. Exact-time effects remain consistent when seeking and exporting. Existing move edits and custom defaults are preserved. Fifteen tests and native Windows packaged launch/export checks passed; the published ZIP checksum and archive CRCs were independently verified.
+
 ## 0.2.4
 
 [Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.4/Chess-Animation-Studio-0.2.4-Windows-Portable.zip). Fixes snow culling and visibility, expands editable particle size, adds one-sided Half sway, Explorer-style Ctrl/Shift selection, and an explicit apply-to-all/import-default action. Includes all 12 Neo reference pieces with smooth contour reconstruction. Neo is not claimed pixel-identical to recovered high-resolution originals. Reduces artwork memory and preserves badges/cameras during batch actions. Fourteen tests and native Windows packaged checks passed; published ZIP integrity was independently verified.

@@ -61,3 +61,15 @@ After refining an action, open Styles and choose **Apply selected action to all 
 In Scene → Snow & atmosphere, enable Ambient particles, then adjust **Particle size**, **Particle speed**, and **Particle opacity** (lower means more transparent). Count, drift, direction, softness, color, depth and over/behind layering are also editable. Existing saved projects retain their values; increase size/opacity if a saved project's snow is too subtle.
 
 Scene → Board & pieces → Piece artwork includes **Neo**. It uses a smoothed contour reconstruction from the actual 140px Neo reference PNGs. This produces sharper scalable edges but does not recover missing original detail or guarantee pixel-identical high-resolution replicas.
+
+## Board atmosphere and intro (0.2.5)
+
+Open **Scene → Board atmosphere & intro**. Board effects is the master switch. Lighting shimmer changes brightness gently without blackouts; adjust its amount, speed and tint. Breathing rim light, traveling light sweep and vignette breathing each have independent strength, speed and color controls. Zero strength disables an individual effect.
+
+Enable Zoom-and-turn intro to animate from a smaller, rotated board into the normal framing before the first move. Intro lead-in sets when moves begin; Intro duration sets the animation length, extending the lead-in if needed. Starting size and turn degrees set the initial framing (default 55% and 45°). A longer lead-in than duration holds the completed framing.
+
+Enable Dark-square tempo pulses to pulse dark squares with a configurable BPM, color, strength and decay. This is a regular tempo clock; the existing Music marker pulses can still follow corrected soundtrack markers. Match the BPM to your track or use the marker controls for irregular timing.
+
+New games use Slow sway for the first move when the project motion default is Clean slide. Existing edited moves and custom project defaults are preserved. Intro and atmosphere are evaluated at the exact playhead time in preview, presentation and export.
+
+Five additional board-effect ideas were considered: breathing rim light, traveling light sweep, vignette breathing, destination ripples and corner-light accents. The first three are included in 0.2.5; the latter two are ideas for later versions.

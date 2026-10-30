@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.4
+# Chess Animation Studio · 0.2.5
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
 ![Fresh editor](docs/images/editor.png)
 
 ## Windows downloads
+
+**[Download 0.2.5 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.5/Chess-Animation-Studio-0.2.5-Windows-Portable.zip).** Adds subtle always-lit shimmer, a configurable zoom-and-turn intro, first-move Slow sway, and dark-square tempo color pulses. Also adds breathing rim light, traveling light sweep and vignette breathing. Adjust strength, speed, color and intro timing in **Scene → Board atmosphere & intro**. Built and tested natively on Windows: 15 tests plus packaged launch, save/open, all export formats, cancellation and presentation passed. Published ZIP SHA-256: `05ec358be31ef6dedfb261e00769f4b835a7ba21196f74e2503a76e2ca50ca2b`.
 
 **[Download 0.2.4 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.4/Chess-Animation-Studio-0.2.4-Windows-Portable.zip).** Makes ambient snow visible with larger editable flakes and prevents camera culling. Adds a smooth one-sided Half sway, Ctrl/Shift move selection in the list and timeline, an explicit apply-to-all/default action, and a sharp contour reconstruction of the Neo reference pieces. The Neo references are 140px PNGs; reconstructed artwork is not claimed pixel-identical to high-resolution originals. Built and tested natively on Windows: 14 tests plus packaged launch, save/open, all export formats, cancellation and presentation passed. Published ZIP SHA-256: `d0b06d630d35743e66aa6e4adcca6c445b8904eaa43a4ce5d9050aef909bfe00`.
 

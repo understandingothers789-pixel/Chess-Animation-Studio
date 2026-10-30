@@ -1,5 +1,16 @@
 # Validation and scope
 
+## Release 0.2.5 update checks
+
+- Native Windows run [41027885283](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41027885283) passed all 15 tests and packaged launch, vector rendering, backward seeks, save/open, H.264/AAC 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation checks.
+- Source commit `a24cf2cbbb41cb7fa1d75592a4c336211322a1a6`, clean Windows checkout. The published ZIP was downloaded again: every CRC passed, BUILD.json matched version/source/clean state, and executable SHA matched the unchanged official runtime `9ba4530b08adeae75c13324a95b0fc8e87c5aa2889cfdc894474f8684b9f6c59`.
+- Published ZIP SHA-256: `05ec358be31ef6dedfb261e00769f4b835a7ba21196f74e2503a76e2ca50ca2b` (139,232,357 bytes). The application remains unsigned; these checks do not establish Smart App Control approval on the user's PC. Earlier releases were preserved.
+
+- Production build and all 15 core/service tests passed locally. Coverage includes backward-compatible board-effect defaults and the first-move sway rule.
+- Actual Electron editor checks passed: first move is Slow sway, seeking back to the same intro time produces identical canvas pixels, BPM and shimmer controls accept edits, and disabling board atmosphere changes the rendered output. Intro and effect-control screenshots were visually inspected: [intro](images/intro-025.png), [controls](images/board-effects-025.png).
+- Brightness modulation is bounded: even maximum shimmer retains at least 80% of base brightness. No blackout timer is used. All new effects use exact project time in the shared renderer.
+- Intro framing, first-move sway and BPM pulses are implemented alongside three extra effects: rim breathing, traveling light sweep and vignette breathing. Destination ripples and corner-light accents remain ideas.
+
 ## Release 0.2.4 update checks
 
 - Local build and 14 core/service tests passed, including the one-sided 0.5-cycle sway.

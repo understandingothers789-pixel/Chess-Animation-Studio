@@ -361,7 +361,7 @@ export class Scene {
     this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
     const sign = p.style.orientation === "white" ? 1 : -1,
       aspect = w / viewH,
-      half = 4.65 / Math.max(0.65, e.camera.zoom * bg.zoom);
+      half = 4.65 / Math.max(0.1, e.camera.zoom * bg.zoom);
     this.camera.left = -half * Math.max(1, aspect);
     this.camera.right = half * Math.max(1, aspect);
     this.camera.top = half * Math.max(1, 1 / aspect);

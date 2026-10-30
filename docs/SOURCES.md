@@ -1,6 +1,6 @@
 # Sources and licensing
 
-Piece SVGs were copied from the user's Nocturne Chess repository without artwork edits:
+Piece SVGs were copied from the user's Nocturne Chess repository at commit `e5cb30ba4f0a2328f016fbcc6a8823944a4d752a` without artwork edits:
 https://github.com/understandingothers789-pixel/nocturne-chess
 
 Cburnett: Colin M. L. Burnett, GPL-2.0-or-later. Shaded Merida (Nibbler appearance): Armando Hernandez Marroquin, shaded artwork Felix Kling, GPL-2.0-or-later; Nocturne includes editable Lichess Merida sources and notices. See docs/licenses for preserved notices and license text. Filename case is normalized for loading. The original vector sources are distributed in public/pieces. The application is GPL-3.0-or-later; this does not imply official affiliation with Lichess, Nibbler or Chess.com.

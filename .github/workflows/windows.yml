@@ -50,7 +50,9 @@ jobs:
       - name: Exercise packaged Windows app and exports
         shell: pwsh
         run: |
-          $env:STUDIO_PACKAGED_EXE = (Resolve-Path "release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/Chess Animation Studio.exe").Path
+          $fresh = Join-Path $env:RUNNER_TEMP 'Portable launch with spaces'
+          Expand-Archive -LiteralPath 'release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable.zip' -DestinationPath $fresh
+          $env:STUDIO_PACKAGED_EXE = (Join-Path $fresh 'Chess Animation Studio.exe')
           $env:FFMPEG_PATH = (Get-Command ffmpeg).Source
           $env:FFPROBE_PATH = (Get-Command ffprobe).Source
           npm run test:desktop

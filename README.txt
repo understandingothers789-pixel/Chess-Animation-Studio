@@ -1,1 +1,1 @@
-Chess Animation Studio 0.1.3. Extract the downloaded GitHub ZIP, then double-click Launch Chess Animation Studio.cmd. It reconstructs the executable from the five parts next to the app files, checks its checksum, and launches it. Windows Application Control may still block the unsigned executable.
+Chess Animation Studio 0.1.4 portable. Extract this download, then double-click Assemble-and-run.cmd. The app includes Lichess Cburnett and Nibbler Merida SVG piece sets.

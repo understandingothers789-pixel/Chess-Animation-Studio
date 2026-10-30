@@ -89,6 +89,16 @@ export function GamePanel(q: PanelProps) {
           {(["pgn", "fen"] as const).map((v) => (
             <button
               className={kind === v ? "active" : ""}
+              title={
+                v === "pgn"
+                  ? "Import a game with PGN moves and variations."
+                  : "Import a starting board position from a FEN string."
+              }
+              aria-description={
+                v === "pgn"
+                  ? "Import a game with PGN moves and variations."
+                  : "Import a starting board position from a FEN string."
+              }
               key={v}
               onClick={() => setKind(v)}
             >

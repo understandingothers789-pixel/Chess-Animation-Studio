@@ -1,3 +1,4 @@
+import { settingHelp } from "./help";
 import { useState } from "react";
 import {
   effect,
@@ -346,6 +347,8 @@ export function Inspector({
             <label className="text-field">
               Preset name
               <input
+                title={settingHelp("Preset name")}
+                aria-description={settingHelp("Preset name")}
                 aria-label="Preset name"
                 value={presetName}
                 maxLength={100}
@@ -556,6 +559,9 @@ export function Inspector({
               <label className="text-field">
                 Custom badge text
                 <input
+                  title={settingHelp("Custom badge text")}
+                  aria-description={settingHelp("Custom badge text")}
+                  aria-label={"Custom badge text"}
                   value={e.badge.text}
                   maxLength={12}
                   onChange={(v) => badge("text", v.target.value)}
@@ -581,7 +587,7 @@ export function Inspector({
                       offsetX: "Badge offset X",
                       offsetY: "Badge offset Y",
                       start: "Badge entry phase",
-                      end: "Hold after move",
+                      end: "Badge hold after move",
                       glow: "Badge glow",
                     }[k]
                   }
@@ -635,6 +641,8 @@ export function Inspector({
             {(e.keys[channel] ?? []).map((k, i) => (
               <div className="key-row" key={i}>
                 <input
+                  title={settingHelp(`Key ${i + 1} time`)}
+                  aria-description={settingHelp(`Key ${i + 1} time`)}
                   aria-label={`Key ${i + 1} time`}
                   type="number"
                   min={0}
@@ -653,6 +661,8 @@ export function Inspector({
                   }}
                 />
                 <input
+                  title={settingHelp(`Key ${i + 1} value`)}
+                  aria-description={settingHelp(`Key ${i + 1} value`)}
                   aria-label={`Key ${i + 1} value`}
                   type="number"
                   step={0.1}
@@ -666,6 +676,8 @@ export function Inspector({
                   }}
                 />
                 <select
+                  title={settingHelp(`Key ${i + 1} easing`)}
+                  aria-description={settingHelp(`Key ${i + 1} easing`)}
                   aria-label={`Key ${i + 1} easing`}
                   value={k.ease}
                   onChange={(v) =>

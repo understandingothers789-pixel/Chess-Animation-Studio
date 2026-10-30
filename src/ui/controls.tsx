@@ -1,3 +1,4 @@
+import { settingHelp } from "./help";
 import type { ReactNode } from "react";
 export function Section({
   title,
@@ -56,7 +57,7 @@ export function Range({
   onReset?: () => void;
 }) {
   return (
-    <label className="range-field">
+    <label className="range-field" title={settingHelp(label)}>
       <span>
         <span>
           {label}
@@ -79,6 +80,11 @@ export function Range({
         <span className="number-wrap">
           <input
             aria-label={label + " value"}
+            title={
+              settingHelp(label) +
+              ` Range: ${min}–${max}${unit ? " " + unit : ""}.`
+            }
+            aria-description={settingHelp(label)}
             type="number"
             min={min}
             max={max}
@@ -94,6 +100,8 @@ export function Range({
       </span>
       <input
         aria-label={label}
+        title={settingHelp(label)}
+        aria-description={settingHelp(label)}
         type="range"
         min={min}
         max={max}
@@ -116,10 +124,12 @@ export function Select<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <label className="select-field">
+    <label className="select-field" title={settingHelp(label)}>
       <span>{label}</span>
       <select
         aria-label={label}
+        title={settingHelp(label)}
+        aria-description={settingHelp(label)}
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
       >
@@ -145,10 +155,12 @@ export function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="toggle">
+    <label className="toggle" title={settingHelp(label)}>
       <span>{label}</span>
       <input
         aria-label={label}
+        title={settingHelp(label)}
+        aria-description={settingHelp(label)}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
@@ -166,12 +178,14 @@ export function Color({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="color-field">
+    <label className="color-field" title={settingHelp(label)}>
       <span>{label}</span>
       <span>
         <code>{value.toUpperCase()}</code>
         <input
           aria-label={label}
+          title={settingHelp(label)}
+          aria-description={settingHelp(label)}
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}

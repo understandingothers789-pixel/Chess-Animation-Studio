@@ -1,3 +1,4 @@
+import { settingHelp } from "./help";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BookOpen,
@@ -562,7 +563,11 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <img className="brand-icon" src="./studio-mark.svg" alt="Chess Animation Studio — frame and motion logo" />
+          <img
+            className="brand-icon"
+            src="./studio-mark.svg"
+            alt="Chess Animation Studio — frame and motion logo"
+          />
           <div>
             <strong>CHESS ANIMATION STUDIO</strong>
             <small>LOCAL STUDIO · v{VERSION}</small>
@@ -570,6 +575,8 @@ export function App() {
         </div>
         <div className="project-heading">
           <input
+            title={settingHelp("Project title")}
+            aria-description={settingHelp("Project title")}
             aria-label="Project title"
             value={p.title}
             onChange={(e) =>
@@ -787,6 +794,8 @@ export function App() {
               </small>
             </div>
             <input
+              title={settingHelp("Seek composition")}
+              aria-description={settingHelp("Seek composition")}
               aria-label="Seek composition"
               type="range"
               min={0}

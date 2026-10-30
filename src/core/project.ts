@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const VERSION = "0.2.7";
+export const VERSION = "0.2.8";
 export const formats = [
   "landscape",
   "vertical",
@@ -460,8 +460,8 @@ export function blank(): Project {
     defaults: effect(),
     style: {
       pieceSet: "merida",
-      light: "#eeeee9",
-      dark: "#929992",
+      light: "#EDD6B0",
+      dark: "#B88762",
       rim: "#454f49",
       background: "#111918",
       accent: "#c6e59d",

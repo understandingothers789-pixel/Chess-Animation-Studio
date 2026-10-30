@@ -77,7 +77,49 @@ try {
     ),
     "Sample music should decode and schedule for playback.",
   );
+  for (const panel of [
+    "game",
+    "styles",
+    "music",
+    "scene",
+    "analysis",
+    "files",
+  ]) {
+    await page.getByRole("button", { name: panel, exact: true }).click();
+    const missing = await page
+      .locator("input,select,textarea")
+      .evaluateAll((els) =>
+        els
+          .filter(
+            (e) =>
+              !e.getAttribute("title") ||
+              !e.getAttribute("aria-description") ||
+              e.getAttribute("title")!.startsWith("Adjust "),
+          )
+          .map((e) => e.getAttribute("aria-label")),
+      );
+    assert.deepEqual(
+      missing,
+      [],
+      `Every setting in ${panel} needs explanatory hover and accessible help.`,
+    );
+  }
   await page.getByRole("button", { name: "scene", exact: true }).click();
+  assert.equal(
+    (
+      await page.getByLabel("Dark squares", { exact: true }).inputValue()
+    ).toLowerCase(),
+    "#b88762",
+  );
+  assert.equal(
+    (
+      await page.getByLabel("Light squares", { exact: true }).inputValue()
+    ).toLowerCase(),
+    "#edd6b0",
+  );
+  console.log(
+    "PASS: requested brown/beige defaults and explanatory tooltips across every settings panel.",
+  );
   await page
     .getByLabel("Piece artwork", { exact: true })
     .selectOption("cburnett");

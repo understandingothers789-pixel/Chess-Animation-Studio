@@ -1,3 +1,4 @@
+import { settingHelp } from "./help";
 import { useState } from "react";
 import {
   effect,
@@ -71,6 +72,9 @@ export function GamePanel(q: PanelProps) {
         <label className="text-field">
           Composition name
           <input
+            title={settingHelp("Composition name")}
+            aria-description={settingHelp("Composition name")}
+            aria-label={"Composition name"}
             value={p.title}
             onChange={(e) =>
               edit("Title", (p) => {
@@ -93,6 +97,8 @@ export function GamePanel(q: PanelProps) {
           ))}
         </div>
         <textarea
+          title={settingHelp("Game text")}
+          aria-description={settingHelp("Game text")}
           aria-label="Game text"
           rows={5}
           placeholder={
@@ -162,6 +168,8 @@ export function GamePanel(q: PanelProps) {
             key={m.id}
           >
             <input
+              title={settingHelp("Check move " + (i + 1))}
+              aria-description={settingHelp("Check move " + (i + 1))}
               aria-label={"Check move " + (i + 1)}
               type="checkbox"
               checked={q.checked.has(m.id)}
@@ -221,6 +229,7 @@ export function StylesPanel(q: PanelProps) {
           {presets.map((v) => (
             <button
               className="preset-card"
+              title={`${presetLabels[v]}: apply this animation using the scope chosen in Apply style to.`}
               key={v}
               onClick={() => apply(effect(v))}
             >
@@ -467,6 +476,8 @@ export function MusicPanel(q: PanelProps) {
           {p.beats.map((b) => (
             <div className="marker-row" key={b.id}>
               <input
+                title={settingHelp("Enable beat")}
+                aria-description={settingHelp("Enable beat")}
                 aria-label="Enable beat"
                 type="checkbox"
                 checked={b.enabled}
@@ -478,6 +489,8 @@ export function MusicPanel(q: PanelProps) {
                 }
               />
               <input
+                title={settingHelp("Beat time")}
+                aria-description={settingHelp("Beat time")}
                 aria-label="Beat time"
                 type="number"
                 step={0.01}
@@ -496,6 +509,8 @@ export function MusicPanel(q: PanelProps) {
               />
               <button
                 className={b.accent ? "accent" : ""}
+                title={settingHelp("Beat accent")}
+                aria-label="Beat accent"
                 onClick={() =>
                   edit("Beat accent", (p) => {
                     const v = p.beats.find((v) => v.id === b.id)!;
@@ -1306,6 +1321,7 @@ export function FilesPanel(q: PanelProps) {
     <>
       <Section title="Local tools">
         <button
+          title="Choose your local FFmpeg executable to enable MP4 export. The app does not bundle an encoder."
           className="wide"
           onClick={() =>
             q.run(async () => q.setSettings(await window.studio.tool("ffmpeg")))
@@ -1317,6 +1333,7 @@ export function FilesPanel(q: PanelProps) {
           {q.settings.ffmpeg || "FFmpeg is required for MP4 export."}
         </p>
         <button
+          title="Choose a local Stockfish executable for optional engine analysis and move-badge suggestions."
           className="wide"
           onClick={() =>
             q.run(async () =>
@@ -1356,6 +1373,8 @@ export function FilesPanel(q: PanelProps) {
           and excluded from projects and logs.
         </p>
         <input
+          title={settingHelp("Masters token")}
+          aria-description={settingHelp("Masters token")}
           aria-label="Masters token"
           type="password"
           autoComplete="off"
@@ -1423,6 +1442,9 @@ export function FilesPanel(q: PanelProps) {
             <label className="text-field">
               Name
               <input
+                title={settingHelp("Asset name")}
+                aria-description={settingHelp("Asset name")}
+                aria-label={"Asset name"}
                 value={a.name}
                 onChange={(e) =>
                   q.edit("Asset name", (p) => {

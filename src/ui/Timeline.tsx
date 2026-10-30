@@ -1,3 +1,4 @@
+import { settingHelp } from "./help";
 import { useRef, useState } from "react";
 import { segments, duration } from "../core/timeline";
 import type { Project } from "../core/project";
@@ -75,6 +76,8 @@ export function Timeline({
         <label>
           Timeline zoom
           <input
+            title={settingHelp("Timeline zoom")}
+            aria-description={settingHelp("Timeline zoom")}
             aria-label="Timeline zoom"
             type="range"
             min={0.5}
@@ -217,6 +220,7 @@ export function Timeline({
               {p.beats.map((b) => (
                 <div
                   role="slider"
+                  title="Drag this beat marker to correct its project time. Arrow keys move it by 0.01 seconds."
                   aria-label={"Beat " + b.time.toFixed(2)}
                   aria-valuenow={b.time}
                   tabIndex={0}

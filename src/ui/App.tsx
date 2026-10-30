@@ -562,7 +562,7 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <div className="brand-icon">♞</div>
+          <img className="brand-icon" src="./studio-mark.svg" alt="Chess Animation Studio — frame and motion logo" />
           <div>
             <strong>CHESS ANIMATION STUDIO</strong>
             <small>LOCAL STUDIO · v{VERSION}</small>

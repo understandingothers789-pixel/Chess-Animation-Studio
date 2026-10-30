@@ -173,17 +173,12 @@ small {
   flex-shrink: 0;
 }
 .brand-icon {
-  font-size: 34px;
-  line-height: 1;
-  width: 43px;
+  display: block;
+  width: 46px;
   height: 46px;
-  display: grid;
-  place-items: center;
-  border: 1px solid #6f8564;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #3e5543, #25382b);
-  color: #d7eabf;
+  flex-shrink: 0;
 }
+
 .brand strong {
   font-size: 10px;
   letter-spacing: 1.5px;

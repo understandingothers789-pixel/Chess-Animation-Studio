@@ -98,6 +98,7 @@ function windowOf(role: string) {
     minWidth: 1100,
     minHeight: 700,
     show: role !== "export",
+    icon: path.join(root, "dist/studio-mark.png"),
     backgroundColor: "#101715",
     title: `Chess Animation Studio ${VERSION}`,
     webPreferences: {

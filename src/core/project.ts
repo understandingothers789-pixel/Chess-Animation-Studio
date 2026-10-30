@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const VERSION = "0.2.6";
+export const VERSION = "0.2.7";
 export const formats = [
   "landscape",
   "vertical",

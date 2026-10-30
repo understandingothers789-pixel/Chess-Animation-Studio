@@ -1247,3 +1247,30 @@ These requirements clarify Windows delivery and apply to every future change.
 - Do not strip download security metadata, modify application-control policies, or disable security features as part of the launcher or build process.
 - Explain that unsigned software cannot be guaranteed to pass Smart App Control or other Windows policies. If compliance requires signing or another deployment route, explain the constraint honestly rather than promising a packaging-only fix.
 - If the user chooses to change Windows security settings, explain the actual consequences first, including any restrictions on re-enabling the setting. Never make that choice for them.
+
+## 31B. Approved artwork and movement preferences
+
+### Use the Nocturne Chess piece assets
+
+I like the Nibbler piece treatment we tried. Use my open-source Nocturne Chess project as the reference for both piece sets:
+https://github.com/understandingothers789-pixel/nocturne-chess
+
+- **Nibbler / shaded Merida:** Nocturne includes editable SVGs at `src/nocturne/assets/pieces/nibbler/source/`, with names such as `wK.svg` and `bK.svg`. Prefer these scalable vector sources for sharp rendering. Its archival PNGs use uppercase piece letters for White and an underscore prefix for Black, such as `K.png` and `_K.png`.
+- **Lichess / Cburnett:** Refer to Nocturne's `src/nocturne/assets/pieces/` SVGs, such as `wk.svg` and `bk.svg`, and verify their mapping in Nocturne's piece-loading code.
+- Inspect the current Nocturne source if paths or names change. Use the actual artwork files, not screenshots, README previews, or low-resolution copies fetched from chess-site CSS.
+- Offer both sets in the editor, labeled **Nibbler (Merida)** and **Lichess (Cburnett)**. Preserve the selected set in saved projects and use the same set for preview, presentation, and export.
+- Render vector artwork at sufficient resolution for high-DPI preview, enlarged animated pieces, and 1080p exports. Avoid blurry low-resolution textures and opaque image rectangles. Preserve transparency and the intended piece proportions.
+- Retain the thin solid piece edge during out-of-plane turns; importing vector artwork must not silently turn pieces into zero-thickness cards.
+- Read and include Nocturne's corresponding notices and license texts, including `licenses/NIBBLER-PIECES-NOTICE.txt`, `licenses/CBURNETT-NOTICE.txt`, and the applicable GPL texts. Do not relabel third-party artwork as original MIT assets or claim official Chess.com affiliation.
+- The temporary rollback to original drawn pieces in build 0.1.7 was a launch-diagnosis experiment, not a rejection of the Nocturne artwork. The desired product includes the Nibbler and Lichess sets. Do not treat image assets as the cause of an executable signing-policy failure without evidence.
+
+### Replace fast wiggle with slow sway
+
+I like the slower tilt animation we implemented in build 0.1.6. The visible preset should be called **Slow sway**; retaining `wiggle` as an internal compatibility identifier is acceptable.
+
+- The piece smoothly leans one way, sweeps to the opposite lean, then settles upright. It should feel deliberate and satisfying rather than vibrate or shake rapidly.
+- Use one broad sway cycle by default, approximately 24 degrees in each direction over 2.2 seconds. These are editable starting values, not measured timings from the reference screenshots.
+- Ease into and out of each lean and finish upright without a snap. Time the sway over the full move duration so travel easing cannot compress it into a fast burst.
+- Retain controls for angle, duration, cycles, and normalized rotation keyframes. Preserve deterministic seeking and identical preview/export evaluation.
+- Use the reference image sequence supplied in this conversation as qualitative guidance. Do not claim an exact match to a video based only on still images.
+- Preserve the improved sway when restoring the preferred Nibbler/Lichess artwork. Both are desired features of the next working Windows portable build.

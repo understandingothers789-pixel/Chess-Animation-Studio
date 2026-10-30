@@ -1,0 +1,85 @@
+{
+  "name": "chess-animation-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local chess animation and music editor",
+  "author": "Chess Animation Studio contributors",
+  "license": "MIT",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/build-electron.mjs",
+    "start": "electron .",
+    "test": "vitest run",
+    "test:desktop": "node --import tsx scripts/smoke.ts",
+    "sample": "node --import tsx scripts/sample.ts",
+    "package:win": "npm run build && electron-builder --win nsis --x64",
+    "package:linux": "npm run build && electron-builder --linux dir",
+    "test:dev": "node --import tsx scripts/dev-smoke.ts",
+    "notices": "node scripts/notices.mjs",
+    "format": "prettier --write src electron tests scripts vite.config.ts",
+    "test:assets": "node --import tsx scripts/assets-smoke.ts",
+    "package:win:portable": "npm run build && electron-builder --win zip --x64",
+    "render:sample": "node --import tsx scripts/render-demo.ts",
+    "verify:sample": "node --import tsx scripts/verify-demo.ts"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.180.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.25.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "vitest": "^3.2.0"
+  },
+  "build": {
+    "appId": "studio.chessanimation.desktop",
+    "productName": "Chess Animation Studio",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json",
+      "LICENSE",
+      "docs/**/*",
+      "build/icon.png",
+      "samples/**/*"
+    ],
+    "asarUnpack": [
+      "samples/**/*"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "signExecutable": false,
+      "icon": "build/icon.ico"
+    },
+    "linux": {
+      "category": "AudioVideo"
+    }
+  }
+}

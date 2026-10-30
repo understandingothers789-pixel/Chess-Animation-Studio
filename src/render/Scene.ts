@@ -60,12 +60,14 @@ export class Scene {
       new T.ShaderMaterial({
         uniforms: {
           top: { value: new T.Color("#223431") },
+          vignette: { value: 0 },
+          vignetteTint: { value: new T.Color("#080c0b") },
           bottom: { value: new T.Color("#101615") },
         },
         vertexShader:
           "varying vec2 v; void main(){v=uv;gl_Position=vec4(position,1.);}",
         fragmentShader:
-          "varying vec2 v;uniform vec3 top;uniform vec3 bottom;void main(){vec3 c=mix(bottom,top,v.y*.7+.3);c*=1.-.22*length(v-.5);gl_FragColor=vec4(pow(c,vec3(1./2.2)),1.);}",
+          "varying vec2 v;uniform vec3 top;uniform vec3 bottom;uniform float vignette;uniform vec3 vignetteTint;void main(){vec3 c=mix(bottom,top,v.y*.7+.3);c*=1.-.22*length(v-.5);c=mix(c,vignetteTint,smoothstep(.15,.72,length(v-.5))*vignette);gl_FragColor=vec4(pow(c,vec3(1./2.2)),1.);}",
       }),
     );
     this.backgroundScene.add(this.background);
@@ -337,6 +339,10 @@ export class Scene {
         new T.Color(fx.vignetteColor ?? "#080c0b"),
         fx.vignette * (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283)),
       );
+    bgMat.uniforms.vignette.value = fx.enabled
+      ? fx.vignette * (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283))
+      : 0;
+    bgMat.uniforms.vignetteTint.value.set(fx.vignetteColor ?? "#080c0b");
     this.renderer.render(this.backgroundScene, this.backgroundCamera);
     const image = bg.image ? this.assetTextures.get(bg.image) : null;
     if (image && bg.background === "image") {

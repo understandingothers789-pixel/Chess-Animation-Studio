@@ -767,6 +767,7 @@ export function ScenePanel(q: PanelProps) {
           onChange={(v) =>
             edit("Intro lead", (p) => {
               p.lead = v;
+              p.boardFX.introDuration = Math.min(p.boardFX.introDuration, v);
             })
           }
         />
@@ -892,6 +893,7 @@ export function ScenePanel(q: PanelProps) {
             onChange={(v) =>
               edit("Board " + k, (p) => {
                 p.boardFX[k] = v;
+                if (k === "introDuration") p.lead = Math.max(p.lead, v);
               })
             }
           />

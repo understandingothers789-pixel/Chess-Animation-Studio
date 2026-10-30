@@ -1,1 +1,1 @@
-Extract the downloaded GitHub ZIP, then double-click Run-Chess-Studio.cmd. It assembles and verifies the app, extracts it, and launches it. The new piece sets are included. The source code is on the main branch.
+Chess Animation Studio 0.1.2. Extract the downloaded ZIP, then double-click Run-Chess-Studio.cmd. The app is unsigned and Windows Application Control may block it.

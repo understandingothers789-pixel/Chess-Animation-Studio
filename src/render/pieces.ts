@@ -19,18 +19,18 @@ export async function artwork(
         image.onload = () => {
           try {
             const canvas = document.createElement("canvas");
-            canvas.width = canvas.height = 2048;
+            canvas.width = canvas.height = 1024;
             const ctx = canvas.getContext("2d")!;
-            ctx.drawImage(image, 0, 0, 2048, 2048);
+            ctx.drawImage(image, 0, 0, 1024, 1024);
             if (set === "neo") {
               const source = document.createElement("canvas");
               source.width = source.height = 140;
               const sc = source.getContext("2d", { willReadFrequently: true })!;
               sc.drawImage(image, 0, 0, 140, 140);
               const rgba = sc.getImageData(0, 0, 140, 140).data;
-              ctx.clearRect(0, 0, 2048, 2048);
+              ctx.clearRect(0, 0, 1024, 1024);
               ctx.save();
-              ctx.scale(2048 / 140, 2048 / 140);
+              ctx.scale(1024 / 140, 1024 / 140);
               const layers: [number, string][] = [
                 [256, "#fafafa"],
                 [244, "#e9e9e9"],

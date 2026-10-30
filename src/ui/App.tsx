@@ -829,7 +829,12 @@ export function App() {
             : missing.size
               ? `${missing.size} missing assets · relink in Files`
               : "Offline editing ready"}{" "}
-          · {p.style.pieceSet === "merida" ? "Nibbler" : "Cburnett"}
+          ·{" "}
+          {p.style.pieceSet === "merida"
+            ? "Nibbler"
+            : p.style.pieceSet === "neo"
+              ? "Neo"
+              : "Cburnett"}
         </span>
       </footer>
       {exportOpen && (

@@ -259,7 +259,9 @@ export function StylesPanel(q: PanelProps) {
             if (!e) return;
             p.defaults = structuredClone(e);
             p.moves.forEach((m) => {
-              m.effect = structuredClone(e);
+              const badge = m.effect.badge,
+                cameras = m.effect.cameras;
+              m.effect = { ...structuredClone(e), badge, cameras };
             });
           })
         }

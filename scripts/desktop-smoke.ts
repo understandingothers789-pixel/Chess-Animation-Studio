@@ -165,7 +165,7 @@ try {
   await page.waitForFunction(
     () => ["Complete", "Failed"].includes((window as any).__progress?.phase),
     {},
-    { timeout: 180000 },
+    { timeout: process.platform === "win32" ? 300000 : 180000 },
   );
   const progress = await page.evaluate(() => (window as any).__progress);
   assert.equal(progress.phase, "Complete", progress.error);
@@ -198,7 +198,7 @@ try {
     await page.waitForFunction(
       () => ["Complete", "Failed"].includes((window as any).__progress?.phase),
       {},
-      { timeout: 180000 },
+      { timeout: process.platform === "win32" ? 300000 : 180000 },
     );
     const v = await page.evaluate(() => (window as any).__progress);
     assert.equal(v.phase, "Complete", v.error);

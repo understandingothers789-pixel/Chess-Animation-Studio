@@ -1,1 +1,1 @@
-Chess Animation Studio 0.1.2. Extract the downloaded ZIP, then double-click Run-Chess-Studio.cmd. The app is unsigned and Windows Application Control may block it.
+Chess Animation Studio 0.1.3. Extract the downloaded GitHub ZIP, then double-click Launch Chess Animation Studio.cmd. It reconstructs the executable from the five parts next to the app files, checks its checksum, and launches it. Windows Application Control may still block the unsigned executable.

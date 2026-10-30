@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const APP_VERSION = "0.1.5";
+export const APP_VERSION = "0.1.6";
 export const FORMATS = [
   "landscape",
   "vertical",
@@ -353,7 +353,14 @@ export function effectPreset(preset: Preset): Effect {
   if (preset === "soft") e.easing = "soft-landing";
   if (preset === "spin")
     Object.assign(e, { axis: "y", rotation: 360, scale: 1.1, hop: 0.25 });
-  if (preset === "wiggle") Object.assign(e, { wiggle: 13, frequency: 3 });
+  if (preset === "wiggle")
+    Object.assign(e, {
+      wiggle: 24,
+      frequency: 1,
+      duration: 2.2,
+      landing: 0.88,
+      settle: 0.12,
+    });
   if (preset === "hop") Object.assign(e, { hop: 1, scale: 1.08 });
   if (preset === "dramatic")
     Object.assign(e, {

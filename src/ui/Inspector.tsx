@@ -26,7 +26,7 @@ const presetLabels: Record<string, string> = {
   clean: "Clean slide",
   soft: "Fast start · soft landing",
   spin: "Spin",
-  wiggle: "Wiggle",
+  wiggle: "Slow sway",
   hop: "Hop",
   dramatic: "Dramatic landing",
   capture: "Capture growth & glow",
@@ -268,7 +268,7 @@ export function Inspector({
                 max={0.4}
               />
               <Range
-                label="Wiggle amplitude"
+                label="Sway angle"
                 value={e.wiggle}
                 onChange={(v) => change("wiggle", v)}
                 min={0}
@@ -276,7 +276,7 @@ export function Inspector({
                 unit="°"
               />
               <Range
-                label="Wiggle frequency"
+                label="Sway cycles"
                 value={e.frequency}
                 onChange={(v) => change("frequency", v)}
                 min={1}

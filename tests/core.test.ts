@@ -14,6 +14,7 @@ import {
   duration,
   particle,
   routeSquares,
+  sway,
 } from "../src/core/timeline";
 import {
   alignLandings,
@@ -219,4 +220,25 @@ describe("music and beat timing", () => {
       )?.x,
     ).toBe(0.5);
   });
+});
+
+it("slow sway makes one broad lean each way and seeks deterministically", () => {
+  const p = importPgn(blankProject(), "1. e4");
+  p.moves[0].effect = effectPreset("wiggle");
+  const e = p.moves[0].effect;
+  expect(e.frequency).toBe(1);
+  expect(e.duration).toBeGreaterThanOrEqual(2);
+  const start = segments(p)[0].departure;
+  const angle = (u: number) =>
+    evaluate(p, start + u * e.duration).pieces.find(
+      (v) => v.id === buildGame(p).steps[0].pieceId,
+    )!.rz;
+  expect(angle(0)).toBeCloseTo(0);
+  expect(angle(0.25)).toBeCloseTo((24 * Math.PI) / 180);
+  expect(angle(0.75)).toBeCloseTo((-24 * Math.PI) / 180);
+  expect(angle(1)).toBeCloseTo(0);
+  const earlier = angle(0.25);
+  angle(0.9);
+  expect(angle(0.25)).toBe(earlier);
+  expect(sway(0.2499)).toBeCloseTo(sway(0.2501), 5);
 });

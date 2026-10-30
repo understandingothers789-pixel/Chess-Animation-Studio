@@ -10,6 +10,14 @@ import { buildGame, squareXY, type Game, type PieceState } from "./chess";
 
 export const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+// Broad eased leans, timed by the move duration rather than travel speed.
+export function sway(u: number, cycles = 1): number {
+  if (u <= 0 || u >= 1) return 0;
+  const t = (u * cycles) % 1;
+  if (t < 0.25) return ease(t / 0.25, "smooth");
+  if (t < 0.75) return lerp(1, -1, ease((t - 0.25) / 0.5, "smooth"));
+  return lerp(-1, 0, ease((t - 0.75) / 0.25, "smooth"));
+}
 export function ease(t: number, e: Easing): number {
   t = clamp(t);
   switch (e) {
@@ -251,9 +259,7 @@ export function evaluate(
         e.keys.rotationZ,
         u,
         (e.axis === "z" ? (angle * 180) / Math.PI : 0) +
-          e.wiggle *
-            Math.sin(travel * Math.PI * 2 * e.frequency) *
-            Math.sin(Math.PI * clamp(travel)),
+          e.wiggle * sway(u, e.frequency),
       ) *
         Math.PI) /
       180;

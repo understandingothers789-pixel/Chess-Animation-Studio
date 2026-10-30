@@ -18,89 +18,91 @@ export function IntroInspector({
           here.
         </p>
       </div>
-      <Section title="Opener">
-        <Toggle
-          label="Animate intro"
-          checked={p.boardFX.intro}
-          onChange={(v) =>
-            edit("Intro enabled", (p) => {
-              p.boardFX.intro = v;
-            })
-          }
-        />
-        <Select
-          label="Opener preset"
-          value={p.boardFX.introPreset}
-          options={[
-            ["zoom-turn", "Zoom & turn"],
-            ["zoom", "Gentle zoom"],
-            ["turn", "Board turn"],
-            ["still", "Still board"],
-          ]}
-          onChange={(v) =>
-            edit("Opener preset", (p) => {
-              p.boardFX.introPreset = v;
-              p.boardFX.intro = true;
-            })
-          }
-        />
-        <Range
-          label="Intro clip length"
-          value={p.lead}
-          min={0.2}
-          max={8}
-          step={0.1}
-          unit="s"
-          onChange={(v) =>
-            edit("Intro length", (p) => {
-              p.lead = v;
-              p.boardFX.introDuration = Math.min(v, p.boardFX.introDuration);
-            })
-          }
-        />
-        <Range
-          label="Opener animation length"
-          value={p.boardFX.introDuration}
-          min={0.2}
-          max={8}
-          step={0.1}
-          unit="s"
-          onChange={(v) =>
-            edit("Opener duration", (p) => {
-              p.boardFX.introDuration = v;
-              p.lead = Math.max(p.lead, v);
-            })
-          }
-        />
-        <Range
-          label="Opener starting size"
-          value={p.boardFX.introZoom}
-          min={0.2}
-          max={1}
-          onChange={(v) =>
-            edit("Opener zoom", (p) => {
-              p.boardFX.introZoom = v;
-            })
-          }
-        />
-        <Range
-          label="Opener turn"
-          value={p.boardFX.introTurn}
-          min={-90}
-          max={90}
-          step={1}
-          unit="°"
-          onChange={(v) =>
-            edit("Opener turn", (p) => {
-              p.boardFX.introTurn = v;
-            })
-          }
-        />
-        <p className="hint">
-          Any time left after the animation holds the board still. Snow is
-          configurable in Scene → Snow particles.
-        </p>
-      </Section>
+      <div className="inspector-content">
+        <Section title="Opener">
+          <Toggle
+            label="Animate intro"
+            checked={p.boardFX.intro}
+            onChange={(v) =>
+              edit("Intro enabled", (p) => {
+                p.boardFX.intro = v;
+              })
+            }
+          />
+          <Select
+            label="Opener preset"
+            value={p.boardFX.introPreset}
+            options={[
+              ["zoom-turn", "Zoom & turn"],
+              ["zoom", "Gentle zoom"],
+              ["turn", "Board turn"],
+              ["still", "Still board"],
+            ]}
+            onChange={(v) =>
+              edit("Opener preset", (p) => {
+                p.boardFX.introPreset = v;
+                p.boardFX.intro = true;
+              })
+            }
+          />
+          <Range
+            label="Intro clip length"
+            value={p.lead}
+            min={0.2}
+            max={8}
+            step={0.1}
+            unit="s"
+            onChange={(v) =>
+              edit("Intro length", (p) => {
+                p.lead = v;
+                p.boardFX.introDuration = Math.min(v, p.boardFX.introDuration);
+              })
+            }
+          />
+          <Range
+            label="Opener animation length"
+            value={p.boardFX.introDuration}
+            min={0.2}
+            max={8}
+            step={0.1}
+            unit="s"
+            onChange={(v) =>
+              edit("Opener duration", (p) => {
+                p.boardFX.introDuration = v;
+                p.lead = Math.max(p.lead, v);
+              })
+            }
+          />
+          <Range
+            label="Opener starting size"
+            value={p.boardFX.introZoom}
+            min={0.2}
+            max={1}
+            onChange={(v) =>
+              edit("Opener zoom", (p) => {
+                p.boardFX.introZoom = v;
+              })
+            }
+          />
+          <Range
+            label="Opener turn"
+            value={p.boardFX.introTurn}
+            min={-90}
+            max={90}
+            step={1}
+            unit="°"
+            onChange={(v) =>
+              edit("Opener turn", (p) => {
+                p.boardFX.introTurn = v;
+              })
+            }
+          />
+          <p className="hint">
+            Any time left after the animation holds the board still. Snow is
+            configurable in Scene → Snow particles.
+          </p>
+        </Section>
+      </div>
     </aside>
   );
 }

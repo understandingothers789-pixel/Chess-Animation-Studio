@@ -73,3 +73,28 @@ Enable Dark-square tempo pulses to pulse dark squares with a configurable BPM, c
 New games use Slow sway for the first move when the project motion default is Clean slide. Existing edited moves and custom project defaults are preserved. Intro and atmosphere are evaluated at the exact playhead time in preview, presentation and export.
 
 Five additional board-effect ideas were considered: breathing rim light, traveling light sweep, vignette breathing, destination ripples and corner-light accents. The first three are included in 0.2.5; the latter two are ideas for later versions.
+
+## Intro clip and selection editing (0.2.6)
+
+Click **Intro** at the beginning of the MOVES track, before e4. The right inspector offers **Zoom & turn**, **Gentle zoom**, **Board turn** and **Still board**. Edit the clip length, animation length, initial size and turn there. A longer clip than animation holds the completed framing. The clip shifts the start of the game; it is not a chess move.
+
+Ctrl-click toggles individual moves; Shift-click selects a range; Ctrl+Shift extends it. The inspector shows the selection count. Changing **Move preset**, duration, sway or other Motion settings applies to every selected move. Camera and Look field edits and Paste also apply to the selection. Unchanged settings stay individual to each move. Editing individual keyframe points uses the active move; Clear keys applies to the selection.
+
+## Snow controls (0.2.6)
+
+Open **Scene**: **Snow particles · amount & appearance** is now the first section. **Particle count** controls how many flakes appear (0–400). Adjust size, speed, opacity (lower is more transparent), drift and color there. **Inside board only** is on by default, including for older projects; turn it off for snow across the surrounding scene. The board mask clips the full flake, including its soft edges, and follows the board during intro, rotation and camera motion. Flake size follows the board zoom. Layer controls remain available; flakes behind an opaque board can be hidden by it.
+
+## Free funk track for music testing
+
+Try **“Funkorama” by Kevin MacLeod**, a 3:21 funk groove listed at **101 BPM** in the creator’s catalog.
+
+- [Official track page and license](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100474).
+- [Download the MP3 from the creator](https://incompetech.com/music/royalty-free/mp3-royaltyfree/Funkorama.mp3).
+
+The creator offers it under **Creative Commons Attribution 4.0**. It is free with credit, including commercial use; include this credit in your video description and note edits such as trimming:
+
+> “Funkorama” Kevin MacLeod (incompetech.com)
+> Licensed under Creative Commons: By Attribution 4.0 License
+> https://creativecommons.org/licenses/by/4.0/
+
+Download the MP3, then open **Music → + Import music → Analyze waveform & likely beats**. Play it, review/correct the suggested beat markers, and use the timing preview before applying alignment. For regular board color pulses, set **Scene → Board atmosphere & intro → Pulse BPM** to 101. The BPM clock starts at project time zero; music-marker pulses are preferable when you need the pulses to follow the track’s exact beat phase. No third-party track is bundled or automatically downloaded by the app.

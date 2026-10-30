@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.5
+# Chess Animation Studio · 0.2.6
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
 ![Fresh editor](docs/images/editor.png)
 
 ## Windows downloads
+
+**[Download 0.2.6 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.6/Chess-Animation-Studio-0.2.6-Windows-Portable.zip).** Adds a clickable **Intro** clip before the first move with four selectable openers and editable timing/framing. Fixes inspector preset and motion changes to affect **every selected move**, including Half sway. Snow stays inside the board by default, with an optional full-scene toggle; amount, size, transparency and speed controls now appear first in **Scene**. Includes a [free funk music recommendation and import guide](docs/USER_GUIDE.md#free-funk-track-for-music-testing). Built and tested natively on Windows: 16 tests plus packaged editing, launch, save/open, all export formats, cancellation and presentation passed. Published ZIP SHA-256: `4e9708e7f9e1b16f889c8b061fa7c2afd4e78f368a54c25759641cda607e4c3b`.
 
 **[Download 0.2.5 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.5/Chess-Animation-Studio-0.2.5-Windows-Portable.zip).** Adds subtle always-lit shimmer, a configurable zoom-and-turn intro, first-move Slow sway, and dark-square tempo color pulses. Also adds breathing rim light, traveling light sweep and vignette breathing. Adjust strength, speed, color and intro timing in **Scene → Board atmosphere & intro**. Built and tested natively on Windows: 15 tests plus packaged launch, save/open, all export formats, cancellation and presentation passed. Published ZIP SHA-256: `05ec358be31ef6dedfb261e00769f4b835a7ba21196f74e2503a76e2ca50ca2b`.
 

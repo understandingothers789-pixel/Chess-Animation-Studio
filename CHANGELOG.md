@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## 0.2.6
+
+[Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.6/Chess-Animation-Studio-0.2.6-Windows-Portable.zip). Adds a selectable Intro clip with four openers and editable timing/framing. Fixes inspector presets, motion, camera, appearance and Paste to affect every selected move. Snow defaults to inside the board with an optional full-scene toggle; count, size, speed and transparency controls appear first in Scene, and flake sizes follow board zoom. The guide links a free 101 BPM funk track with attribution and import instructions. All 16 tests and native Windows packaged editing/export checks passed; published ZIP integrity was independently verified.
+
 ## 0.2.5
 
 [Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.5/Chess-Animation-Studio-0.2.5-Windows-Portable.zip). Adds a configurable zoom-and-turn intro, first-move Slow sway, subtle always-lit shimmer, BPM-driven dark-square color pulses, breathing rim light, traveling light sweep and vignette breathing. Amounts, speeds, colors and intro timing are editable in Scene. Exact-time effects remain consistent when seeking and exporting. Existing move edits and custom defaults are preserved. Fifteen tests and native Windows packaged launch/export checks passed; the published ZIP checksum and archive CRCs were independently verified.

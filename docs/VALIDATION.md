@@ -1,5 +1,16 @@
 # Validation and scope
 
+## Release 0.2.6 update checks
+
+- Native Windows run [41136225861](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41136225861) passed all 16 tests and packaged launch, vector rendering, backward seeks, selectable intro presets, multi-move Half sway/duration changes, board-only snow controls, save/open, H.264/AAC at 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation.
+- Release source: `7cab3b5ba1127887b0d499677666d046d582596a`, clean Windows checkout. The published ZIP was downloaded again and all archive CRCs passed. BUILD.json matched version/source/clean state and the executable retained the official runtime SHA-256 `9ba4530b08adeae75c13324a95b0fc8e87c5aa2889cfdc894474f8684b9f6c59`.
+- Published ZIP SHA-256: `4e9708e7f9e1b16f889c8b061fa7c2afd4e78f368a54c25759641cda607e4c3b` (139,727,942 bytes). It retains the existing portable layout. No previously published version was replaced. The application is unsigned; native CI launch does not establish Smart App Control acceptance on the user's PC.
+
+- Production build and all 16 core/service tests passed locally, including backward-compatible board-only snow and intro-preset schema defaults.
+- Actual Electron editor checks passed: the Intro timeline clip selects its own inspector; opener changes persist; Shift-selecting three moves and choosing Half sway changes all three and leaves the fourth untouched; duration edits apply to all selected moves. Board-only snow defaults on, count/size/opacity controls accept edits, and the full-scene toggle changes the rendered output. [Intro](images/intro-026.png) and [board-only snow](images/snow-inside-026.png) screenshots were visually inspected.
+- Board-only snow uses the rendered board’s stencil mask, including per-fragment soft-edge clipping. This follows zoom, camera turn and board framing, rather than clipping to a fixed screen rectangle.
+- Music recommendation source: the creator’s [catalog JSON](https://incompetech.com/music/royalty-free/pieces.json) identifies Funkorama as ISRC USUAN1100474, 101 BPM, 3:21. The official MP3 downloaded successfully and FFprobe measured 201.456 seconds. The official track-page template supplies Creative Commons Attribution 4.0 credit. No music is redistributed in the application. An actual Electron UI check imported this MP3, decoded it, generated editable beat markers and scheduled playback of the full-length audio buffer. Physical speaker output was not measured.
+
 ## Release 0.2.5 update checks
 
 - Native Windows run [41027885283](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41027885283) passed all 15 tests and packaged launch, vector rendering, backward seeks, save/open, H.264/AAC 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation checks.

@@ -28,8 +28,9 @@ export class Scene {
   private shadows = new Map<string, T.Mesh>();
   private assetTextures = new Map<string, T.Texture>();
   private paths: T.Mesh[] = [];
-  private trail: T.Line;
+  private trail: T.Mesh;
   private badge: T.Sprite;
+  private badgeGlow: T.Sprite;
   private badgeRing: T.Mesh;
   private halo: T.Mesh;
   private snow: T.Points;
@@ -98,9 +99,13 @@ export class Scene {
       this.paths.push(m);
       this.root.add(m);
     }
-    this.trail = new T.Line(
+    this.trail = new T.Mesh(
       new T.BufferGeometry(),
-      new T.LineBasicMaterial({ transparent: true, depthWrite: false }),
+      new T.MeshBasicMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: T.DoubleSide,
+      }),
     );
     this.root.add(this.trail);
     this.halo = new T.Mesh(
@@ -122,6 +127,18 @@ export class Scene {
     );
     this.badge.renderOrder = 30;
     this.root.add(this.badge);
+    this.badgeGlow = new T.Sprite(
+      new T.SpriteMaterial({
+        map: this.radial(),
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        blending: T.AdditiveBlending,
+        color: "#a6d797",
+      }),
+    );
+    this.badgeGlow.renderOrder = 28;
+    this.root.add(this.badgeGlow);
     this.badgeRing = new T.Mesh(
       new T.RingGeometry(0.4, 0.42, 64),
       new T.MeshBasicMaterial({
@@ -362,6 +379,7 @@ export class Scene {
         const mat = m.material as T.MeshBasicMaterial;
         mat.color.set(isFrom ? hl.source : isTo ? hl.destination : hl.path);
         mat.opacity = hl.opacity * fade * reveal;
+        mat.color.multiplyScalar(1 + hl.glow * 0.3);
       }
     }
     for (const [k, m] of this.meshes)
@@ -410,10 +428,37 @@ export class Scene {
     }
     this.trail.visible = e.trail.length > 1;
     this.trail.geometry.dispose();
-    this.trail.geometry = new T.BufferGeometry().setFromPoints(
-      e.trail.map(([x, y]) => new T.Vector3(x, y, 0.025)),
+    const ribbon: number[] = [],
+      indices: number[] = [];
+    e.trail.forEach(([x, y], i) => {
+      const prev = e.trail[Math.max(0, i - 1)],
+        next = e.trail[Math.min(e.trail.length - 1, i + 1)],
+        dx = next[0] - prev[0],
+        dy = next[1] - prev[1],
+        len = Math.hypot(dx, dy) || 1,
+        width =
+          (e.effect?.highlight.width ?? 0.13) *
+          (0.2 + (0.8 * i) / Math.max(1, e.trail.length - 1));
+      ribbon.push(
+        x - (dy / len) * width,
+        y + (dx / len) * width,
+        0.025,
+        x + (dy / len) * width,
+        y - (dx / len) * width,
+        0.025,
+      );
+      if (i) {
+        const j = i * 2;
+        indices.push(j - 2, j - 1, j, j - 1, j + 1, j);
+      }
+    });
+    this.trail.geometry = new T.BufferGeometry();
+    this.trail.geometry.setAttribute(
+      "position",
+      new T.Float32BufferAttribute(ribbon, 3),
     );
-    const tm = this.trail.material as T.LineBasicMaterial;
+    this.trail.geometry.setIndex(indices);
+    const tm = this.trail.material as T.MeshBasicMaterial;
     tm.color.set(e.effect?.highlight.path ?? "#b1a6ef");
     tm.opacity = e.effect?.highlight.opacity ?? 0;
     const active =
@@ -429,6 +474,7 @@ export class Scene {
     }
     this.badge.visible = !!e.badge && !!e.badgePosition;
     this.badgeRing.visible = false;
+    this.badgeGlow.visible = this.badge.visible;
     if (e.badge && e.badgePosition && e.effect) {
       const b = e.effect.badge,
         key = e.badge + b.text + (p.badgeAssets[e.badge] ?? "");
@@ -448,6 +494,10 @@ export class Scene {
         0.45,
       );
       this.badge.scale.setScalar(b.size * entryScale);
+      this.badgeGlow.position.copy(this.badge.position);
+      this.badgeGlow.scale.setScalar(b.size * 2.5);
+      (this.badgeGlow.material as T.SpriteMaterial).opacity =
+        b.glow * b.opacity * 0.5;
       (this.badge.material as T.SpriteMaterial).opacity =
         b.opacity * (b.entry === "fade" ? entry : 1);
       if (b.ring) {

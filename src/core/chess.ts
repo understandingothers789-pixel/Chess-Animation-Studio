@@ -25,22 +25,20 @@ function hash(s: string) {
 }
 export function buildGame(p: Project): Game {
   const chess = new Chess(p.fen),
-    initial: Piece[] = chess
-      .board()
-      .flatMap((row) =>
-        row.flatMap((v) =>
-          v
-            ? [
-                {
-                  id: `${hash(p.fen)}-${v.square}`,
-                  type: v.type,
-                  color: v.color,
-                  square: v.square,
-                },
-              ]
-            : [],
-        ),
-      );
+    initial: Piece[] = chess.board().flatMap((row) =>
+      row.flatMap((v) =>
+        v
+          ? [
+              {
+                id: `${hash(p.fen)}-${v.square}`,
+                type: v.type,
+                color: v.color,
+                square: v.square,
+              },
+            ]
+          : [],
+      ),
+    );
   let pieces = structuredClone(initial);
   const steps: Step[] = [];
   for (const move of p.moves) {

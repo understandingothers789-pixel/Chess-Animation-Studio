@@ -99,6 +99,8 @@ export function App() {
     saved = useRef(p),
     clipboard = useRef<Effect | null>(null),
     assetKeys = useRef(new Map<string, string>());
+  const [assetRevision, setAssetRevision] = useState(0);
+  const fingerprints = useRef(new Map<string, string | null>());
   latest.current = p;
   timeRef.current = time;
   const message = useCallback((s: string) => {
@@ -108,7 +110,7 @@ export function App() {
   const run = useCallback((fn: () => Promise<unknown>) => {
     void fn().catch((e) => {
       setStatus(
-        (e as Error).message.replace(
+        ((e as Error).message || (e as Error).name || String(e)).replace(
           /^Error invoking remote method '[^']+': Error: /,
           "",
         ),
@@ -188,7 +190,12 @@ export function App() {
       run(async () => {
         try {
           const url = await window.studio.assetData(a);
-          if (!latest.current.assets.some(v => v.id === a.id && v.path === a.path)) return;
+          if (
+            !latest.current.assets.some(
+              (v) => v.id === a.id && v.path === a.path,
+            )
+          )
+            return;
           if (!url) {
             setMissing((s) => new Set(s).add(a.id));
             return;
@@ -208,7 +215,20 @@ export function App() {
     const interval = setInterval(
       () =>
         run(async () => {
-          const ids = await window.studio.assetStatus(latest.current.assets);
+          const states = await window.studio.assetStatus(latest.current.assets);
+          const ids = Object.entries(states)
+            .filter(([, value]) => value === null)
+            .map(([id]) => id);
+          for (const [id, value] of Object.entries(states)) {
+            if (
+              fingerprints.current.has(id) &&
+              fingerprints.current.get(id) !== value
+            ) {
+              assetKeys.current.delete(id);
+              setAssetRevision((n) => n + 1);
+            }
+            fingerprints.current.set(id, value);
+          }
           if (!alive) return;
           setMissing(new Set(ids));
           for (const id of ids) {
@@ -227,7 +247,7 @@ export function App() {
       alive = false;
       clearInterval(interval);
     };
-  }, [p.assets.map((a) => a.id + a.path).join("|")]);
+  }, [p.assets.map((a) => a.id + a.path).join("|"), assetRevision]);
   useEffect(() => {
     if (!playing) return;
     let alive = true,
@@ -262,8 +282,17 @@ export function App() {
   useEffect(() => {
     if (playing && performance.now() - lastPresentation.current < 100) return;
     lastPresentation.current = performance.now();
-    window.studio.present({project:p,time,playing,assets:Object.fromEntries(p.assets.filter(a=>a.kind==='image'&&assets[a.id]).map(a=>[a.id,assets[a.id]]))});
-  },[p,time,playing,assets]);
+    window.studio.present({
+      project: p,
+      time,
+      playing,
+      assets: Object.fromEntries(
+        p.assets
+          .filter((a) => a.kind === "image" && assets[a.id])
+          .map((a) => [a.id, assets[a.id]]),
+      ),
+    });
+  }, [p, time, playing, assets]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (
@@ -668,7 +697,11 @@ export function App() {
             <Preview
               project={p}
               time={time}
-              assets={assets}
+              assets={Object.fromEntries(
+                p.assets
+                  .filter((a) => a.kind === "image" && assets[a.id])
+                  .map((a) => [a.id, assets[a.id]]),
+              )}
               onSquare={square}
               onError={(s) => {
                 setStatus(s);

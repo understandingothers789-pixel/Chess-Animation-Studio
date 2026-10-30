@@ -36,6 +36,7 @@ let editor: BrowserWindow | null = null,
   worker: BrowserWindow | null = null,
   job: VideoJob | null = null,
   analysis: AbortController | null = null;
+let pathProjectId: string | null = null;
 let currentPath: string | null = null,
   lastProject: Project | null = null;
 const allowed = new Map<string, string>();
@@ -137,7 +138,10 @@ async function recovery() {
   if (lastProject)
     await atomic(
       store("recovery.json"),
-      JSON.stringify({ project: lastProject, path: currentPath }),
+      JSON.stringify({
+        project: lastProject,
+        path: pathProjectId === lastProject.id ? currentPath : null,
+      }),
     );
 }
 async function open(file: string) {
@@ -145,6 +149,7 @@ async function open(file: string) {
   permit(p);
   lastProject = p;
   currentPath = file;
+  pathProjectId = p.id;
   await remember(file);
   void log("Project opened.");
   return { project: p, path: file };
@@ -159,7 +164,7 @@ async function chooseFile(filters: Electron.FileFilter[]) {
 async function save(p: Project, as: boolean) {
   p = parseProject(p);
   checkAssets(p);
-  let file = currentPath;
+  let file = pathProjectId === p.id ? currentPath : null;
   if (as || !file) {
     const r = await dialog.showSaveDialog(editor!, {
       defaultPath: p.title.replace(/[^a-z0-9 _-]/gi, "") + ".castudio",
@@ -170,6 +175,7 @@ async function save(p: Project, as: boolean) {
   }
   await writeProject(file, p);
   currentPath = file;
+  pathProjectId = p.id;
   lastProject = p;
   await remember(file);
   return file;
@@ -266,6 +272,7 @@ app.whenReady().then(async () => {
     permit(project);
     lastProject = project;
     currentPath = r.path;
+    pathProjectId = project.id;
     return { project, path: r.path };
   });
   handle("discardRecovery", async () => {
@@ -314,16 +321,17 @@ app.whenReady().then(async () => {
     }
   });
   handle("assetStatus", async (assets: Asset[]) => {
-    const missing: string[] = [];
+    const states: Record<string, string | null> = {};
     for (const a of assets) {
       ensureAsset(a);
       try {
-        await validAsset(a);
+        const s = await validAsset(a);
+        states[a.id] = s.size + ":" + s.mtimeMs;
       } catch {
-        missing.push(a.id);
+        states[a.id] = null;
       }
     }
-    return missing;
+    return states;
   });
   handle("collect", async (value: unknown) => {
     const p = parseProject(value);
@@ -339,6 +347,7 @@ app.whenReady().then(async () => {
     const result = await collectProject(p, dir);
     permit(result.project);
     currentPath = result.path;
+    pathProjectId = result.project.id;
     await remember(result.path);
     return result;
   });

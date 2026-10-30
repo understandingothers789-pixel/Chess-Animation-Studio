@@ -5,7 +5,7 @@ on:
     paths-ignore: ['**.md', '**.txt', 'docs/**']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   portable:
     runs-on: windows-latest
@@ -26,6 +26,15 @@ jobs:
       - name: Install export validation tool
         shell: pwsh
         run: choco install ffmpeg -y --no-progress
+      - name: Install pinned Stockfish for validation only
+        shell: pwsh
+        run: |
+          Invoke-WebRequest 'https://github.com/official-stockfish/Stockfish/releases/download/sf_17.1/stockfish-windows-x86-64-avx2.zip' -OutFile "$env:RUNNER_TEMP/stockfish.zip"
+          $h = (Get-FileHash "$env:RUNNER_TEMP/stockfish.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($h -ne '92a77f8d8116b4331696eeb7b232bd03db30d6641a6ce1be1759478b8931d28b') { throw 'Stockfish checksum mismatch' }
+          Expand-Archive "$env:RUNNER_TEMP/stockfish.zip" "$env:RUNNER_TEMP/stockfish-check"
+          $exe = (Get-ChildItem "$env:RUNNER_TEMP/stockfish-check" -Recurse -Filter '*.exe' | Select-Object -First 1).FullName
+          "STOCKFISH_PATH=$exe" >> $env:GITHUB_ENV
       - run: npm run build
       - run: npm test
       - name: Build standard portable layout
@@ -64,3 +73,13 @@ jobs:
             release/runtime-signature-*.json
             release/*.sha256
           if-no-files-found: ignore
+      - name: Publish immutable versioned release assets
+        if: success()
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.version.outputs.value }}'
+          gh release create "studio-v$v" "release/Chess-Animation-Studio-$v-Windows-Portable.zip" "release/Chess-Animation-Studio-$v-Windows-Portable.zip.sha256" "release/runtime-signature-$v.json" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Chess Animation Studio $v" --notes-file "docs/releases/$v.md"
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed; the workflow artifact remains available.' }

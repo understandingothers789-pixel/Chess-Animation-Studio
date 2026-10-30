@@ -1,0 +1,21 @@
+# Architecture
+
+This branch is a new implementation. The previous main branch is not imported or modified.
+
+`src/core/project.ts` defines bounded schema-2 project data and presets. `chess.ts` validates input with chess.js, retains raw PGN and separate SAN variation lines, and reconstructs before/after snapshots with stable piece identities. Move IDs hash the starting FEN and legal prefix, preserving common-prefix effects. Promotion preserves identity; en passant removes the actual captured square, and castling stores coordinated rook motion.
+
+`timeline.ts` is a pure function of project, timeline time and format. There are no accumulated transform deltas or timer chains. Moves contain delay, duration, landing phase, settle and hold; later moves shift when a duration changes. Curves have normalized time. Evaluation returns legal snapshots plus temporary visual transforms, capture exit, trail, badge, pulse and camera. Scene extensions are reserved and unsupported nonempty data is rejected.
+
+`src/render/pieces.ts` rasterizes Nocturne SVGs to 2048px textures and traces their alpha contours at 256px using d3-contour. Extruded silhouettes, including holes, provide real thin sides; surface UVs map to the complete artwork. No transparent rectangle is extruded. Front and back share the illustration, physically mirrored when seen from behind. Artwork preparation is awaited before rendering export frames.
+
+`Scene.ts` owns Three.js objects, caches piece meshes, renders per-format camera/layout, board pulses, ribbon trails, original badge sprites and deterministic particles. Square-in-vertical uses a square scissored viewport with a separate background/ambient pass. Picking converts camera rays into board-local coordinates. Exact raw RGBA rows are flipped from WebGL bottom-up order.
+
+The React editor owns project history and monotonic playback time. WebAudio schedules music/cues ahead of playback, then provides a common performance-clock origin. Decode, waveform analysis and PGN parsing run asynchronously; analysis and imports use workers or native services. Undo groups rapid adjustments and retains up to 80 snapshots.
+
+`desktop/preload.ts` exposes a named, typed contextBridge API; renderer Node access is disabled, sandbox and context isolation enabled, and navigation/new windows blocked. Main IPC validates the sending window role. Asset reads are granted only by explicit user imports or project opens, with type and size limits. Export workers cannot use editor dialogs or file APIs.
+
+`desktop/files.ts` handles flushed atomic project writes, relative stored paths, local badge packs, original sound generation and collected assets. `analysis.ts` runs UCI in a cancellable child process and uses bounded Masters requests with raw-stat caching. Manual badge fields are independent of analysis data.
+
+`desktop/export.ts` owns one FFmpeg job. A hidden renderer prepares assets and renders exact n/fps frames. Each frame has an acknowledged native write before the next frame, bounding the raw stream to one frame. The first stage writes video; the second mixes trimmed/offset/faded music and cues to AAC while copying H.264 video. Completion renames the final file. Cancellation kills processes, destroys the worker and removes the temporary directory.
+
+`scripts/portable.mjs` copies the official Electron runtime unchanged, renames its executable, adds an ordinary resources/app payload, records hashes/provenance, and compresses the folder. It does not patch PE resources, claim vendor signing of app code, or change Windows policy. The Windows workflow records actual Authenticode status and exercises the packaged app. Source tags, release artifacts and package manifests carry the application version even though the stock host executable retains runtime metadata.

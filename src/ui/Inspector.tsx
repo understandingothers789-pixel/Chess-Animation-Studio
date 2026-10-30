@@ -35,7 +35,8 @@ export function Inspector({
   onPaste: () => void;
 }) {
   const [tab, setTab] = useState("motion"),
-    [channel, setChannel] = useState<Channel>("rz");
+    [channel, setChannel] = useState<Channel>("rz"),
+    [presetName, setPresetName] = useState("");
   const move = project.moves[index];
   if (!move)
     return (
@@ -278,17 +279,26 @@ export function Inspector({
                 onChange={(v) => capture("particles", v)}
               />
             </Section>
+            <label className="text-field">
+              Preset name
+              <input
+                aria-label="Preset name"
+                value={presetName}
+                maxLength={100}
+                onChange={(e) => setPresetName(e.target.value)}
+              />
+            </label>
             <button
               className="wide"
+              disabled={!presetName.trim()}
               onClick={() => {
-                const name = prompt("Preset name", presetLabels[e.preset]);
-                if (name?.trim())
-                  edit("Save preset", (p) => {
-                    p.presets.push({
-                      name: name.slice(0, 100),
-                      effect: structuredClone(e),
-                    });
+                edit("Save preset", (p) => {
+                  p.presets.push({
+                    name: presetName.trim(),
+                    effect: structuredClone(e),
                   });
+                });
+                setPresetName("");
               }}
             >
               Save as reusable preset
@@ -413,6 +423,20 @@ export function Inspector({
                   onChange={(v) => look(k, v)}
                 />
               ))}
+              <Range
+                label="Trail width"
+                value={e.highlight.width}
+                min={0.02}
+                max={0.6}
+                onChange={(v) => look("width", v)}
+              />
+              <Range
+                label="Highlight glow"
+                value={e.highlight.glow}
+                min={0}
+                max={1}
+                onChange={(v) => look("glow", v)}
+              />
               <Range
                 label="Highlight opacity"
                 value={e.highlight.opacity}

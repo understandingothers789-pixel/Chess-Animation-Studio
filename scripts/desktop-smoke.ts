@@ -1,15 +1,258 @@
-import { _electron as electron } from '@playwright/test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import path from 'node:path';import os from 'node:os';import {execFileSync} from 'node:child_process';import {duration,segments} from '../src/core/timeline';
-const dir=path.resolve('test-results');await fs.mkdir(dir,{recursive:true});const profile=await fs.mkdtemp(path.join(os.tmpdir(),'chess-studio-smoke-'));const errors:string[]=[];
-const packed=process.env.STUDIO_PACKAGED_EXE;const launch=await electron.launch({...(packed?{executablePath:packed}:{}),args:[...(packed?[]:['.']),...(process.platform==='linux'?['--no-sandbox']:[]),'--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'],env:{...process.env,STUDIO_USER_DATA:profile,STUDIO_TEST:'1',FFMPEG_PATH:process.env.FFMPEG_PATH??(process.platform==='win32'?'ffmpeg':'/usr/bin/ffmpeg'),STOCKFISH_PATH:process.env.STOCKFISH_PATH??'/workspace/tools/usr/games/stockfish',DISPLAY:process.env.DISPLAY??':100'},timeout:60000});
-try{const page=await launch.firstWindow();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('WebGL'))errors.push(m.text());});await page.waitForSelector('.app-shell');await page.waitForFunction(()=>!document.querySelector('.loading'),{},{timeout:90000});await page.getByRole('button',{name:/Open Opera Game with original music/}).click();await page.waitForTimeout(2000);await page.screenshot({path:path.join(dir,packed?'packaged-editor.png':'editor.png')});
- const result=await page.evaluate(async()=>{const p=await window.studio.sample();return {project:p,duration:p.music.sourceDuration};});assert.equal(result.project.moves.length,33);assert.ok(result.duration>20);console.log('PASS: application launches, vector art prepares, and bundled sample opens.');console.log('STATUS',await page.locator('.status-bar').innerText());console.log('DECODE',await page.evaluate(async()=>{try{const p=await window.studio.sample();const url=await window.studio.assetData(p.assets[0]);const b=await (await fetch(url!)).arrayBuffer();const ctx=new AudioContext();const decoded=await ctx.decodeAudioData(b);await ctx.close();return decoded.duration;}catch(e){return {message:(e as Error).message,name:(e as Error).name};}}));
- await page.getByRole('button',{name:'scene',exact:true}).click();await page.getByLabel('Piece artwork',{exact:true}).selectOption('cburnett');await page.waitForTimeout(500);await page.screenshot({path:path.join(dir,'cburnett.png')});await page.getByLabel('Piece artwork',{exact:true}).selectOption('merida');await page.getByLabel('Seek composition',{exact:true}).fill('1.2');await page.waitForTimeout(350);const first=await page.locator('.preview-host canvas').evaluate((c:HTMLCanvasElement)=>c.toDataURL());await page.getByLabel('Seek composition',{exact:true}).fill('12');await page.waitForTimeout(150);await page.getByLabel('Seek composition',{exact:true}).fill('1.2');await page.waitForTimeout(350);const repeated=await page.locator('.preview-host canvas').evaluate((c:HTMLCanvasElement)=>c.toDataURL());assert.equal(first,repeated);console.log('PASS: both artwork sets render; backward seeking reproduces identical pixels.');
- await page.getByRole('button',{name:'motion',exact:true}).click();await page.getByLabel('Move preset',{exact:true}).selectOption('spin');await page.getByLabel('Seek composition',{exact:true}).fill('1.09');await page.waitForTimeout(300);await page.screenshot({path:path.join(dir,'thin-edge.png')});
- await launch.evaluate(({dialog},dir)=>{const state=globalThis as any;state.__savePath='';dialog.showSaveDialog=async()=>({canceled:false,filePath:state.__savePath});dialog.showOpenDialog=async()=>({canceled:false,filePaths:[state.__openPath]});},dir);
- const save=path.join(dir,'round-trip.castudio');await launch.evaluate((_,file)=>{(globalThis as any).__savePath=file;},save);await page.evaluate(async()=>{const p=await window.studio.sample();await window.studio.save(p,true);});const json=JSON.parse(await fs.readFile(save,'utf8'));assert.equal(json.schema,2);assert.equal(json.assets[0].path.includes('Opera-original.wav'),true);await launch.evaluate((_,file)=>{(globalThis as any).__openPath=file;},save);assert.equal((await page.evaluate(()=>window.studio.open()))!.project.moves.length,33);console.log('PASS: native IPC saves and reopens the sample with relative asset references.');
- const ffprobe=process.env.FFPROBE_PATH??'ffprobe';const output=path.join(dir,packed?'packaged.mp4':'editor.mp4');await launch.evaluate((_,file)=>{(globalThis as any).__savePath=file;},output);await page.evaluate(()=>{(window as any).__progress=null;window.studio.onExport(v=>{(window as any).__progress=v;});});await page.evaluate(async()=>{const p=await window.studio.sample();await window.studio.export(p,{format:'landscape',start:1,end:2,width:640,height:360,fps:60});});await page.waitForFunction(()=>['Complete','Failed'].includes((window as any).__progress?.phase),{},{timeout:180000});const progress=await page.evaluate(()=>(window as any).__progress);assert.equal(progress.phase,'Complete',progress.error);const probe=JSON.parse(execFileSync(ffprobe,['-v','error','-show_streams','-show_format','-of','json',output],{encoding:'utf8'}));assert.equal(probe.streams.find((s:any)=>s.codec_type==='video').r_frame_rate,'60/1');assert.equal(probe.streams.find((s:any)=>s.codec_type==='audio').codec_name,'aac');console.log('PASS: exact-time H.264/AAC MP4 exported at 60 FPS.');
- for(const format of ['vertical','square','square-in-vertical'] as const){const f=path.join(dir,format+'.mp4');await launch.evaluate((_,file)=>{(globalThis as any).__savePath=file;},f);await page.evaluate(async format=>{(window as any).__progress=null;const p=await window.studio.sample();await window.studio.export(p,{format,start:4,end:4.05});},format);await page.waitForFunction(()=>['Complete','Failed'].includes((window as any).__progress?.phase),{},{timeout:180000});const v=await page.evaluate(()=>(window as any).__progress);assert.equal(v.phase,'Complete',v.error);const pr=JSON.parse(execFileSync(ffprobe,['-v','error','-show_streams','-of','json',f],{encoding:'utf8'}));const video=pr.streams.find((s:any)=>s.codec_type==='video');assert.equal(video.width,1080);assert.equal(video.height,format==='square'?1080:1920);}
- console.log('PASS: native-sized vertical, square and square-in-vertical exports.');
- const cancel=path.join(dir,'cancelled.mp4');await launch.evaluate((_,file)=>{(globalThis as any).__savePath=file;},cancel);await page.evaluate(async()=>{const p=await window.studio.sample();await window.studio.export(p,{format:'landscape',start:0,end:20});});await page.waitForTimeout(1200);await page.evaluate(()=>window.studio.cancelExport());await page.waitForTimeout(1000);assert.equal(await fs.stat(cancel).then(()=>true,()=>false),false);assert.equal((await fs.readdir(dir)).some(s=>s.startsWith('.chess-studio-export-')),false);console.log('PASS: cancellation removes temporary files and preserves the project.');
- const nextWindow=launch.waitForEvent('window');await page.evaluate(()=>window.studio.presentation());const win=await nextWindow;await win.waitForSelector('.output');await page.waitForTimeout(500);assert.equal(await win.locator('button').count(),0);console.log('PASS: clean presentation window has no editor controls.');assert.deepEqual(errors,[]);await fs.writeFile(path.join(dir,'desktop-validation.txt'),`PASS on ${process.platform}, ${packed?'packaged app':'development app'}; no renderer errors.\n`);
-}finally{await launch.close();}
+import { _electron as electron } from "@playwright/test";
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import { execFileSync } from "node:child_process";
+import { duration, segments } from "../src/core/timeline";
+const dir = path.resolve("test-results");
+await fs.mkdir(dir, { recursive: true });
+const profile = await fs.mkdtemp(path.join(os.tmpdir(), "chess-studio-smoke-"));
+const errors: string[] = [];
+const packed = process.env.STUDIO_PACKAGED_EXE;
+const launch = await electron.launch({
+  ...(packed ? { executablePath: packed } : {}),
+  args: [
+    ...(packed ? [] : ["."]),
+    ...(process.platform === "linux" ? ["--no-sandbox"] : []),
+    "--use-gl=angle",
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+  ],
+  env: {
+    ...process.env,
+    STUDIO_USER_DATA: profile,
+    STUDIO_TEST: "1",
+    FFMPEG_PATH:
+      process.env.FFMPEG_PATH ??
+      (process.platform === "win32" ? "ffmpeg" : "/usr/bin/ffmpeg"),
+    STOCKFISH_PATH:
+      process.env.STOCKFISH_PATH ?? "/workspace/tools/usr/games/stockfish",
+    DISPLAY: process.env.DISPLAY ?? ":100",
+  },
+  timeout: 60000,
+});
+try {
+  const page = await launch.firstWindow();
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
+  await page.waitForSelector(".app-shell");
+  await page.waitForFunction(
+    () => !document.querySelector(".loading"),
+    {},
+    { timeout: 90000 },
+  );
+  await page
+    .getByRole("button", { name: /Open Opera Game with original music/ })
+    .click();
+  await page.waitForTimeout(2000);
+  await page.screenshot({
+    path: path.join(dir, packed ? "packaged-editor.png" : "editor.png"),
+  });
+  const result = await page.evaluate(async () => {
+    const p = await window.studio.sample();
+    return { project: p, duration: p.music.sourceDuration };
+  });
+  assert.equal(result.project.moves.length, 33);
+  assert.ok(result.duration > 20);
+  console.log(
+    "PASS: application launches, vector art prepares, and bundled sample opens.",
+  );
+  await page.evaluate(() => {
+    const old = AudioBufferSourceNode.prototype.start;
+    (window as any).__musicStarts = [];
+    AudioBufferSourceNode.prototype.start = function (...args: any[]) {
+      (window as any).__musicStarts.push(this.buffer?.duration ?? 0);
+      return (old as any).apply(this, args);
+    };
+  });
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await page.waitForTimeout(350);
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  assert.ok(
+    await page.evaluate(() =>
+      (window as any).__musicStarts.some((v: number) => v > 5),
+    ),
+    "Sample music should decode and schedule for playback.",
+  );
+  await page.getByRole("button", { name: "scene", exact: true }).click();
+  await page
+    .getByLabel("Piece artwork", { exact: true })
+    .selectOption("cburnett");
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(dir, "cburnett.png") });
+  await page
+    .getByLabel("Piece artwork", { exact: true })
+    .selectOption("merida");
+  await page.getByLabel("Seek composition", { exact: true }).fill("1.2");
+  await page.waitForTimeout(350);
+  const first = await page
+    .locator(".preview-host canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page.getByLabel("Seek composition", { exact: true }).fill("12");
+  await page.waitForTimeout(150);
+  await page.getByLabel("Seek composition", { exact: true }).fill("1.2");
+  await page.waitForTimeout(350);
+  const repeated = await page
+    .locator(".preview-host canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  assert.equal(first, repeated);
+  console.log(
+    "PASS: both artwork sets render; backward seeking reproduces identical pixels.",
+  );
+  await page.getByRole("button", { name: "motion", exact: true }).click();
+  await page.getByLabel("Move preset", { exact: true }).selectOption("spin");
+  await page.getByLabel("Seek composition", { exact: true }).fill("0.888");
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(dir, "thin-edge.png") });
+  await launch.evaluate(({ dialog }, dir) => {
+    const state = globalThis as any;
+    state.__savePath = "";
+    dialog.showSaveDialog = async () => ({
+      canceled: false,
+      filePath: state.__savePath,
+    });
+    dialog.showOpenDialog = async () => ({
+      canceled: false,
+      filePaths: [state.__openPath],
+    });
+  }, dir);
+  const save = path.join(dir, "round-trip.castudio");
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__savePath = file;
+  }, save);
+  await page.evaluate(async () => {
+    const p = await window.studio.sample();
+    await window.studio.save(p, true);
+  });
+  const json = JSON.parse(await fs.readFile(save, "utf8"));
+  assert.equal(json.schema, 2);
+  assert.equal(json.assets[0].path.includes("Opera-original.wav"), true);
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__openPath = file;
+  }, save);
+  assert.equal(
+    (await page.evaluate(() => window.studio.open()))!.project.moves.length,
+    33,
+  );
+  console.log(
+    "PASS: native IPC saves and reopens the sample with relative asset references.",
+  );
+  const ffprobe = process.env.FFPROBE_PATH ?? "ffprobe";
+  const output = path.join(dir, packed ? "packaged.mp4" : "editor.mp4");
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__savePath = file;
+  }, output);
+  await page.evaluate(() => {
+    (window as any).__progress = null;
+    window.studio.onExport((v) => {
+      (window as any).__progress = v;
+    });
+  });
+  await page.evaluate(async () => {
+    const p = await window.studio.sample();
+    await window.studio.export(p, {
+      format: "landscape",
+      start: 1,
+      end: 2,
+      width: 640,
+      height: 360,
+      fps: 60,
+    });
+  });
+  await page.waitForFunction(
+    () => ["Complete", "Failed"].includes((window as any).__progress?.phase),
+    {},
+    { timeout: 180000 },
+  );
+  const progress = await page.evaluate(() => (window as any).__progress);
+  assert.equal(progress.phase, "Complete", progress.error);
+  const probe = JSON.parse(
+    execFileSync(
+      ffprobe,
+      ["-v", "error", "-show_streams", "-show_format", "-of", "json", output],
+      { encoding: "utf8" },
+    ),
+  );
+  assert.equal(
+    probe.streams.find((s: any) => s.codec_type === "video").r_frame_rate,
+    "60/1",
+  );
+  assert.equal(
+    probe.streams.find((s: any) => s.codec_type === "audio").codec_name,
+    "aac",
+  );
+  console.log("PASS: exact-time H.264/AAC MP4 exported at 60 FPS.");
+  for (const format of ["vertical", "square", "square-in-vertical"] as const) {
+    const f = path.join(dir, format + ".mp4");
+    await launch.evaluate((_, file) => {
+      (globalThis as any).__savePath = file;
+    }, f);
+    await page.evaluate(async (format) => {
+      (window as any).__progress = null;
+      const p = await window.studio.sample();
+      await window.studio.export(p, { format, start: 4, end: 4.05 });
+    }, format);
+    await page.waitForFunction(
+      () => ["Complete", "Failed"].includes((window as any).__progress?.phase),
+      {},
+      { timeout: 180000 },
+    );
+    const v = await page.evaluate(() => (window as any).__progress);
+    assert.equal(v.phase, "Complete", v.error);
+    const pr = JSON.parse(
+      execFileSync(
+        ffprobe,
+        ["-v", "error", "-show_streams", "-of", "json", f],
+        { encoding: "utf8" },
+      ),
+    );
+    const video = pr.streams.find((s: any) => s.codec_type === "video");
+    assert.equal(video.width, 1080);
+    assert.equal(video.height, format === "square" ? 1080 : 1920);
+  }
+  console.log(
+    "PASS: native-sized vertical, square and square-in-vertical exports.",
+  );
+  const cancel = path.join(dir, "cancelled.mp4");
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__savePath = file;
+  }, cancel);
+  await page.evaluate(async () => {
+    const p = await window.studio.sample();
+    await window.studio.export(p, { format: "landscape", start: 0, end: 20 });
+  });
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => window.studio.cancelExport());
+  await page.waitForTimeout(1000);
+  assert.equal(
+    await fs.stat(cancel).then(
+      () => true,
+      () => false,
+    ),
+    false,
+  );
+  assert.equal(
+    (await fs.readdir(dir)).some((s) => s.startsWith(".chess-studio-export-")),
+    false,
+  );
+  console.log(
+    "PASS: cancellation removes temporary files and preserves the project.",
+  );
+  const nextWindow = launch.waitForEvent("window");
+  await page.evaluate(() => window.studio.presentation());
+  const win = await nextWindow;
+  await win.waitForSelector(".output");
+  await page.waitForTimeout(500);
+  assert.equal(await win.locator("button").count(), 0);
+  console.log("PASS: clean presentation window has no editor controls.");
+  assert.deepEqual(errors, []);
+  await fs.writeFile(
+    path.join(dir, "desktop-validation.txt"),
+    `PASS on ${process.platform}, ${packed ? "packaged app" : "development app"}; no renderer errors.\n`,
+  );
+} finally {
+  await launch.close();
+}

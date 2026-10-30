@@ -79,6 +79,11 @@ export function buildGame(p: Project): Game {
   }
   return { initial, steps, end: chess.fen() };
 }
+function movesFirstEffect(p: Project, index: number) {
+  return index === 0 && p.defaults.preset === "slide"
+    ? effect("sway")
+    : structuredClone(p.defaults);
+}
 export function setLine(
   p: Project,
   sans: string[],
@@ -89,7 +94,7 @@ export function setLine(
   const chess = new Chess(fen),
     old = new Map(p.moves.map((m) => [m.id, m]));
   let prefix = fen;
-  const moves = sans.map((token) => {
+  const moves = sans.map((token, index) => {
     const m = chess.move(token);
     if (!m) throw Error(`Illegal move: ${token}`);
     prefix += " " + m.san;
@@ -97,7 +102,12 @@ export function setLine(
       match = preserve ? old.get(id) : undefined;
     return match
       ? structuredClone(match)
-      : { id, san: m.san, effect: structuredClone(p.defaults), analysis: {} };
+      : {
+          id,
+          san: m.san,
+          effect: movesFirstEffect(p, index),
+          analysis: {},
+        };
   });
   return { ...structuredClone(p), fen, pgn: raw, moves };
 }

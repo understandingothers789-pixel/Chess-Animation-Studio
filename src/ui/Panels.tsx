@@ -740,6 +740,159 @@ export function ScenePanel(q: PanelProps) {
           it within the vertical canvas.
         </p>
       </Section>
+      <Section title="Board atmosphere & intro">
+        <Toggle
+          label="Board effects"
+          checked={p.boardFX.enabled}
+          onChange={(v) =>
+            edit("Board FX", (p) => {
+              p.boardFX.enabled = v;
+            })
+          }
+        />
+        <Toggle
+          label="Zoom-and-turn intro"
+          checked={p.boardFX.intro}
+          onChange={(v) =>
+            edit("Intro", (p) => {
+              p.boardFX.intro = v;
+            })
+          }
+        />
+        <Range
+          label="Intro lead-in"
+          value={p.lead}
+          min={0.2}
+          max={8}
+          onChange={(v) =>
+            edit("Intro lead", (p) => {
+              p.lead = v;
+            })
+          }
+        />
+        <Toggle
+          label="Dark-square tempo pulses"
+          checked={p.boardFX.beatClock}
+          onChange={(v) =>
+            edit("Tempo pulses", (p) => {
+              p.boardFX.beatClock = v;
+            })
+          }
+        />
+        {(
+          ["lightingColor", "rimColor", "sweepColor", "vignetteColor"] as const
+        ).map((k) => (
+          <Color
+            key={k}
+            label={
+              {
+                lightingColor: "Lighting tint",
+                rimColor: "Rim light color",
+                sweepColor: "Sweep color",
+                vignetteColor: "Vignette color",
+              }[k]
+            }
+            value={
+              p.boardFX[k] ??
+              (k === "rimColor"
+                ? p.style.accent
+                : k === "vignetteColor"
+                  ? "#080c0b"
+                  : "#ffffff")
+            }
+            onChange={(v) =>
+              edit(k, (p) => {
+                p.boardFX[k] = v;
+              })
+            }
+          />
+        ))}
+        <Color
+          label="Tempo pulse color"
+          value={p.boardFX.beatColor}
+          onChange={(v) =>
+            edit("Tempo color", (p) => {
+              p.boardFX.beatColor = v;
+            })
+          }
+        />
+        {(
+          [
+            "shimmer",
+            "shimmerSpeed",
+            "introDuration",
+            "introZoom",
+            "introTurn",
+            "bpm",
+            "beatStrength",
+            "beatDecay",
+            "rim",
+            "rimSpeed",
+            "sweep",
+            "sweepSpeed",
+            "vignette",
+            "vignetteSpeed",
+          ] as const
+        ).map((k) => (
+          <Range
+            key={k}
+            label={
+              {
+                shimmer: "Lighting shimmer",
+                shimmerSpeed: "Shimmer speed",
+                introDuration: "Intro duration",
+                introZoom: "Intro starting size",
+                introTurn: "Intro turn degrees",
+                bpm: "Pulse BPM",
+                beatStrength: "Pulse strength",
+                beatDecay: "Pulse decay",
+                rim: "Breathing rim light",
+                rimSpeed: "Rim breathing speed",
+                sweep: "Light sweep strength",
+                sweepSpeed: "Light sweep speed",
+                vignette: "Vignette breathing",
+                vignetteSpeed: "Vignette speed",
+              }[k]
+            }
+            value={p.boardFX[k]}
+            min={
+              k === "introTurn"
+                ? -90
+                : k === "bpm"
+                  ? 20
+                  : k === "introZoom"
+                    ? 0.2
+                    : k.includes("Speed")
+                      ? 0.05
+                      : 0
+            }
+            max={
+              k === "introTurn"
+                ? 90
+                : k === "bpm"
+                  ? 240
+                  : k === "introDuration"
+                    ? 8
+                    : k.includes("Speed")
+                      ? 3
+                      : k === "shimmer"
+                        ? 0.2
+                        : k === "sweep"
+                          ? 0.3
+                          : k === "introZoom"
+                            ? 1
+                            : k === "beatDecay"
+                              ? 2
+                              : 0.5
+            }
+            onChange={(v) =>
+              edit("Board " + k, (p) => {
+                p.boardFX[k] = v;
+              })
+            }
+          />
+        ))}
+      </Section>
       <Section title="Snow & atmosphere">
         <Toggle
           label="Ambient particles"

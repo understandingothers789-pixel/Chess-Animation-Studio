@@ -294,6 +294,21 @@ export class Scene {
       this.game = buildGame(p);
     }
     const e = evaluate(p, time, this.game, format);
+    const fx = p.boardFX;
+    if (fx.intro && time < p.lead) {
+      const u = Math.min(1, time / Math.min(p.lead, fx.introDuration)),
+        k = u * u * (3 - 2 * u);
+      e.camera.zoom = fx.introZoom + (e.camera.zoom - fx.introZoom) * k;
+      e.camera.rotation += fx.introTurn * (1 - k);
+    }
+    const shimmer = fx.enabled
+      ? 1 +
+        fx.shimmer *
+          (0.55 * Math.sin(time * fx.shimmerSpeed * 6.283) +
+            0.3 * Math.sin(time * fx.shimmerSpeed * 10.17) +
+            0.15 * Math.sin(time * fx.shimmerSpeed * 17.33))
+      : 1;
+
     if (w !== this.width || h !== this.height) {
       this.width = w;
       this.height = h;
@@ -309,7 +324,19 @@ export class Scene {
       .multiplyScalar(bg.background === "solid" ? 1 : 1.5);
     bgMat.uniforms.bottom.value
       .set(p.style.background)
-      .multiplyScalar(bg.background === "solid" ? 1 : 0.7);
+      .multiplyScalar(
+        (bg.background === "solid" ? 1 : 0.7) *
+          (1 -
+            (fx.enabled
+              ? fx.vignette *
+                (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283))
+              : 0)),
+      );
+    if (fx.enabled)
+      bgMat.uniforms.bottom.value.lerp(
+        new T.Color(fx.vignetteColor ?? "#080c0b"),
+        fx.vignette * (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283)),
+      );
     this.renderer.render(this.backgroundScene, this.backgroundCamera);
     const image = bg.image ? this.assetTextures.get(bg.image) : null;
     if (image && bg.background === "image") {
@@ -350,9 +377,40 @@ export class Scene {
     this.camera.rotateZ((e.camera.rotation * Math.PI) / 180);
     this.camera.updateProjectionMatrix();
     (this.rim.material as T.MeshStandardMaterial).color.set(p.style.rim);
+    (this.rim.material as T.MeshStandardMaterial).emissive
+      .set(p.style.accent)
+      .multiplyScalar(
+        fx.enabled
+          ? fx.rim * (0.5 + 0.5 * Math.sin(time * fx.rimSpeed * 6.283))
+          : 0,
+      );
     for (const s of this.squares) {
       const m = s.material as T.MeshBasicMaterial;
       m.color.set(s.userData.dark ? p.style.dark : p.style.light);
+      m.color.multiplyScalar(shimmer);
+      if (fx.enabled)
+        m.color.lerp(
+          new T.Color(fx.lightingColor ?? "#ffffff"),
+          fx.shimmer * 0.12,
+        );
+      if (fx.enabled && fx.sweep) {
+        const wave = Math.exp(
+          -Math.pow(
+            (s.position.x +
+              s.position.y * 0.4 -
+              (((time * fx.sweepSpeed * 12) % 20) - 10)) /
+              1.8,
+            2,
+          ),
+        );
+        m.color.lerp(new T.Color(fx.sweepColor ?? "#ffffff"), wave * fx.sweep);
+      }
+      if (s.userData.dark && fx.enabled && fx.beatClock) {
+        const beat = ((time * fx.bpm) / 60) % 1,
+          level = Math.exp(((-beat * (60 / fx.bpm)) / fx.beatDecay) * 4);
+        m.color.lerp(new T.Color(fx.beatColor), level * fx.beatStrength);
+      }
+
       if (s.userData.dark) m.color.lerp(new T.Color(p.pulse.color), e.pulse);
     }
     for (const m of this.paths) m.visible = false;

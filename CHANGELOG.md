@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## 0.2.4
+
+[Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.4/Chess-Animation-Studio-0.2.4-Windows-Portable.zip). Fixes snow culling and visibility, expands editable particle size, adds one-sided Half sway, Explorer-style Ctrl/Shift selection, and an explicit apply-to-all/import-default action. Includes all 12 Neo reference pieces with smooth contour reconstruction. Neo is not claimed pixel-identical to recovered high-resolution originals. Reduces artwork memory and preserves badges/cameras during batch actions. Fourteen tests and native Windows packaged checks passed; published ZIP integrity was independently verified.
+
 ## 0.2.3
 
 [Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.3/Chess-Animation-Studio-0.2.3-Windows-Portable.zip). Native Windows build with 13 passing core/service tests and successful packaged-app checks from a fresh ZIP extraction in a path with spaces. Includes Nocturne vector pieces with solid edges, slow sway, per-move editing/keyframes/cameras, audio/beat editing, analysis, recovery, presentation and direct MP4 export. Separates fresh app data from the previous implementation; serializes final recovery writes; cleans up engine wait listeners; identifies the correct presentation renderer in validation. Publishes a permanent versioned release ZIP, checksum and signature-status evidence. The application remains unsigned and Smart App Control approval is not guaranteed.

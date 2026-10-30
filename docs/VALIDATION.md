@@ -1,5 +1,15 @@
 # Validation and scope
 
+## Release 0.2.4 update checks
+
+- Local build and 14 core/service tests passed, including the one-sided 0.5-cycle sway.
+- Actual Electron UI checks passed for Ctrl-click toggling, Shift ranges, Ctrl+Shift extension, applying Half sway to all moves and the import default, Neo rendering, and visible snow that responds to size/opacity controls. The screenshot in docs/images/neo-snow-024.png was visually inspected.
+- Neo uses the actual 140px source PNGs plus smoothed grayscale contour reconstruction, not a claim of pixel-identical recovered high-resolution artwork.
+- Native Windows run https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41025980866 passed all 14 core/service tests and the packaged desktop/export checks from a fresh extraction in a path with spaces.
+- Release source: `518f3d79ab6fc5efa3fd2adf6a3d940313f0d425`. The published 0.2.4 ZIP was downloaded again and verified against SHA-256 `d0b06d630d35743e66aa6e4adcca6c445b8904eaa43a4ce5d9050aef909bfe00`; every archive CRC passed and all 12 Neo reference files were present.
+- The first internal candidate exceeded the Windows software-renderer export time budget. Reducing artwork texture memory from 2048px to 1024px (still above the enlarged piece pixel size at supported output resolutions) and accommodating slower CI rendering let the full native checks complete. No earlier 0.2.4 portable release was published or overwritten.
+- Apply-to-all preserves existing per-move badge and camera settings. The visible project default applies to subsequent imports and board input; it is not an application-wide preference across unrelated new projects.
+
 ## Release 0.2.3 — verified native Windows build
 
 - Source commit: `807239a8c0e7af334e3f0deb629ce9ae6480a943`, clean checkout.

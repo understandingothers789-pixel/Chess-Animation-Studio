@@ -51,3 +51,13 @@ Choose Export MP4, select a range and output path, then render. Frames are evalu
 ## Local data location
 
 The fresh implementation uses `%APPDATA%\ChessAnimationStudio-Fresh` on Windows. Settings, one recovery snapshot, encrypted optional credentials, caches and rotating logs are stored there. It does not reuse or overwrite the older implementation's recovery/settings directory. Project files remain wherever you save them.
+
+## Updates in 0.2.4
+
+Half sway is a one-sided lean and smooth return to upright; Slow sway still leans both ways. Set Sway cycles to 0.5 for the one-sided form. Click moves normally to select one, Ctrl-click to toggle, Shift-click for a contiguous range, or Ctrl+Shift-click to extend the selection. The move list and timeline support the same modifiers. Checked moves are the batch selection used in Styles.
+
+After refining an action, open Styles and choose **Apply selected action to all moves & default** to use it throughout the composition and as the default on subsequent imports/board input. The separate import-default action leaves existing moves alone. Both edits are undoable.
+
+In Scene → Snow & atmosphere, enable Ambient particles, then adjust **Particle size**, **Particle speed**, and **Particle opacity** (lower means more transparent). Count, drift, direction, softness, color, depth and over/behind layering are also editable. Existing saved projects retain their values; increase size/opacity if a saved project's snow is too subtle.
+
+Scene → Board & pieces → Piece artwork includes **Neo**. It uses a smoothed contour reconstruction from the actual 140px Neo reference PNGs. This produces sharper scalable edges but does not recover missing original detail or guarantee pixel-identical high-resolution replicas.

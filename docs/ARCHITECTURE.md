@@ -6,7 +6,7 @@ This branch is a new implementation. The previous main branch is not imported or
 
 `timeline.ts` is a pure function of project, timeline time and format. There are no accumulated transform deltas or timer chains. Moves contain delay, duration, landing phase, settle and hold; later moves shift when a duration changes. Curves have normalized time. Evaluation returns legal snapshots plus temporary visual transforms, capture exit, trail, badge, pulse and camera. Scene extensions are reserved and unsupported nonempty data is rejected.
 
-`src/render/pieces.ts` rasterizes Nocturne SVGs to 2048px textures and traces their alpha contours at 256px using d3-contour. Extruded silhouettes, including holes, provide real thin sides; surface UVs map to the complete artwork. No transparent rectangle is extruded. Front and back share the illustration, physically mirrored when seen from behind. Artwork preparation is awaited before rendering export frames.
+`src/render/pieces.ts` rasterizes Nocturne SVGs to 1024px textures and traces their alpha contours at 256px using d3-contour. Extruded silhouettes, including holes, provide real thin sides; surface UVs map to the complete artwork. No transparent rectangle is extruded. Front and back share the illustration, physically mirrored when seen from behind. Artwork preparation is awaited before rendering export frames.
 
 `Scene.ts` owns Three.js objects, caches piece meshes, renders per-format camera/layout, board pulses, ribbon trails, original badge sprites and deterministic particles. Square-in-vertical uses a square scissored viewport with a separate background/ambient pass. Picking converts camera rays into board-local coordinates. Exact raw RGBA rows are flipped from WebGL bottom-up order.
 

@@ -1,0 +1,65 @@
+name: Windows portable build
+on:
+  push:
+    branches: [fresh-start]
+    paths-ignore: ['**.md', '**.txt', 'docs/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  portable:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json | ConvertFrom-Json).version
+          "value=$v" >> $env:GITHUB_OUTPUT
+      - run: npm ci
+      - name: Install export validation tool
+        shell: pwsh
+        run: choco install ffmpeg -y --no-progress
+      - run: npm run build
+      - run: npm test
+      - name: Build standard portable layout
+        run: node scripts/portable.mjs
+      - name: Check official runtime signature
+        shell: pwsh
+        run: |
+          $p = "release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/Chess Animation Studio.exe"
+          $s = Get-AuthenticodeSignature -LiteralPath $p
+          $s | Format-List Status,StatusMessage,SignerCertificate
+          if ($s.Status -ne 'Valid') { throw 'Official runtime signature is not valid' }
+      - name: Exercise packaged Windows app and exports
+        shell: pwsh
+        run: |
+          $env:STUDIO_PACKAGED_EXE = (Resolve-Path "release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/Chess Animation Studio.exe").Path
+          $env:FFMPEG_PATH = (Get-Command ffmpeg).Source
+          $env:FFPROBE_PATH = (Get-Command ffprobe).Source
+          npm run test:desktop
+      - name: Upload versioned Windows portable download
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable
+          path: |
+            release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/**
+          if-no-files-found: error
+          retention-days: 90
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-validation-${{ steps.version.outputs.value }}-${{ github.run_number }}
+          path: |
+            test-results/**
+            release/runtime-signature-*.json
+            release/*.sha256
+          if-no-files-found: ignore

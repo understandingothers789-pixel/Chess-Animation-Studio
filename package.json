@@ -1,0 +1,12 @@
+{
+  "name":"chess-animation-studio", "productName":"Chess Animation Studio", "version":"0.2.0", "private":true,
+  "description":"Local chess animation editor", "author":"Chess Animation Studio contributors", "license":"GPL-3.0-or-later", "type":"module", "main":"desktop-build/main.cjs",
+  "scripts":{
+    "dev":"node scripts/dev.mjs", "build":"tsc --noEmit && vite build && node scripts/build.mjs",
+    "start":"electron .", "test":"vitest run", "test:desktop":"node --import tsx scripts/desktop-smoke.ts",
+    "portable":"npm run build && node scripts/portable.mjs", "sample":"node --import tsx scripts/sample.ts",
+    "format":"prettier --write src desktop scripts tests vite.config.ts"
+  },
+  "dependencies":{"chess.js":"1.4.0","react":"19.0.0","react-dom":"19.0.0","three":"0.180.0","zod":"4.1.12","d3-contour":"4.0.2","lucide-react":"0.468.0"},
+  "devDependencies":{"@playwright/test":"1.56.1","@types/d3-contour":"3.0.6","@types/node":"24.10.0","@types/react":"19.0.0","@types/react-dom":"19.0.0","@types/three":"0.180.0","@vitejs/plugin-react":"4.7.0","electron":"39.8.10","esbuild":"0.25.12","prettier":"3.6.2","tsx":"4.20.6","typescript":"5.9.3","vite":"7.3.7","vitest":"3.2.7"}
+}

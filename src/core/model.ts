@@ -189,6 +189,7 @@ export const ProjectSchema = z.object({
   moves: z.array(MoveSchema).max(5000),
   defaults: EffectSchema,
   style: z.object({
+    pieceSet: z.enum(["lichess", "chesscom"]).default("lichess"),
     light: color,
     dark: color,
     background: color,
@@ -389,8 +390,9 @@ export function blankProject(): Project {
     moves: [],
     defaults: effectPreset("clean"),
     style: {
-      light: "#dce4da",
-      dark: "#638476",
+      pieceSet: "lichess",
+      light: "#ebecd0",
+      dark: "#779556",
       background: "#101b22",
       accent: "#89ddbb",
       orientation: "white",

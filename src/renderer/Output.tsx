@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { loadPieceTextures } from "./pieces";
 import { SceneRenderer } from "./SceneRenderer";
 import { DIMENSIONS, type Project } from "../core/model";
 import { duration } from "../core/timeline";
@@ -10,6 +11,7 @@ export function ExportOutput() {
       window.studio.onExportTask(async ({ project, options, assets }) => {
         let renderer: SceneRenderer | undefined;
         try {
+          await loadPieceTextures(project.style.pieceSet ?? "lichess");
           renderer = new SceneRenderer(canvas.current!);
           // Await decoding so export's first frame includes every bitmap.
           for (const [id, url] of Object.entries(assets))

@@ -690,6 +690,7 @@ export function DesignPanel({
         </p>
       </Section>
       <Section title="Board palette">
+        <Select label="Piece set" value={project.style.pieceSet ?? "lichess"} options={["lichess", "chesscom"]} onChange={(v) => edit("Piece set", (p) => { p.style.pieceSet = v; })} />
         <Color
           label="Light squares"
           value={project.style.light}

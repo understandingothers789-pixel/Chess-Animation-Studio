@@ -8,18 +8,17 @@ A local desktop editor for chess videos. Import a PGN/FEN, play an animated firs
 
 ## Windows downloads
 
-**[Download portable 0.1.5 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.5.zip).** Includes the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne Chess, rendered at higher resolution, plus selectable piece sets and configurable board colors. Restores the original 0.1.0 two-file assemble-and-run launcher using absolute paths. The app build and ZIP integrity check passed; this specific build has not been tested on Windows. Portable app ZIP SHA-256: `bd1f0002e02f40fd62a8a543bf688e98ec40cef7aa9d5168ec90a7716bcc591d`.
+**[Download 0.1.5 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.5.zip).** Restores the original two-file assemble-and-run launcher from the portable 0.1.0 build, using absolute paths. Includes the higher-resolution Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne Chess, selectable piece sets, and configurable board colors. Desktop workflows and exports passed on Linux; this Windows build has not been independently tested on Windows. Portable app ZIP SHA-256: `bd1f0002e02f40fd62a8a543bf688e98ec40cef7aa9d5168ec90a7716bcc591d`.
 
-The download link above saves as **Chess-Animation-Studio-windows-v0.1.5.zip**. Use the versioned download link to get the filename with its version number.
+**[Download 0.1.4 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.4.zip).** Includes the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne, higher-resolution textures, and the assemble-and-run layout. The pieces currently appear flat during turns. Portable ZIP integrity passed; Windows launch was not independently tested.
 
-### Earlier versions and changes
+**[Download 0.1.3 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.3.zip).** Tried a direct app-file layout. The user reported that Windows Application Control still blocked the executable.
 
-- **[0.1.4 — portable Windows download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.4.zip):** Added the Lichess Cburnett and Nibbler/Merida vector pieces from Nocturne, higher-resolution textures, and the assemble-and-run layout. The pieces currently appear flat during turns.
-- **[0.1.3 — Windows download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.3.zip):** Tried a direct app-file layout. Windows Application Control still blocked it for the user.
-- **[0.1.2 — Windows download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.2.zip):** Added a distinct application and download version number. The app remained unsigned.
-- **[0.1.0 — initial portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/portable-v0.1.0.zip):** Initial editor with animation, music, analysis, saving, presentation, and MP4 export. Some early builds reused the same version number.
+**[Download 0.1.2 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/windows-v0.1.2.zip).** Added a distinct application and download version number. The app remained unsigned and Windows Application Control could block it.
 
-The [full version history](CHANGELOG.md) also records these changes.
+**[Download 0.1.0 for Windows (unsigned, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/archive/refs/tags/portable-v0.1.0.zip).** Initial portable desktop editor with chess animation, music, analysis, project saving, presentation, and MP4 export. Some early builds reused this version number.
+
+Each link downloads a ZIP whose filename includes the version. More details are in the [version history](CHANGELOG.md).
 
 ## Run on Windows
 

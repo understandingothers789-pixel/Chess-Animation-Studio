@@ -8,6 +8,8 @@ export function Timeline({
   time,
   selected,
   checked,
+  introSelected,
+  selectIntro,
   select,
   seek,
   edit,
@@ -16,6 +18,8 @@ export function Timeline({
   time: number;
   selected: number;
   checked: Set<string>;
+  introSelected: boolean;
+  selectIntro: () => void;
   select: (
     i: number,
     modifiers?: { ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean },
@@ -130,11 +134,26 @@ export function Timeline({
               ))}
             </div>
             <div className="move-track">
+              {p.lead > 0 && (
+                <button
+                  aria-label="Select intro clip"
+                  title="Edit the opener before the first move"
+                  className={introSelected ? "selected" : "intro-clip"}
+                  style={{ left: 0, width: Math.max(14, x(p.lead) - 2) }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={selectIntro}
+                >
+                  <strong>Intro</strong>
+                  <small>
+                    {p.boardFX.intro ? p.boardFX.introPreset : "hold"}
+                  </small>
+                </button>
+              )}
               {seq.map((s, i) => (
                 <button
                   key={p.moves[i].id}
                   className={
-                    selected === i
+                    !introSelected && selected === i
                       ? "selected"
                       : checked.has(p.moves[i].id)
                         ? "checked"

@@ -45,6 +45,7 @@ export class Scene {
     this.renderer = new T.WebGLRenderer({
       canvas,
       antialias: true,
+      stencil: true,
       alpha: false,
       preserveDrawingBuffer: true,
       powerPreference: "high-performance",
@@ -84,7 +85,12 @@ export class Scene {
       for (let file = 0; file < 8; file++) {
         const square = new T.Mesh(
           new T.PlaneGeometry(1, 1),
-          new T.MeshBasicMaterial(),
+          new T.MeshBasicMaterial({
+            stencilWrite: true,
+            stencilRef: 1,
+            stencilFunc: T.AlwaysStencilFunc,
+            stencilZPass: T.ReplaceStencilOp,
+          }),
         );
         square.position.set(file - 3.5, rank - 3.5, 0);
         square.userData.dark = (file + rank) % 2 === 0;
@@ -297,11 +303,13 @@ export class Scene {
     }
     const e = evaluate(p, time, this.game, format);
     const fx = p.boardFX;
-    if (fx.intro && time < p.lead) {
+    if (fx.intro && fx.introPreset !== "still" && time < p.lead) {
       const u = Math.min(1, time / Math.min(p.lead, fx.introDuration)),
         k = u * u * (3 - 2 * u);
-      e.camera.zoom = fx.introZoom + (e.camera.zoom - fx.introZoom) * k;
-      e.camera.rotation += fx.introTurn * (1 - k);
+      if (fx.introPreset !== "turn")
+        e.camera.zoom = fx.introZoom + (e.camera.zoom - fx.introZoom) * k;
+      if (fx.introPreset !== "zoom")
+        e.camera.rotation += fx.introTurn * (1 - k);
     }
     const shimmer = fx.enabled
       ? 1 +
@@ -582,8 +590,8 @@ export class Scene {
       const a = particle(i, time, p.ambient);
       positions.setXYZ(
         i,
-        a.x,
-        a.y,
+        a.x * (p.ambient.insideBoard ? 2 / 3 : 1),
+        a.y * (p.ambient.insideBoard ? 2 / 3 : 1),
         p.ambient.layer === "behind"
           ? -1 - a.z
           : p.ambient.layer === "over"
@@ -597,9 +605,15 @@ export class Scene {
     }
     positions.needsUpdate = alphas.needsUpdate = pointSizes.needsUpdate = true;
     const sm = this.snow.material as T.ShaderMaterial;
+    sm.stencilWrite = p.ambient.insideBoard;
+    sm.stencilRef = 1;
+    sm.stencilFunc = T.EqualStencilFunc;
+    sm.stencilFail = sm.stencilZFail = sm.stencilZPass = T.KeepStencilOp;
+    // Stencil clips every fragment, including the flake edges, to visible squares.
+    this.snow.renderOrder = p.ambient.insideBoard ? 10 : 0;
     sm.uniforms.color.value.set(p.ambient.color);
     sm.uniforms.softness.value = p.ambient.softness;
-    sm.uniforms.pixels.value = viewH / 9;
+    sm.uniforms.pixels.value = viewH / (this.camera.top - this.camera.bottom);
     const bp = this.bursts.geometry.attributes.position,
       ba = this.bursts.geometry.attributes.alpha,
       bs = this.bursts.geometry.attributes.size;

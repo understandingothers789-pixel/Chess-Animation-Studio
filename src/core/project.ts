@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const VERSION = "0.2.5";
+export const VERSION = "0.2.6";
 export const formats = [
   "landscape",
   "vertical",
@@ -311,6 +311,9 @@ export const projectSchema = z.object({
       shimmer: n(0, 0.2),
       shimmerSpeed: n(0.05, 5),
       intro: z.boolean(),
+      introPreset: z
+        .enum(["zoom-turn", "zoom", "turn", "still"])
+        .default("zoom-turn"),
       introDuration: n(0.2, 8),
       introZoom: n(0.2, 1),
       introTurn: n(-90, 90),
@@ -335,6 +338,7 @@ export const projectSchema = z.object({
       shimmer: 0.035,
       shimmerSpeed: 0.7,
       intro: true,
+      introPreset: "zoom-turn",
       introDuration: 2,
       introZoom: 0.55,
       introTurn: 45,
@@ -362,6 +366,7 @@ export const projectSchema = z.object({
     }),
   ),
   ambient: z.object({
+    insideBoard: z.boolean().default(true),
     enabled: z.boolean(),
     count: n(0, 400).int(),
     size: n(0.01, 0.35),
@@ -468,6 +473,7 @@ export function blank(): Project {
       shimmer: 0.035,
       shimmerSpeed: 0.7,
       intro: true,
+      introPreset: "zoom-turn",
       introDuration: 2,
       introZoom: 0.55,
       introTurn: 45,
@@ -491,6 +497,7 @@ export function blank(): Project {
       ]),
     ) as Project["layouts"],
     ambient: {
+      insideBoard: true,
       enabled: true,
       count: 100,
       size: 0.065,

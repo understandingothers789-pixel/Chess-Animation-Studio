@@ -102,6 +102,77 @@ try {
   console.log(
     "PASS: both artwork sets render; backward seeking reproduces identical pixels.",
   );
+  await page
+    .getByRole("button", { name: "Select intro clip", exact: true })
+    .click();
+  await page.getByLabel("Opener preset", { exact: true }).selectOption("zoom");
+  assert.equal(
+    await page.getByLabel("Opener preset", { exact: true }).inputValue(),
+    "zoom",
+  );
+  await page
+    .getByLabel("Opener preset", { exact: true })
+    .selectOption("zoom-turn");
+  await page.locator(".move-track button").nth(1).click();
+  await page
+    .locator(".move-track button")
+    .nth(3)
+    .click({ modifiers: ["Shift"] });
+  await page.getByRole("button", { name: "motion", exact: true }).click();
+  await page
+    .getByLabel("Move preset", { exact: true })
+    .selectOption("sway-half");
+  for (let i = 1; i <= 3; i++)
+    assert.equal(
+      await page
+        .locator(".move-track button")
+        .nth(i)
+        .locator("small")
+        .innerText(),
+      "sway-half",
+    );
+  assert.equal(
+    await page
+      .locator(".move-track button")
+      .nth(4)
+      .locator("small")
+      .innerText(),
+    "slide",
+  );
+  await page.getByLabel("Duration value", { exact: true }).fill("1.8");
+  await page.locator(".move-track button").nth(1).click();
+  assert.equal(
+    await page.getByLabel("Duration value", { exact: true }).inputValue(),
+    "1.8",
+  );
+  await page.locator(".move-track button").nth(2).click();
+  assert.equal(
+    await page.getByLabel("Duration value", { exact: true }).inputValue(),
+    "1.8",
+  );
+  assert.ok(
+    await page.getByLabel("Inside board only", { exact: true }).isChecked(),
+  );
+  await page.getByLabel("Seek composition", { exact: true }).fill("0");
+  await page.getByLabel("Particle count value", { exact: true }).fill("300");
+  await page.getByLabel("Particle size value", { exact: true }).fill("0.18");
+  await page.waitForTimeout(250);
+  const snowInside = await page
+    .locator(".preview-host canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page.screenshot({ path: path.join(dir, "snow-inside.png") });
+  await page.getByLabel("Inside board only", { exact: true }).uncheck();
+  await page.waitForTimeout(250);
+  assert.notEqual(
+    await page
+      .locator(".preview-host canvas")
+      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    snowInside,
+  );
+  await page.getByLabel("Inside board only", { exact: true }).check();
+  console.log(
+    "PASS: selectable intro presets, multi-move Half sway and duration edits, board-only snow controls.",
+  );
   await page.getByRole("button", { name: "motion", exact: true }).click();
   await page.getByLabel("Move preset", { exact: true }).selectOption("spin");
   await page.getByLabel("Seek composition", { exact: true }).fill("0.888");

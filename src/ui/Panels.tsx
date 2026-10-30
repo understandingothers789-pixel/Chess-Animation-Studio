@@ -642,6 +642,93 @@ export function ScenePanel(q: PanelProps) {
   const layout = p.layouts[p.format];
   return (
     <>
+      <Section title="Snow particles · amount & appearance">
+        <p className="hint">
+          Adjust the number, size, speed and transparency of the snow here.
+        </p>
+        <Toggle
+          label="Inside board only"
+          checked={p.ambient.insideBoard}
+          onChange={(v) =>
+            edit("Snow area", (p) => {
+              p.ambient.insideBoard = v;
+            })
+          }
+        />
+        <Toggle
+          label="Ambient particles"
+          checked={p.ambient.enabled}
+          onChange={(v) =>
+            edit("Particles", (p) => {
+              p.ambient.enabled = v;
+            })
+          }
+        />
+        <Select
+          label="Particle layer"
+          value={p.ambient.layer}
+          options={["over", "behind", "both"]}
+          onChange={(v) =>
+            edit("Particle layer", (p) => {
+              p.ambient.layer = v;
+            })
+          }
+        />
+        {(
+          [
+            "count",
+            "size",
+            "opacity",
+            "speed",
+            "drift",
+            "direction",
+            "depth",
+            "softness",
+            "seed",
+          ] as const
+        ).map((k) => (
+          <Range
+            key={k}
+            label={"Particle " + k}
+            value={p.ambient[k]}
+            min={
+              k === "size"
+                ? 0.01
+                : k === "softness"
+                  ? 0.05
+                  : k === "direction"
+                    ? -2
+                    : 0
+            }
+            max={
+              k === "count"
+                ? 400
+                : k === "size"
+                  ? 0.35
+                  : k === "seed"
+                    ? 1000000
+                    : k === "opacity" || k === "softness"
+                      ? 1
+                      : 2
+            }
+            step={k === "count" || k === "seed" ? 1 : 0.01}
+            onChange={(v) =>
+              edit("Particle " + k, (p) => {
+                p.ambient[k] = v;
+              })
+            }
+          />
+        ))}
+        <Color
+          label="Particle color"
+          value={p.ambient.color}
+          onChange={(v) =>
+            edit("Particle color", (p) => {
+              p.ambient.color = v;
+            })
+          }
+        />
+      </Section>
       <Section title="Board & pieces">
         <Select
           label="Piece artwork"
@@ -898,81 +985,6 @@ export function ScenePanel(q: PanelProps) {
             }
           />
         ))}
-      </Section>
-      <Section title="Snow & atmosphere">
-        <Toggle
-          label="Ambient particles"
-          checked={p.ambient.enabled}
-          onChange={(v) =>
-            edit("Particles", (p) => {
-              p.ambient.enabled = v;
-            })
-          }
-        />
-        <Select
-          label="Particle layer"
-          value={p.ambient.layer}
-          options={["over", "behind", "both"]}
-          onChange={(v) =>
-            edit("Particle layer", (p) => {
-              p.ambient.layer = v;
-            })
-          }
-        />
-        {(
-          [
-            "count",
-            "size",
-            "opacity",
-            "speed",
-            "drift",
-            "direction",
-            "depth",
-            "softness",
-            "seed",
-          ] as const
-        ).map((k) => (
-          <Range
-            key={k}
-            label={"Particle " + k}
-            value={p.ambient[k]}
-            min={
-              k === "size"
-                ? 0.01
-                : k === "softness"
-                  ? 0.05
-                  : k === "direction"
-                    ? -2
-                    : 0
-            }
-            max={
-              k === "count"
-                ? 400
-                : k === "size"
-                  ? 0.35
-                  : k === "seed"
-                    ? 1000000
-                    : k === "opacity" || k === "softness"
-                      ? 1
-                      : 2
-            }
-            step={k === "count" || k === "seed" ? 1 : 0.01}
-            onChange={(v) =>
-              edit("Particle " + k, (p) => {
-                p.ambient[k] = v;
-              })
-            }
-          />
-        ))}
-        <Color
-          label="Particle color"
-          value={p.ambient.color}
-          onChange={(v) =>
-            edit("Particle color", (p) => {
-              p.ambient.color = v;
-            })
-          }
-        />
       </Section>
       <Section title="Dark-square beat pulse">
         <Toggle

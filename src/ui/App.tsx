@@ -38,6 +38,7 @@ import { detectedMarkers } from "../core/audio";
 import { AudioPlayer } from "./audio";
 import { Preview } from "./Preview";
 import { Inspector } from "./Inspector";
+import { IntroInspector } from "./Intro";
 import {
   GamePanel,
   StylesPanel,
@@ -60,6 +61,7 @@ export function App() {
     canUndo,
     canRedo,
   } = useProject();
+  const [introSelected, setIntroSelected] = useState(false);
   const [selected, setSelected] = useState(0),
     [tab, setTab] = useState("game"),
     [time, setTime] = useState(0),
@@ -135,6 +137,7 @@ export function App() {
       i: number,
       modifiers?: { ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean },
     ) => {
+      setIntroSelected(false);
       const ctrl = modifiers?.ctrlKey || modifiers?.metaKey;
       setChecked((old) => {
         const next = ctrl ? new Set(old) : new Set<string>();
@@ -798,26 +801,42 @@ export function App() {
             time={time}
             selected={selected}
             checked={checked}
+            introSelected={introSelected}
+            selectIntro={() => {
+              setIntroSelected(true);
+              setChecked(new Set());
+              seek(0);
+            }}
             select={select}
             seek={seek}
             edit={edit}
           />
         </main>
-        <Inspector
-          project={p}
-          index={selected}
-          edit={edit}
-          onCopy={() => {
-            clipboard.current = structuredClone(p.moves[selected].effect);
-            message("Move effect copied.");
-          }}
-          onPaste={() => {
-            if (clipboard.current)
-              edit("Paste effect", (p) => {
-                p.moves[selected].effect = structuredClone(clipboard.current!);
-              });
-          }}
-        />
+        {introSelected ? (
+          <IntroInspector project={p} edit={edit} />
+        ) : (
+          <Inspector
+            project={p}
+            checked={checked}
+            index={selected}
+            edit={edit}
+            onCopy={() => {
+              clipboard.current = structuredClone(p.moves[selected].effect);
+              message("Move effect copied.");
+            }}
+            onPaste={() => {
+              if (clipboard.current)
+                edit("Paste effect", (p) => {
+                  for (const m of p.moves.filter((m) =>
+                    checked.size
+                      ? checked.has(m.id)
+                      : m.id === p.moves[selected]?.id,
+                  ))
+                    m.effect = structuredClone(clipboard.current!);
+                });
+            }}
+          />
+        )}
       </div>
       <footer className={"status-bar " + (error ? "error" : "")}>
         <span>

@@ -25,12 +25,14 @@ export const presetLabels: Record<Preset, string> = {
 export function Inspector({
   project,
   index,
+  checked,
   edit,
   onCopy,
   onPaste,
 }: {
   project: Project;
   index: number;
+  checked: Set<string>;
   edit: Edit;
   onCopy: () => void;
   onPaste: () => void;
@@ -45,10 +47,16 @@ export function Inspector({
         <p>Select a move to shape its animation.</p>
       </aside>
     );
+  const targets = (p: Project) =>
+    checked.size ? p.moves.filter((m) => checked.has(m.id)) : [p.moves[index]];
+  const each = (p: Project, fn: (e: Effect) => void) =>
+    targets(p).forEach((m) => fn(m.effect));
   const e = move.effect,
     change = <K extends keyof Effect>(key: K, value: Effect[K]) =>
       edit(String(key), (p) => {
-        p.moves[index].effect[key] = value;
+        each(p, (e) => {
+          e[key] = structuredClone(value);
+        });
       });
   const range = (
     key:
@@ -88,21 +96,27 @@ export function Inspector({
     v: Effect["capture"][K],
   ) =>
     edit("Capture " + k, (p) => {
-      p.moves[index].effect.capture[k] = v;
+      each(p, (e) => {
+        e.capture[k] = v;
+      });
     });
   const look = <K extends keyof Effect["highlight"]>(
     k: K,
     v: Effect["highlight"][K],
   ) =>
     edit("Highlight " + k, (p) => {
-      p.moves[index].effect.highlight[k] = v;
+      each(p, (e) => {
+        e.highlight[k] = v;
+      });
     });
   const badge = <K extends keyof Effect["badge"]>(
     k: K,
     v: Effect["badge"][K],
   ) =>
     edit("Badge " + k, (p) => {
-      p.moves[index].effect.badge[k] = v;
+      each(p, (e) => {
+        e.badge[k] = v;
+      });
     });
   return (
     <aside className="inspector">
@@ -114,6 +128,11 @@ export function Inspector({
           {move.san}
           <small>{presetLabels[e.preset]}</small>
         </h2>
+        <p className="hint">
+          {checked.size || 1} move{checked.size > 1 ? "s" : ""} selected ·
+          Motion, Camera and Look changes apply to the selection. Keyframe-point
+          edits use the active move.
+        </p>
         <div className="button-row">
           <button onClick={onCopy}>Copy</button>
           <button onClick={onPaste}>Paste</button>
@@ -141,12 +160,13 @@ export function Inspector({
                 options={presets.map((v) => [v, presetLabels[v]] as const)}
                 onChange={(v) =>
                   edit("Apply preset", (p) => {
-                    const old = p.moves[index].effect;
-                    p.moves[index].effect = {
-                      ...effect(v),
-                      badge: old.badge,
-                      cameras: old.cameras,
-                    };
+                    for (const m of targets(p)) {
+                      m.effect = {
+                        ...effect(v),
+                        badge: m.effect.badge,
+                        cameras: m.effect.cameras,
+                      };
+                    }
                   })
                 }
               />
@@ -311,10 +331,12 @@ export function Inspector({
             const c = e.cameras[project.format] ?? camera();
             const changeCamera = (key: keyof typeof c, value: unknown) =>
               edit("Camera " + key, (p) => {
-                p.moves[index].effect.cameras[p.format] = {
-                  ...c,
-                  [key]: value,
-                };
+                each(p, (e) => {
+                  e.cameras[p.format] = {
+                    ...(e.cameras[p.format] ?? camera()),
+                    [key]: value,
+                  };
+                });
               });
             return (
               <Section title={`Camera · ${project.format}`}>

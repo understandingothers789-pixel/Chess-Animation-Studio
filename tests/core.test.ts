@@ -168,3 +168,16 @@ it("board effects have bounded non-blackout defaults and a first-move sway", () 
   delete old.boardFX;
   expect(parseProject(old).boardFX.intro).toBe(true);
 });
+
+it("defaults legacy projects to board-only snow and a selectable zoom-turn opener", () => {
+  const old: any = blank();
+  delete old.ambient.insideBoard;
+  delete old.boardFX.introPreset;
+  const p = parseProject(old);
+  expect(p.ambient.insideBoard).toBe(true);
+  expect(p.boardFX.introPreset).toBe("zoom-turn");
+  for (const preset of ["zoom-turn", "zoom", "turn", "still"] as const) {
+    p.boardFX.introPreset = preset;
+    expect(parseProject(p).boardFX.introPreset).toBe(preset);
+  }
+});

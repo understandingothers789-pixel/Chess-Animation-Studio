@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.1.2
+# Chess Animation Studio · 0.1.3
 
 A local desktop editor for chess videos. Import a PGN/FEN, play an animated first draft, refine individual moves, align landings to music, and render an MP4. Built with Electron, React, TypeScript, Three.js, chess.js, and FFmpeg.
 

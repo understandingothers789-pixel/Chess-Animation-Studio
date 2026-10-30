@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const APP_VERSION = "0.1.2";
+export const APP_VERSION = "0.1.3";
 export const FORMATS = [
   "landscape",
   "vertical",

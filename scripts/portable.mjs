@@ -115,7 +115,15 @@ if (process.platform === "win32") {
   );
   await fs.writeFile(
     path.join("release", `runtime-signature-${pkg.version}.json`),
-    result.stdout,
+    result.stdout?.trim() ||
+      JSON.stringify(
+        {
+          status: "Query failed",
+          message: result.stderr || String(result.error || "No output"),
+        },
+        null,
+        2,
+      ),
   );
 } else
   execFileSync(

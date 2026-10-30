@@ -241,10 +241,14 @@ try {
   console.log(
     "PASS: cancellation removes temporary files and preserves the project.",
   );
-  const nextWindow = launch.waitForEvent("window");
   await page.evaluate(() => window.studio.presentation());
-  const win = await nextWindow;
-  await win.waitForSelector(".output");
+  let win = launch.windows().find((w) => w.url().includes("role=presentation"));
+  for (let attempt = 0; !win && attempt < 120; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    win = launch.windows().find((w) => w.url().includes("role=presentation"));
+  }
+  assert.ok(win, "The presentation window should load its own output page.");
+  await win.waitForSelector(".output", { timeout: 60000 });
   await page.waitForTimeout(500);
   assert.equal(await win.locator("button").count(), 0);
   console.log("PASS: clean presentation window has no editor controls.");

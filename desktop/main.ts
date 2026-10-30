@@ -50,8 +50,11 @@ let recoveryTimer: NodeJS.Timeout | undefined,
   recoveryWrite = Promise.resolve(),
   lastState: unknown = null;
 let quitting = false;
-if (process.env.STUDIO_USER_DATA)
-  app.setPath("userData", process.env.STUDIO_USER_DATA);
+app.setPath(
+  "userData",
+  process.env.STUDIO_USER_DATA ??
+    path.join(app.getPath("appData"), "ChessAnimationStudio-Fresh"),
+);
 const store = (file: string) => path.join(app.getPath("userData"), file);
 async function json(file: string, fallback: unknown) {
   try {

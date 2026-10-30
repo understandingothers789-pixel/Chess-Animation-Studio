@@ -46,6 +46,7 @@ class Uci {
       this.wake?.();
     });
     this.child.stderr.resume();
+    this.child.stdin.on("error", () => {});
     this.child.on("error", (e) => {
       this.lines.push("ERROR " + e.message);
       this.wake?.();
@@ -60,21 +61,26 @@ class Uci {
       this.lines.some((x) => x.startsWith(token) || x.startsWith("ERROR"));
     if (!found())
       await new Promise<void>((resolve, reject) => {
-        const t = setTimeout(() => {
+        const cleanup = () => {
+          clearTimeout(t);
           this.wake = null;
+          this.child.removeListener("exit", exited);
+        };
+        const exited = () => {
+          cleanup();
+          reject(Error("Engine stopped."));
+        };
+        const t = setTimeout(() => {
+          cleanup();
           reject(Error("Engine timed out."));
         }, ms);
         this.wake = () => {
           if (found()) {
-            clearTimeout(t);
-            this.wake = null;
+            cleanup();
             resolve();
           }
         };
-        this.child.once("exit", () => {
-          clearTimeout(t);
-          reject(Error("Engine stopped."));
-        });
+        this.child.once("exit", exited);
       });
     const lines = this.lines.splice(0);
     const error = lines.find((l) => l.startsWith("ERROR"));

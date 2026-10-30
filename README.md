@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.1
+# Chess Animation Studio · 0.2.2
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
@@ -6,9 +6,11 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 ## Windows downloads
 
+**[Download 0.2.2 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.2/Chess-Animation-Studio-0.2.2-Windows-Portable.zip).** Final stability pass on the fresh editor: serializes the last recovery write at close, cleans up engine-wait listeners during long analysis jobs, and displays the app version in the window title. Retains all 0.2.1 artwork, sway, audio, asset and export improvements. Native workflow results, checksums and limits are recorded in the [validation record](docs/VALIDATION.md).
+
 **[Download 0.2.1 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.1/Chess-Animation-Studio-0.2.1-Windows-Portable.zip).** Fresh editor with Nocturne's Nibbler/Merida and Lichess/Cburnett vector artwork, traced thin solid edges, slow sway, per-move camera/effect controls, numeric keyframes, music and editable beat markers, local analysis, recovery, clean presentation, and exact-time MP4 export. Uses a standard portable folder built on Windows, with the official Electron runtime copied unchanged. No split-file assembly or PowerShell launcher is needed. Check the [release validation record](docs/VALIDATION.md) for actual results and limitations. Windows Application Control approval is not guaranteed.
 
-If the release asset is unavailable, open the [Windows build runs](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/workflows/windows.yml?query=branch%3Afresh-start) and choose a **successful** run. Its `Chess-Animation-Studio-0.2.1-Windows-Portable` artifact has the version in the downloaded ZIP filename. Workflow artifacts require a GitHub login and expire after 90 days; release assets are the persistent download when publication succeeds.
+If the release asset is unavailable, open the [Windows build runs](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/workflows/windows.yml?query=branch%3Afresh-start) and choose a **successful** run. Its `Chess-Animation-Studio-0.2.2-Windows-Portable` artifact has the version in the downloaded ZIP filename. Workflow artifacts require a GitHub login and expire after 90 days; release assets are the persistent download when publication succeeds.
 
 **[Download 0.2.0 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41017597591/artifacts/12960905632).** First native Windows checkpoint of the fresh implementation. Packaged launch and export checks passed. Superseded by 0.2.1, which fixes audio/image asset loading, new-project save paths and asset cache refreshes. Workflow download requires GitHub login and is subject to retention.
 

@@ -221,7 +221,10 @@ app.whenReady().then(async () => {
       e.preventDefault();
       quitting = true;
       clearTimeout(recoveryTimer);
-      void recovery().finally(() => editor?.close());
+      recoveryWrite = recoveryWrite
+        .then(recovery)
+        .catch((e) => log("Recovery write failed: " + e.message));
+      void recoveryWrite.finally(() => editor?.close());
     }
   });
   editor.on("closed", () => {

@@ -2,13 +2,13 @@
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
-![Version 0.2.9 beat spotlight in the cropped Shorts view](docs/images/release-029.png)
+![Version 0.2.11 editor with guided project workflow and selected-move controls](docs/images/editor-011.png)
 
 ## Windows downloads
 
-**[Download 0.2.11 for Windows](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.11/Chess-Animation-Studio-0.2.11-Windows-Portable.zip).** Clearer workflow and panel organization, live music volume, volume points, beat locking, preserved music settings and an exportable project settings report. Windows build and packaged checks run before publication.
+**[Download 0.2.11 for Windows](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.11/Chess-Animation-Studio-0.2.11-Windows-Portable.zip).** Clearer workflow and panel organization, live music volume, volume points, beat locking, preserved music settings and an exportable project settings report. Windows build, all 26 tests, and packaged app/export checks passed. ZIP SHA-256: `005981ab3b321ab01b283eabc4f9fc7aa8408e404ed91b897eb141a523c4064c`.
 
-**[Download 0.2.10 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.10/Chess-Animation-Studio-0.2.10-Windows-Portable.zip).** Adds playhead snapping to move boundaries with an optional toggle and Alt bypass. Standard **9:16 Vertical** framing now centers the board and uses the available width; the default camera stays settled through the intro into the first move. Windows packaging and app validation are running; download will be available when the release completes.
+**[Download 0.2.10 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.10/Chess-Animation-Studio-0.2.10-Windows-Portable.zip).** Adds playhead snapping to move boundaries with an optional toggle and Alt bypass. Standard **9:16 Vertical** framing now centers the board and uses the available width; the default camera stays settled through the intro into the first move. Windows packaging and app/export checks passed; the download is published.
 
 **[Download 0.2.9 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.9/Chess-Animation-Studio-0.2.9-Windows-Portable.zip).** Adds cropped **9:16 Shorts** framing, captured pieces that crumble into artwork-colored dust, optional per-move red/colored light flicker, and a **Beat spotlight transition** with music-marker/BPM zoom rhythms, camera rocking, neon glow, sparkles, color changes and zoom blur. Includes selected-move editing, resets, tooltips and reversible automatic spotlight holds. All 26 tests and native Windows packaged editing, dust/light/spotlight, presentation and export checks passed. Published ZIP SHA-256: `2d9643cca0df3cfd5a003e0149bb1434678f85c18e6724d0e5d9984899dad711`.
 

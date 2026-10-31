@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Adds a configurable beat spotlight transition after selected moves: alternating in/out or per-beat punch zoom, piece focus, rocking/shake, expanding glow/ring, sparkles, alternating color pulses, radial zoom blur, brightness accents and selective desaturation/vignette. Uses corrected music markers or a BPM grid, automatically reserves a reversible hold, preserves motion presets and supports reset/tooltips.
+
 Adds optional per-move colored light washes with restrained flicker, a one-click red look, highlight color matching, selectable-move editing, fade/hold controls, numeric/group resets and tooltips. Uses deterministic time evaluation and leaves Shorts bars and badge artwork untinted. Built-in motion-preset changes preserve the light settings.
 
 Makes captured-piece dust the default exit for new move presets and the Opera sample. Adds cell-based silhouette erosion and artwork-colored fragments, bounded particle tails that survive move boundaries, en passant positioning, adjustable duration/amount/spread/size, reset controls and tooltips. Existing explicit exit choices remain valid.

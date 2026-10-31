@@ -1,5 +1,12 @@
 # Validation and scope
 
+## Unreleased beat spotlight — source-only work
+
+- Production build and all 26 core/service tests passed locally. Added checks for automatic hold reservation/restoration, stationary focus after landing, deterministic backward evaluation, exact corrected-marker hits, BPM offset/grid timing with floating-point boundary tolerance, legacy defaults, alternating/punch zoom rhythms and camera framing across all formats.
+- Actual Electron/SwiftShader checks passed: spotlight activation extends the timeline; hit/offbeat frames differ; repeated seeking gives identical pixels; Shorts bars remain black; post-effect controls change the output; built-in motion changes retain the transition; and group Reset disables it. No shader/renderer errors were recorded. The internal spotlight frame was visually inspected against the reference sheets.
+- A separate hidden-worker export successfully encoded an internal 360×640 H.264 clip at 60 FPS with the spotlight, glow, color and post effects. The framebuffer copy uses display RGB and an isolated five-tap radial filter, preserving the existing render pipeline when the effect is off. This is an artistic interpretation of the stills; audio timing comes from the selected markers/grid.
+- Added a desktop spotlight regression for the next authorized native validation. No Windows package, version bump or release was produced; source commits use [skip ci] and the 0.2.9 hold remains in place.
+
 ## Unreleased move light — source-only work
 
 - Production build and all 22 core/service tests passed locally. New checks cover optional/backward-compatible defaults, timing gates and fades, bounded flicker, and reconstruction after backward seeking.

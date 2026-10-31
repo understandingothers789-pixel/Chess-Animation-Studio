@@ -16,6 +16,22 @@ import {
 } from "../core/timeline";
 import { buildGame, type Game } from "../core/chess";
 import { type Project, type Format } from "../core/project";
+function cycleColor(
+  base: string,
+  rainbow: Project["pulse"]["rainbow"],
+  time: number,
+) {
+  const colors = rainbow.colors.filter((_, i) => rainbow.active[i]);
+  if (!rainbow.enabled || !colors.length) return new T.Color(base);
+  const pos = ((((time / rainbow.duration) % 1) + 1) % 1) * colors.length;
+  const i = Math.floor(pos),
+    t = pos - i,
+    smooth = t * t * (3 - 2 * t);
+  return new T.Color(colors[i]).lerp(
+    new T.Color(colors[(i + 1) % colors.length]),
+    smooth,
+  );
+}
 const symbols: Record<string, string> = {
   book: "▤",
   brilliant: "!!",
@@ -571,7 +587,8 @@ export class Scene {
         m.color.lerp(new T.Color(fx.beatColor), level * fx.beatStrength);
       }
 
-      if (s.userData.dark) m.color.lerp(new T.Color(p.pulse.color), e.pulse);
+      if (s.userData.dark)
+        m.color.lerp(cycleColor(p.pulse.color, p.pulse.rainbow, time), e.pulse);
     }
     for (const m of this.paths) m.visible = false;
     if (e.effect) {
@@ -807,7 +824,9 @@ export class Scene {
     sm.stencilFail = sm.stencilZFail = sm.stencilZPass = T.KeepStencilOp;
     // Stencil clips every fragment, including the flake edges, to visible squares.
     this.snow.renderOrder = p.ambient.insideBoard ? 10 : 0;
-    sm.uniforms.color.value.set(p.ambient.color);
+    sm.uniforms.color.value.copy(
+      cycleColor(p.ambient.color, p.ambient.rainbow, time),
+    );
     sm.uniforms.softness.value = p.ambient.softness;
     sm.uniforms.pixels.value = viewH / (this.camera.top - this.camera.bottom);
     const bp = this.bursts.geometry.attributes.position,

@@ -64,6 +64,7 @@ export function IntroInspector({
           <Range
             label="Intro clip length"
             value={p.lead}
+            resetValue={blank().lead}
             min={0.2}
             max={8}
             step={0.1}
@@ -78,6 +79,7 @@ export function IntroInspector({
           <Range
             label="Opener animation length"
             value={p.boardFX.introDuration}
+            resetValue={blank().boardFX.introDuration}
             min={0.2}
             max={8}
             step={0.1}
@@ -92,6 +94,7 @@ export function IntroInspector({
           <Range
             label="Opener starting size"
             value={p.boardFX.introZoom}
+            resetValue={blank().boardFX.introZoom}
             min={0.2}
             max={1}
             onChange={(v) =>
@@ -103,6 +106,7 @@ export function IntroInspector({
           <Range
             label="Opener turn"
             value={p.boardFX.introTurn}
+            resetValue={blank().boardFX.introTurn}
             min={-90}
             max={90}
             step={1}

@@ -51,6 +51,20 @@ export const badgeNames = [
 ] as const;
 const n = (lo: number, hi: number) => z.number().finite().min(lo).max(hi);
 const color = z.string().regex(/^#[0-9a-f]{6}$/i);
+export const rainbowDefaults = {
+  enabled: false,
+  duration: 12,
+  colors: ["#80262c", "#805020", "#707020", "#206040", "#203f80", "#602b70"],
+  active: [true, true, true, true, true, true],
+};
+const rainbowSchema = z
+  .object({
+    enabled: z.boolean(),
+    duration: n(1, 120),
+    colors: z.array(color).length(6),
+    active: z.array(z.boolean()).length(6),
+  })
+  .default(rainbowDefaults);
 const str = z.string().max(1000);
 export const keySchema = z.object({
   at: n(0, 1),
@@ -465,6 +479,7 @@ export const projectSchema = z.object({
     }),
   ),
   ambient: z.object({
+    rainbow: rainbowSchema,
     insideBoard: z.boolean().default(true),
     enabled: z.boolean(),
     count: n(0, 400).int(),
@@ -480,6 +495,7 @@ export const projectSchema = z.object({
     layer: z.enum(["over", "behind", "both"]),
   }),
   pulse: z.object({
+    rainbow: rainbowSchema,
     enabled: z.boolean(),
     color,
     intensity: n(0, 1),
@@ -610,6 +626,7 @@ export function blank(): Project {
       ]),
     ) as Project["layouts"],
     ambient: {
+      rainbow: structuredClone(rainbowDefaults),
       insideBoard: true,
       enabled: true,
       count: 100,
@@ -625,6 +642,7 @@ export function blank(): Project {
       layer: "over",
     },
     pulse: {
+      rainbow: structuredClone(rainbowDefaults),
       enabled: false,
       color: "#aaa2fa",
       intensity: 0.25,

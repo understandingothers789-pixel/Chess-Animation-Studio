@@ -920,6 +920,7 @@ export function App() {
             <Range
               label="Export start"
               value={rangeStart}
+              resetValue={0}
               min={0}
               max={Math.max(0, end - 0.1)}
               step={0.05}
@@ -929,6 +930,7 @@ export function App() {
             <Range
               label="Export end"
               value={rangeEnd}
+              resetValue={end}
               min={Math.min(end, rangeStart + 0.1)}
               max={end}
               step={0.05}

@@ -2,6 +2,7 @@ import { settingHelp } from "./help";
 import { useState } from "react";
 import {
   effect,
+  rainbowDefaults,
   blank,
   presets,
   formats,
@@ -51,6 +52,84 @@ export interface PanelProps {
   promotion: string;
   setPromotion: (s: string) => void;
   analysisProgress: { done: number; total: number } | null;
+}
+function RainbowControls({
+  label,
+  settings,
+  edit,
+}: {
+  label: string;
+  settings: Project["pulse"]["rainbow"];
+  edit: (fn: (v: Project["pulse"]["rainbow"]) => void) => void;
+}) {
+  return (
+    <div className="rainbow-controls">
+      <Toggle
+        label={label + " rainbow"}
+        checked={settings.enabled}
+        onChange={(v) =>
+          edit((r) => {
+            r.enabled = v;
+          })
+        }
+      />
+      {settings.enabled && (
+        <>
+          <p className="hint">
+            Choose the colors to cycle through. Uncheck a color to skip it; edit
+            the swatch to choose a darker shade.
+          </p>
+          <Range
+            label={label + " color cycle length"}
+            value={settings.duration}
+            min={1}
+            max={120}
+            step={1}
+            unit="s"
+            resetValue={rainbowDefaults.duration}
+            onChange={(v) =>
+              edit((r) => {
+                r.duration = v;
+              })
+            }
+          />
+          {settings.colors.map((c, i) => (
+            <div className="button-row" key={i}>
+              <Toggle
+                label={label + " color " + (i + 1) + " enabled"}
+                checked={settings.active[i]}
+                onChange={(v) =>
+                  edit((r) => {
+                    r.active[i] = v;
+                  })
+                }
+              />
+              <Color
+                label={label + " color " + (i + 1)}
+                value={c}
+                onChange={(v) =>
+                  edit((r) => {
+                    r.colors[i] = v;
+                  })
+                }
+              />
+              <button
+                title="Reset color"
+                aria-label={"Reset " + label + " color " + (i + 1)}
+                onClick={() =>
+                  edit((r) => {
+                    r.colors[i] = rainbowDefaults.colors[i];
+                  })
+                }
+              >
+                ↺
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
 }
 export function GamePanel(q: PanelProps) {
   const { project: p, edit } = q;
@@ -405,6 +484,7 @@ export function MusicPanel(q: PanelProps) {
               }[k]
             }
             value={p.music[k]}
+            resetValue={blank().music[k]}
             min={k === "offset" ? -60 : 0}
             max={
               k === "volume"
@@ -621,6 +701,7 @@ export function MusicPanel(q: PanelProps) {
         <Range
           label="Chess sounds volume"
           value={p.audio.chess}
+          resetValue={blank().audio.chess}
           min={0}
           max={2}
           onChange={(v) =>
@@ -632,6 +713,7 @@ export function MusicPanel(q: PanelProps) {
         <Range
           label="Effect sounds volume"
           value={p.audio.effects}
+          resetValue={blank().audio.effects}
           min={0}
           max={2}
           onChange={(v) =>
@@ -692,6 +774,7 @@ export function MusicPanel(q: PanelProps) {
             <Range
               label="Cue offset"
               value={c.time}
+              resetValue={0}
               min={c.move ? -10 : 0}
               max={c.move ? 10 : 600}
               step={0.01}
@@ -704,6 +787,7 @@ export function MusicPanel(q: PanelProps) {
             <Range
               label="Cue volume"
               value={c.volume}
+              resetValue={1}
               min={0}
               max={2}
               onChange={(v) =>
@@ -842,6 +926,7 @@ export function ScenePanel(q: PanelProps) {
             key={k}
             label={{ x: "Layout X", y: "Layout Y", zoom: "Layout zoom" }[k]}
             value={layout[k]}
+            resetValue={k === "zoom" ? 1 : 0}
             min={k === "zoom" ? 0.6 : k === "y" ? -4 : -3}
             max={k === "zoom" ? 1.5 : k === "y" ? 4 : 3}
             onChange={(v) =>
@@ -1036,6 +1121,11 @@ export function ScenePanel(q: PanelProps) {
             }
           />
         ))}
+        <RainbowControls
+          label="Snow"
+          settings={p.ambient.rainbow}
+          edit={(fn) => edit("Snow rainbow", (p) => fn(p.ambient.rainbow))}
+        />
         <Color
           label="Particle color"
           value={p.ambient.color}
@@ -1076,6 +1166,7 @@ export function ScenePanel(q: PanelProps) {
         <Range
           label="Intro lead-in"
           value={p.lead}
+          resetValue={blank().lead}
           min={0.2}
           max={8}
           onChange={(v) =>
@@ -1240,6 +1331,11 @@ export function ScenePanel(q: PanelProps) {
             })
           }
         />
+        <RainbowControls
+          label="Pulse"
+          settings={p.pulse.rainbow}
+          edit={(fn) => edit("Pulse rainbow", (p) => fn(p.pulse.rainbow))}
+        />
         <Color
           label="Pulse color"
           value={p.pulse.color}
@@ -1254,6 +1350,7 @@ export function ScenePanel(q: PanelProps) {
             key={k}
             label={"Pulse " + k}
             value={p.pulse[k]}
+            resetValue={blank().pulse[k]}
             min={k === "intensity" ? 0 : k === "attack" ? 0.01 : 0.05}
             max={k === "attack" ? 0.4 : 1}
             onChange={(v) =>
@@ -1404,6 +1501,7 @@ export function AnalysisPanel(q: PanelProps) {
               }[k]
             }
             value={p.analysis[k]}
+            resetValue={blank().analysis[k]}
             min={
               k === "depth"
                 ? 4

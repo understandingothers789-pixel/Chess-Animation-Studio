@@ -193,7 +193,8 @@ const help: Record<string, string> = {
     "Choose a motion channel: travel = route progress; x/y/z = piece offsets; rx/ry/rz = rotation in degrees; scale/opacity = size/visibility; cameraX/Y/Zoom = framing.",
   "Mute music":
     "Silence the soundtrack in preview and export without removing it.",
-  "Lock beat markers": "Prevent accidental dragging, keyboard edits, adding, deleting or changing beat markers. Unlock to edit them again.",
+  "Lock beat markers":
+    "Prevent accidental dragging, keyboard edits, adding, deleting or changing beat markers. Unlock to edit them again.",
   "Music volume":
     "Soundtrack gain. 1 is its original level; values above 1 amplify it.",
   "Project start offset":
@@ -360,6 +361,14 @@ const help: Record<string, string> = {
 };
 export function settingHelp(label: string): string {
   if (help[label]) return help[label];
+  if (/^(Snow|Pulse) rainbow$/.test(label))
+    return "Cycle smoothly through your chosen colors during the video; disable for a single color.";
+  if (/^(Snow|Pulse) color cycle length$/.test(label))
+    return "Seconds for one full cycle through the enabled colors.";
+  if (/^(Snow|Pulse) color [1-6] enabled$/.test(label))
+    return "Include this color in the cycle; disable it to skip the color.";
+  if (/^(Snow|Pulse) color [1-6]$/.test(label))
+    return "Choose this color for the cycle, including darker shades.";
   if (/^Check move /.test(label))
     return "Include this move in batch edits. Ctrl-click toggles moves; Shift-click selects a range.";
   if (/^Key \d+ time$/.test(label))

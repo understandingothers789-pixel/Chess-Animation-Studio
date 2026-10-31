@@ -322,6 +322,13 @@ export function Inspector({
                     }[k]
                   }
                   value={e.capture[k]}
+                  onReset={() =>
+                    edit("Reset capture " + k, (p) =>
+                      each(p, (v) => {
+                        v.capture[k] = effect(v.preset).capture[k];
+                      }),
+                    )
+                  }
                   onChange={(v) => capture(k, v)}
                   min={
                     k === "grow"
@@ -501,6 +508,7 @@ export function Inspector({
                       }[k]
                     }
                     value={c[k]}
+                    resetValue={camera()[k]}
                     min={
                       k === "zoom"
                         ? 0.6
@@ -860,6 +868,13 @@ export function Inspector({
               <Range
                 label="Trail width"
                 value={e.highlight.width}
+                onReset={() =>
+                  edit("Reset highlight width", (p) =>
+                    each(p, (v) => {
+                      v.highlight.width = effect(v.preset).highlight.width;
+                    }),
+                  )
+                }
                 min={0.02}
                 max={0.6}
                 onChange={(v) => look("width", v)}
@@ -867,6 +882,13 @@ export function Inspector({
               <Range
                 label="Highlight glow"
                 value={e.highlight.glow}
+                onReset={() =>
+                  edit("Reset highlight glow", (p) =>
+                    each(p, (v) => {
+                      v.highlight.glow = effect(v.preset).highlight.glow;
+                    }),
+                  )
+                }
                 min={0}
                 max={1}
                 onChange={(v) => look("glow", v)}
@@ -874,6 +896,13 @@ export function Inspector({
               <Range
                 label="Highlight opacity"
                 value={e.highlight.opacity}
+                onReset={() =>
+                  edit("Reset highlight opacity", (p) =>
+                    each(p, (v) => {
+                      v.highlight.opacity = effect(v.preset).highlight.opacity;
+                    }),
+                  )
+                }
                 min={0}
                 max={1}
                 onChange={(v) => look("opacity", v)}
@@ -881,6 +910,13 @@ export function Inspector({
               <Range
                 label="Highlight reveal phase"
                 value={e.highlight.reveal}
+                onReset={() =>
+                  edit("Reset highlight reveal", (p) =>
+                    each(p, (v) => {
+                      v.highlight.reveal = effect(v.preset).highlight.reveal;
+                    }),
+                  )
+                }
                 min={0}
                 max={0.9}
                 onChange={(v) => look("reveal", v)}
@@ -888,6 +924,13 @@ export function Inspector({
               <Range
                 label="Highlight fade"
                 value={e.highlight.fade}
+                onReset={() =>
+                  edit("Reset highlight fade", (p) =>
+                    each(p, (v) => {
+                      v.highlight.fade = effect(v.preset).highlight.fade;
+                    }),
+                  )
+                }
                 min={0.02}
                 max={2}
                 onChange={(v) => look("fade", v)}
@@ -945,6 +988,13 @@ export function Inspector({
                     }[k]
                   }
                   value={e.badge[k]}
+                  onReset={() =>
+                    edit("Reset badge " + k, (p) =>
+                      each(p, (v) => {
+                        v.badge[k] = effect(v.preset).badge[k];
+                      }),
+                    )
+                  }
                   min={k === "size" ? 0.2 : k.startsWith("offset") ? -2 : 0}
                   max={
                     k === "size"

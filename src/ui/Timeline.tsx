@@ -120,6 +120,15 @@ export function Timeline({
         </label>
         <label>
           Timeline zoom
+          <button
+            type="button"
+            className="control-reset"
+            aria-label="Reset Timeline zoom"
+            title="Restore default timeline zoom"
+            onClick={() => setZoom(1)}
+          >
+            ↺
+          </button>
           <input
             title={settingHelp("Timeline zoom")}
             aria-description={settingHelp("Timeline zoom")}

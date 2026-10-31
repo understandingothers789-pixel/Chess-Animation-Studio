@@ -79,7 +79,7 @@ export function Timeline({
           </small>
         </div>
         <label title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping">
-          <input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap
+          <input type="checkbox" aria-label="Snap" title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping" aria-description="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap
         </label>
         <label>
           Timeline zoom

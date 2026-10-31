@@ -16,6 +16,7 @@ import {
   particle,
   shortsFraming,
   captureDustParticle,
+  evaluateMoveLight,
 } from "../src/core/timeline";
 import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
 describe("legal state and stable identities", () => {
@@ -264,5 +265,46 @@ describe("captured-piece dust", () => {
       delete old.moves[4].effect.capture[key];
     expect(parseProject(old).moves[4].effect.capture.dustDuration).toBe(0.7);
     expect(evaluate(parseProject(old), f.time).dust).toEqual([]);
+  });
+});
+
+describe("move light and flicker", () => {
+  it("is optional, backwards compatible, and fades around only the chosen move", () => {
+    const p = importPgn(blank(), "1. e4 e5 2. Nf3");
+    expect(evaluateMoveLight(blank(), 0).strength).toBe(0);
+    const old: any = structuredClone(p);
+    delete old.moves[0].effect.light;
+    expect(parseProject(old).moves[0].effect.light.enabled).toBe(false);
+    const s = segments(p)[1],
+      l = p.moves[1].effect.light;
+    l.enabled = true;
+    l.flicker = 0;
+    expect(evaluate(p, s.depart - 0.001).light.strength).toBe(0);
+    expect(evaluate(p, s.depart).light.strength).toBe(0);
+    expect(evaluate(p, s.depart + l.fadeIn + 0.01).light.strength).toBeCloseTo(
+      l.strength,
+    );
+    expect(
+      evaluate(p, s.finish + l.hold + l.fadeOut + 0.001).light.strength,
+    ).toBe(0);
+  });
+  it("bounds flicker and reconstructs the same light after seeking", () => {
+    const p = importPgn(blank(), "1. e4 e5");
+    p.moves[0].effect.light.enabled = true;
+    const s = segments(p)[0],
+      l = p.moves[0].effect.light,
+      t = s.depart + 0.5;
+    const first = evaluate(p, t).light;
+    evaluate(p, t + 1);
+    expect(evaluate(p, t).light).toEqual(first);
+    expect(evaluate(p, t + 0.047).light.strength).not.toBeCloseTo(
+      first.strength,
+      5,
+    );
+    for (let i = 0; i < 50; i++) {
+      const v = evaluate(p, s.depart + l.fadeIn + i * 0.01).light.strength;
+      expect(v).toBeGreaterThanOrEqual(l.strength * (1 - l.flicker));
+      expect(v).toBeLessThanOrEqual(l.strength);
+    }
   });
 });

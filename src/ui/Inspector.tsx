@@ -2,6 +2,7 @@ import { settingHelp } from "./help";
 import { useState } from "react";
 import {
   effect,
+  moveLightDefaults,
   camera,
   channels,
   presets,
@@ -191,6 +192,7 @@ export function Inspector({
                       m.effect = {
                         ...effect(v),
                         badge: m.effect.badge,
+                        light: m.effect.light,
                         cameras: m.effect.cameras,
                       };
                     }
@@ -514,6 +516,104 @@ export function Inspector({
           })()}
         {tab === "look" && (
           <>
+            <Section
+              title="Move light & flicker"
+              onReset={() => resetFields(["light"])}
+            >
+              <button
+                className="wide"
+                title="Apply the red light wash and restrained flicker to every selected move."
+                onClick={() =>
+                  change("light", { ...moveLightDefaults, enabled: true })
+                }
+              >
+                Apply red flicker
+              </button>
+              <Toggle
+                label="Move light wash"
+                checked={e.light.enabled}
+                onChange={(v) =>
+                  edit("Move light enabled", (p) =>
+                    each(p, (e) => {
+                      e.light.enabled = v;
+                    }),
+                  )
+                }
+              />
+              <Color
+                label="Move light color"
+                value={e.light.color}
+                onChange={(v) =>
+                  edit("Move light color", (p) =>
+                    each(p, (e) => {
+                      e.light.color = v;
+                    }),
+                  )
+                }
+              />
+              <Toggle
+                label="Match move highlights"
+                checked={e.light.highlights}
+                onChange={(v) =>
+                  edit("Move light highlights", (p) =>
+                    each(p, (e) => {
+                      e.light.highlights = v;
+                    }),
+                  )
+                }
+              />
+              {(
+                [
+                  "strength",
+                  "flicker",
+                  "speed",
+                  "fadeIn",
+                  "hold",
+                  "fadeOut",
+                ] as const
+              ).map((k) => (
+                <Range
+                  key={k}
+                  label={
+                    {
+                      strength: "Move light strength",
+                      flicker: "Move light flicker",
+                      speed: "Move flicker speed",
+                      fadeIn: "Move light fade in",
+                      hold: "Move light hold",
+                      fadeOut: "Move light fade out",
+                    }[k]
+                  }
+                  value={e.light[k]}
+                  min={k === "speed" ? 0.2 : 0}
+                  max={
+                    k === "strength"
+                      ? 0.65
+                      : k === "flicker"
+                        ? 0.8
+                        : k === "speed"
+                          ? 10
+                          : 2
+                  }
+                  step={0.01}
+                  resetValue={moveLightDefaults[k]}
+                  unit={
+                    k === "speed"
+                      ? " Hz"
+                      : ["fadeIn", "hold", "fadeOut"].includes(k)
+                        ? "s"
+                        : ""
+                  }
+                  onChange={(v) =>
+                    edit("Move light " + k, (p) =>
+                      each(p, (e) => {
+                        e.light[k] = v;
+                      }),
+                    )
+                  }
+                />
+              ))}
+            </Section>
             <Section
               title="Highlights & trail"
               onReset={() => resetFields(["highlight"])}

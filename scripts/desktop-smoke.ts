@@ -403,6 +403,37 @@ try {
     "PASS: cancellation removes temporary files and preserves the project.",
   );
   await page.getByRole("button", { name: "game", exact: true }).click();
+  await page.locator(".move-track button").nth(1).click();
+  await page.getByRole("button", { name: "look", exact: true }).click();
+  await page.getByLabel("Seek composition", { exact: true }).fill("3");
+  await page.waitForTimeout(200);
+  const plainPixels = await page
+    .locator(".preview-host canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page
+    .getByRole("button", { name: "Apply red flicker", exact: true })
+    .click();
+  await page.waitForTimeout(200);
+  const lightPixels = await page
+    .locator(".preview-host canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  assert.notEqual(lightPixels, plainPixels);
+  await page.getByLabel("Seek composition", { exact: true }).fill("8");
+  await page.waitForTimeout(100);
+  await page.getByLabel("Seek composition", { exact: true }).fill("3");
+  await page.waitForTimeout(200);
+  assert.equal(
+    await page
+      .locator(".preview-host canvas")
+      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    lightPixels,
+  );
+  await page
+    .getByRole("button", { name: "Reset Move light & flicker", exact: true })
+    .click();
+  console.log(
+    "PASS: per-move light wash changes pixels and reconstructs exactly after backward seeking.",
+  );
   const dustPgn = "1. e4 d5 2. exd5 Qxd5";
   await page.getByLabel("Game text", { exact: true }).fill(dustPgn);
   await page

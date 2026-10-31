@@ -1,5 +1,23 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Move light wash":
+    "Tint the board and pieces during this move. Applies to the selected moves; disabled by default.",
+  "Move light color":
+    "Color of the move's lighting wash. Red is the starting look; any color can be chosen.",
+  "Match move highlights":
+    "Temporarily use the wash color for this move's square highlights without changing their saved colors.",
+  "Move light strength":
+    "Maximum opacity of the colored light wash. Lower values keep the original board colors more visible.",
+  "Move light flicker":
+    "Depth of the light variation. Zero gives steady lighting; higher values vary the wash while the board stays visible.",
+  "Move flicker speed":
+    "Base flicker frequency in cycles per second (Hz). A second gentle rhythm adds variation.",
+  "Move light fade in":
+    "Seconds used to bring the wash in after the piece starts moving.",
+  "Move light hold":
+    "Seconds to keep the wash after the piece finishes its move before fading it out.",
+  "Move light fade out":
+    "Seconds used to return from the colored wash to the normal board lighting.",
   "Dust duration":
     "Seconds for captured-piece fragments to disperse and fade, including a tail after the move ends.",
   "Dust amount":

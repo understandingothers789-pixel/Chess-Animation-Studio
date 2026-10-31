@@ -81,6 +81,17 @@ export function camera(): Camera {
     transition: 0.65,
   };
 }
+export const moveLightDefaults = {
+  enabled: false,
+  color: "#ff3030",
+  strength: 0.28,
+  flicker: 0.22,
+  speed: 3.5,
+  fadeIn: 0.12,
+  fadeOut: 0.25,
+  hold: 0.15,
+  highlights: true,
+};
 export const effectSchema = z.object({
   preset: z.enum(presets),
   duration: n(0.2, 30),
@@ -107,6 +118,19 @@ export const effectSchema = z.object({
   overshoot: n(0, 0.3),
   scale: n(1, 3),
   peak: n(0.1, 0.95),
+  light: z
+    .object({
+      enabled: z.boolean(),
+      color,
+      strength: n(0, 0.65),
+      flicker: n(0, 0.8),
+      speed: n(0.2, 10),
+      fadeIn: n(0, 2),
+      fadeOut: n(0, 2),
+      hold: n(0, 2),
+      highlights: z.boolean(),
+    })
+    .default(() => ({ ...moveLightDefaults })),
   capture: z.object({
     grow: n(1, 3),
     expansion: n(0.02, 0.5),
@@ -176,6 +200,7 @@ export function effect(preset: Preset = "slide"): Effect {
     overshoot: 0,
     scale: 1,
     peak: 0.6,
+    light: { ...moveLightDefaults },
     capture: {
       grow: 1.45,
       expansion: 0.12,

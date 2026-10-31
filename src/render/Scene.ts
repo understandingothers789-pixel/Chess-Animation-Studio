@@ -48,6 +48,7 @@ export class Scene {
   private snow: T.Points;
   private bursts: T.Points;
   private captureDust: T.Points;
+  private moveLight: T.Mesh;
   private game: Game | undefined;
   private project: Project | undefined;
   private width = 1;
@@ -68,6 +69,25 @@ export class Scene {
     this.renderer.autoClear = false;
     this.renderer.setClearColor("#111918");
     this.scene.add(this.root);
+    this.moveLight = new T.Mesh(
+      new T.PlaneGeometry(2, 2),
+      new T.ShaderMaterial({
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        uniforms: {
+          tint: { value: new T.Color("#ff3030") },
+          strength: { value: 0 },
+        },
+        vertexShader:
+          "varying vec2 uvLight; void main(){uvLight=uv;gl_Position=vec4(position.xy,0.,1.);}",
+        fragmentShader:
+          "varying vec2 uvLight;uniform vec3 tint;uniform float strength;void main(){float edge=smoothstep(.1,.7,length(uvLight-.5));gl_FragColor=vec4(pow(tint,vec3(1./2.2)),strength*(.85+.15*edge));}",
+      }),
+    );
+    this.moveLight.frustumCulled = false;
+    this.moveLight.renderOrder = 27; // tint the board/pieces while badges remain readable
+    this.scene.add(this.moveLight);
     this.backgroundCamera.position.z = 2;
     this.background = new T.Mesh(
       new T.PlaneGeometry(2, 2),
@@ -491,7 +511,17 @@ export class Scene {
         m.position.x = s.charCodeAt(0) - 97 - 3.5;
         m.position.y = Number(s[1]) - 1 - 3.5;
         const mat = m.material as T.MeshBasicMaterial;
-        mat.color.set(isFrom ? hl.source : isTo ? hl.destination : hl.path);
+        mat.color.set(
+          e.effect.light.enabled &&
+            e.effect.light.highlights &&
+            e.light.strength > 0
+            ? e.effect.light.color
+            : isFrom
+              ? hl.source
+              : isTo
+                ? hl.destination
+                : hl.path,
+        );
         mat.opacity = hl.opacity * fade * reveal;
         mat.color.multiplyScalar(1 + hl.glow * 0.3);
       }
@@ -718,11 +748,17 @@ export class Scene {
       0.35;
     (this.captureDust.material as T.ShaderMaterial).uniforms.pixels.value =
       viewH / (this.camera.top - this.camera.bottom);
+    const lm = this.moveLight.material as T.ShaderMaterial;
+    lm.uniforms.tint.value.set(e.light.color);
+    lm.uniforms.strength.value = e.light.strength;
+    this.moveLight.visible = e.light.strength > 0.0001;
     if (square || short) {
       this.root.visible = false;
+      this.moveLight.visible = false;
       this.renderer.clearDepth();
       if (!short) this.renderer.render(this.scene, this.camera);
       this.root.visible = true;
+      this.moveLight.visible = e.light.strength > 0.0001;
       this.renderer.setViewport(0, viewY, w, viewH);
       this.renderer.setScissor(0, viewY, w, viewH);
       this.renderer.setScissorTest(true);

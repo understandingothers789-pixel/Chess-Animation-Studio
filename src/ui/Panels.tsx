@@ -208,7 +208,7 @@ export function StylesPanel(q: PanelProps) {
   const [scope, setScope] = useState<"selected" | "checked" | "all">(
     "selected",
   );
-  const apply = (e: Effect) =>
+  const apply = (e: Effect, preserveLight = false) =>
     q.edit("Apply style", (p) => {
       p.moves.forEach((m, i) => {
         if (
@@ -218,7 +218,12 @@ export function StylesPanel(q: PanelProps) {
         ) {
           const b = m.effect.badge,
             c = m.effect.cameras;
-          m.effect = { ...structuredClone(e), badge: b, cameras: c };
+          m.effect = {
+            ...structuredClone(e),
+            badge: b,
+            cameras: c,
+            ...(preserveLight ? { light: m.effect.light } : {}),
+          };
         }
       });
     });
@@ -241,7 +246,7 @@ export function StylesPanel(q: PanelProps) {
               className="preset-card"
               title={`${presetLabels[v]}: apply this animation using the scope chosen in Apply style to.`}
               key={v}
-              onClick={() => apply(effect(v))}
+              onClick={() => apply(effect(v), true)}
             >
               <span>
                 {

@@ -110,6 +110,7 @@ export interface CaptureDust {
 export interface Frame {
   time: number;
   dust: CaptureDust[];
+  light: { color: string; strength: number };
   index: number;
   u: number;
   pieces: Visual[];
@@ -404,6 +405,7 @@ export function evaluate(
   return {
     time,
     dust,
+    light: evaluateMoveLight(p, time, index, seq),
     index,
     u,
     pieces,
@@ -505,4 +507,51 @@ export function captureDustParticle(
       event.elapsed > released ? Math.pow(Math.max(0, 1 - t), 1.6) * 0.9 : 0,
     size: event.size * (0.55 + random(seed + 5)) * (1 - t * 0.55),
   };
+}
+
+/** Optional move accents, evaluated from absolute time so seeking/export agree. */
+export function evaluateMoveLight(
+  p: Project,
+  time: number,
+  index?: number,
+  seq = segments(p),
+) {
+  let chosen = { color: "#ff3030", strength: 0 };
+  if (!seq.length) return chosen;
+  const at =
+    index ??
+    Math.max(
+      0,
+      seq.findIndex((s) => time < s.end),
+    );
+  for (
+    let j =
+      index === undefined && time >= (seq.at(-1)?.end ?? 0)
+        ? seq.length - 1
+        : at;
+    j >= 0;
+    j--
+  ) {
+    const s = seq[j],
+      l = p.moves[j].effect.light;
+    if (time - s.finish > 4) break;
+    if (!l.enabled || time < s.depart || time > s.finish + l.hold + l.fadeOut)
+      continue;
+    const age = time - s.depart;
+    const fadeIn = l.fadeIn > 0 ? ease(age / l.fadeIn) : 1;
+    const fadeOut =
+      l.fadeOut > 0
+        ? 1 - ease((time - s.finish - l.hold) / l.fadeOut)
+        : time <= s.finish + l.hold
+          ? 1
+          : 0;
+    const variation =
+      0.5 +
+      0.3 * Math.sin(age * l.speed * Math.PI * 2) +
+      0.2 * Math.sin(age * l.speed * Math.PI * 3.46 + 0.8);
+    const strength =
+      l.strength * fadeIn * fadeOut * (1 - l.flicker * variation);
+    if (strength > chosen.strength) chosen = { color: l.color, strength };
+  }
+  return chosen;
 }

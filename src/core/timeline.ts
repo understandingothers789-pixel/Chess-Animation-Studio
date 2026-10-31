@@ -150,7 +150,7 @@ export interface Frame {
 function cameraTarget(p: Project, g: Game, i: number, f: Format, end = false) {
   const s = g.steps[i],
     c = s?.move.effect.cameras[f] ?? camera();
-  if (!s || c.mode === "full")
+  if (!s || c.mode === "full" || (f === "vertical" && !p.shorts.enabled && !s.move.effect.cameras[f]))
     return { x: 0, y: 0, zoom: 1, tilt: c.tilt, rotation: c.rotation };
   const a = xy(s.from),
     b = xy(s.to),

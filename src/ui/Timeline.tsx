@@ -29,6 +29,7 @@ export function Timeline({
   edit: Edit;
 }) {
   const [zoom, setZoom] = useState(1);
+  const [snap, setSnap] = useState(true);
   const host = useRef<HTMLDivElement>(null),
     length = duration(p),
     seq = segments(p),
@@ -49,7 +50,11 @@ export function Timeline({
         if (b.sourceTime !== undefined)
           b.sourceTime = t + p.music.trimStart - p.music.offset;
       });
-    } else seek(t);
+    } else {
+      const boundaries = [0, p.lead, length, ...seq.flatMap((segment) => [segment.start, segment.end])];
+      const nearest = boundaries.reduce((best, boundary) => Math.abs(boundary - t) < Math.abs(best - t) ? boundary : best, boundaries[0]);
+      seek(snap && !e.altKey && Math.abs(nearest - t) * r.width / length <= 8 ? nearest : t);
+    }
   };
   const sourceLength = p.music.sourceDuration || length,
     wave = p.waveform
@@ -73,6 +78,9 @@ export function Timeline({
             {p.moves.length} moves · {clock(length)}
           </small>
         </div>
+        <label title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping">
+          <input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap
+        </label>
         <label>
           Timeline zoom
           <input

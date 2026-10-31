@@ -1,5 +1,11 @@
 # Validation and scope
 
+## Unreleased capture dust — source-only work
+
+- Production build and all 20 core/service tests passed locally. Tests cover dust on ordinary slide captures, victim color/type/location, fragments lasting into the following move, deterministic evaluation, particle expiry, en passant positioning and backward compatibility with explicit legacy fade choices.
+- Actual Electron/SwiftShader checks passed: a normal capture defaults to dust, the eroding artwork and sampled cloud render without shader/renderer errors, backward seeking restores identical pixels, and changing the exit to Fade produces different pixels. The internal capture frame was visually inspected; dust is depth-tested behind the capturing piece.
+- Added a capture/repeated-seek regression to the existing desktop smoke script for the next authorized native build. No native Windows build or release was run for this unreleased work. The existing source-only hold and [skip ci] commit policy remain in effect.
+
 ## Unreleased Shorts framing — source-only work
 
 - Production build and all 18 core/service tests passed locally. New checks cover legacy projects without Shorts data, portrait viewport dimensions, cropped board width, bounded camera centers and deterministic backward-seek framing.

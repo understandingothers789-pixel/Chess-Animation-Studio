@@ -124,3 +124,11 @@ Adjust **Visible board width** (smaller means closer), **Shorts board height** (
 Reset restores the Shorts group defaults. These controls have explanatory tooltips. Older saved projects load with Shorts disabled. The same crop renderer serves preview, presentation and export, and clicking in the surrounding bars does not enter board moves. Background images remain available in the other views; Shorts uses its dedicated bar color.
 
 Reference: four user-uploaded sheets, each with a top and bottom frame (eight reference frames total), showing an enlarged partial board in a portrait video. This implements the board framing rather than the video's social-media overlays. This work is committed for a later release; **0.2.9 has not been published**.
+
+## Unreleased development: captured pieces crumble into dust
+
+New move presets use **Crumble into dust** as the default captured-piece exit, including captures made with Clean slide, Half sway and other movement presets. The victim erodes in small patches while fragments sampled from its silhouette and artwork colors drift outward/downward and fade. The dust sits behind the capturing piece and can remain briefly after the move ends. En passant dust originates on the captured pawn’s actual square.
+
+Select a capture and open **Motion → Capture impact → Captured piece exit**. The section opens automatically for capture moves. Choose **Crumble into dust**, then adjust **Dust duration**, **Dust amount**, **Dust spread** and **Dust fragment size**. These settings support tooltips, individual resets, the capture-group reset and editing multiple selected moves. Impact particles are the separate optional capture-preset burst; dust comes from the selected exit mode.
+
+Existing saved moves that explicitly use Fade, Shrink or Drop keep their choices. Select **Crumble into dust** or use the capture-group Reset to apply the new default to those moves. The bundled Opera sample now uses the new default. This remains source-only work; the 0.2.9 release hold still applies.

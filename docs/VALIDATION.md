@@ -1,5 +1,11 @@
 # Validation and scope
 
+## Unreleased move light — source-only work
+
+- Production build and all 22 core/service tests passed locally. New checks cover optional/backward-compatible defaults, timing gates and fades, bounded flicker, and reconstruction after backward seeking.
+- Actual Electron/SwiftShader checks passed: red wash applies to the selected two moves, changes rendered pixels, reconstructs identical pixels after backward seeking, preserves clean black Shorts bars, survives a built-in motion-preset change, leaves the next unselected move off, and resets correctly. No shader or renderer exceptions were recorded. The internal screenshot was visually inspected against the red-light reference sheets.
+- The full-viewport tint draws after board/pieces/dust and before badge artwork. In cropped/square portrait views it is clipped to the board viewport and hidden during the outer-background pass. Added a light-render/repeated-seek check to the desktop smoke script for the next authorized native build. No new native Windows build, release or download was produced; the 0.2.9 hold remains in effect.
+
 ## Unreleased capture dust — source-only work
 
 - Production build and all 20 core/service tests passed locally. Tests cover dust on ordinary slide captures, victim color/type/location, fragments lasting into the following move, deterministic evaluation, particle expiry, en passant positioning and backward compatibility with explicit legacy fade choices.

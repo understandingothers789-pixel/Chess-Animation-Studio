@@ -132,3 +132,11 @@ New move presets use **Crumble into dust** as the default captured-piece exit, i
 Select a capture and open **Motion → Capture impact → Captured piece exit**. The section opens automatically for capture moves. Choose **Crumble into dust**, then adjust **Dust duration**, **Dust amount**, **Dust spread** and **Dust fragment size**. These settings support tooltips, individual resets, the capture-group reset and editing multiple selected moves. Impact particles are the separate optional capture-preset burst; dust comes from the selected exit mode.
 
 Existing saved moves that explicitly use Fade, Shrink or Drop keep their choices. Select **Crumble into dust** or use the capture-group Reset to apply the new default to those moves. The bundled Opera sample now uses the new default. This remains source-only work; the 0.2.9 release hold still applies.
+
+## Unreleased development: move light and flicker
+
+Select one or more moves, then open **Look → Move light & flicker → Apply red flicker**. This adds a red wash over the board and pieces during those moves, with restrained brightness variation. **Match move highlights** temporarily makes their square highlights match the light color while keeping the saved highlight colors intact. Badges draw above the wash; Shorts and square-in-vertical surrounding bars retain their normal colors.
+
+Edit light color, strength, flicker depth/speed, fade-in time, post-move hold and fade-out time. Zero flicker makes the wash steady. The board remains visible at every flicker level. Each numeric setting has a reset; the group Reset turns the effect off and restores its defaults. Edits apply to the selected moves and support Undo. The effect is optional and disabled on older projects and new moves until chosen.
+
+Changing a built-in movement preset preserves the move’s light settings. A saved full custom style includes its light settings. The effect uses exact project time for preview, presentation and export, including the fade after a move. This remains source-only work under the 0.2.9 release hold.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Adds optional per-move colored light washes with restrained flicker, a one-click red look, highlight color matching, selectable-move editing, fade/hold controls, numeric/group resets and tooltips. Uses deterministic time evaluation and leaves Shorts bars and badge artwork untinted. Built-in motion-preset changes preserve the light settings.
+
 Makes captured-piece dust the default exit for new move presets and the Opera sample. Adds cell-based silhouette erosion and artwork-colored fragments, bounded particle tails that survive move boundaries, en passant positioning, adjustable duration/amount/spread/size, reset controls and tooltips. Existing explicit exit choices remain valid.
 
 Adds a cropped 9:16 Shorts view based on the eight reference frames across four sheets. Includes adjustable board width, window height/position, bar color and action-tracking strength, plus reset and tooltips. Shares framing across preview, presentation and export and preserves older projects with the new mode off. Source-only development; no 0.2.9 download or release is published yet.

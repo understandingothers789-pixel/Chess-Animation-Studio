@@ -295,6 +295,7 @@ export function App() {
           stop();
           return;
         }
+        audio.current?.updateMusic(latest.current, t);
         setTime(t);
         raf = requestAnimationFrame(tick);
       };
@@ -306,6 +307,9 @@ export function App() {
       audio.current?.stop();
     };
   }, [playing]);
+  useEffect(() => {
+    audio.current?.updateMusic(p, timeRef.current);
+  }, [p.music.volume, p.music.muted, p.music.volumePoints]);
   const lastPresentation = useRef(0);
   useEffect(() => {
     if (playing && performance.now() - lastPresentation.current < 100) return;
@@ -609,6 +613,10 @@ export function App() {
             <Save size={15} /> Save
           </button>
           <button onClick={() => save(true)}>Save as</button>
+          <button onClick={() => run(async () => {
+            const result = await window.studio.projectReport(latest.current);
+            if (result) message("Project settings report saved.");
+          })}>Export settings report</button>
           <span className="divider" />
           <button
             title="Undo"

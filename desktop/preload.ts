@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("studio", {
   open: invoke("open"),
   openPath: invoke("openPath"),
   save: invoke("save"),
+  projectReport: invoke("projectReport"),
   recover: invoke("recover"),
   discardRecovery: invoke("discardRecovery"),
   autosave: invoke("autosave"),

@@ -25,6 +25,7 @@ export interface Studio {
   open(): Promise<{ project: Project; path: string } | null>;
   openPath(path: string): Promise<{ project: Project; path: string }>;
   save(p: Project, as: boolean): Promise<string | null>;
+  projectReport(p: Project): Promise<string | null>;
   recover(): Promise<{ project: Project; path: string | null } | null>;
   discardRecovery(): Promise<void>;
   autosave(p: Project): Promise<void>;

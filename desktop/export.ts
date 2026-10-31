@@ -226,6 +226,7 @@ export class VideoJob {
       volume: number,
       fadeIn = 0,
       fadeOut = 0,
+      automation = "",
     ) => {
       const idx = input++;
       args.push("-i", file);
@@ -233,7 +234,7 @@ export class VideoJob {
       const parts = [
         `atrim=start=${Math.max(0, trimStart)}${trimEnd > 0 ? `:end=${trimEnd}` : ""}`,
         "asetpts=PTS-STARTPTS",
-        `volume=${volume}`,
+        automation ? `volume='${automation}':eval=frame` : `volume=${volume}`,
       ];
       if (fadeIn) parts.push(`afade=t=in:d=${fadeIn}`);
       if (fadeOut && trimEnd > trimStart)
@@ -261,6 +262,17 @@ export class VideoJob {
           p.music.fadeIn - Math.max(0, this.options.start - p.music.offset),
         ),
         p.music.fadeOut,
+        (() => {
+          const points = [...p.music.volumePoints].sort((a, b) => a.time - b.time);
+          if (!points.length) return "";
+          const origin = Math.max(this.options.start, p.music.offset);
+          let expr = String(points[points.length - 1].value);
+          for (let i = points.length - 2; i >= 0; i--) {
+            const a = points[i], b = points[i + 1];
+            expr = `if(lt(t+${origin},${b.time}),${a.value}+(${b.value}-${a.value})*(t+${origin}-${a.time})/${b.time - a.time},${expr})`;
+          }
+          return `if(lt(t+${origin},${points[0].time}),${points[0].value},${expr})`;
+        })(),
       );
     }
     const moveSound = path.join(this.temp, "move.wav"),

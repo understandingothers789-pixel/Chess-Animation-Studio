@@ -420,6 +420,15 @@ export function MusicPanel(q: PanelProps) {
             onChange={(v) => changeMusic(k, v)}
           />
         ))}
+        <p className="hint">Volume points smoothly change music level over time. At the playhead, set Music volume, then add a point.</p>
+        <button className="wide" onClick={() => edit("Add music volume point", (p) => {
+          const t = Math.round(q.time * 1000) / 1000;
+          p.music.volumePoints = [...p.music.volumePoints.filter((point) => point.time !== t), { time: t, value: p.music.volume }].sort((a, b) => a.time - b.time);
+        })}>Add volume point at {clock(q.time)}</button>
+        {p.music.volumePoints.map((point) => <div key={point.time}>
+          <button onClick={() => q.seek(point.time)}>Go to {clock(point.time)} · {point.value.toFixed(2)}</button>
+          <button onClick={() => edit("Remove music volume point", (p) => { p.music.volumePoints = p.music.volumePoints.filter((item) => item.time !== point.time); })}>Remove</button>
+        </div>)}
         <button
           className="wide"
           disabled={!p.music.asset}

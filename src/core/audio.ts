@@ -41,13 +41,23 @@ export function analyze(samples: Float32Array, sampleRate: number) {
 export function musicAt(p: Project, time: number) {
   return p.music.trimStart + time - p.music.offset;
 }
+export function musicVolumeAt(p: Project, time: number) {
+  const points = [...p.music.volumePoints].sort((a, b) => a.time - b.time);
+  if (!points.length) return p.music.volume;
+  if (time <= points[0].time) return points[0].value;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1], b = points[i];
+    if (time <= b.time) return a.value + (b.value - a.value) * (time - a.time) / (b.time - a.time);
+  }
+  return points[points.length - 1].value;
+}
 export function gainAt(p: Project, time: number, length: number) {
   const local = time - p.music.offset,
     end = p.music.trimEnd || length,
     remain = end - musicAt(p, time);
   if (p.music.muted || local < 0 || remain <= 0) return 0;
   return (
-    p.music.volume *
+    musicVolumeAt(p, time) *
     Math.min(
       1,
       p.music.fadeIn ? local / p.music.fadeIn : 1,

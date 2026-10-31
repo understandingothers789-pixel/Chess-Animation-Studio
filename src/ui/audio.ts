@@ -1,4 +1,4 @@
-import { musicAt, gainAt } from "../core/audio";
+import { musicAt, gainAt, musicVolumeAt } from "../core/audio";
 import { segments } from "../core/timeline";
 import { buildGame } from "../core/chess";
 import type { Project } from "../core/project";
@@ -7,6 +7,7 @@ export class AudioPlayer {
   buffers = new Map<string, AudioBuffer>();
   sources: AudioScheduledSourceNode[] = [];
   generation = 0;
+  musicGain: GainNode | null = null;
   async load(id: string, url: string) {
     const generation = this.generation;
     const bytes = await (await fetch(url)).arrayBuffer();
@@ -25,11 +26,14 @@ export class AudioPlayer {
     const perf = performance.now() + 90;
     const m = p.music,
       b = this.buffers.get(m.asset ?? "");
-    if (b && !m.muted) {
+    if (b) {
       const source = this.context.createBufferSource(),
         gain = this.context.createGain();
       source.buffer = b;
-      source.connect(gain).connect(this.context.destination);
+      const master = this.context.createGain();
+      this.musicGain = master;
+      master.gain.value = m.muted ? 0 : m.volume;
+      source.connect(gain).connect(master).connect(this.context.destination);
       const offset = musicAt(p, time),
         start = origin + Math.max(0, -(time - m.offset)),
         trimEnd = m.trimEnd || b.duration,
@@ -38,20 +42,20 @@ export class AudioPlayer {
       if (length > 0) {
         const elapsed = Math.max(0, time - m.offset);
         gain.gain.setValueAtTime(
-          gainAt(p, Math.max(time, m.offset), b.duration),
+          gainAt({ ...p, music: { ...m, volume: 1, volumePoints: [], muted: false } }, Math.max(time, m.offset), b.duration),
           start,
         );
         if (m.fadeIn > elapsed)
           gain.gain.linearRampToValueAtTime(
-            m.volume,
+            1,
             start + m.fadeIn - elapsed,
           );
         const fadeStart = Math.max(start, start + length - m.fadeOut);
         gain.gain.setValueAtTime(
           Math.min(
-            m.volume,
+            1,
             gainAt(
-              p,
+              { ...p, music: { ...m, volume: 1, volumePoints: [], muted: false } },
               m.offset + Math.max(0, trimEnd - m.trimStart - m.fadeOut),
               b.duration,
             ),
@@ -111,7 +115,11 @@ export class AudioPlayer {
     }
     return perf;
   }
+  updateMusic(p: Project, time: number) {
+    this.musicGain?.gain.setTargetAtTime(p.music.muted ? 0 : musicVolumeAt(p, time), this.context.currentTime, 0.01);
+  }
   stop() {
+    this.musicGain = null;
     for (const s of this.sources)
       try {
         s.stop();

@@ -208,7 +208,7 @@ export function StylesPanel(q: PanelProps) {
   const [scope, setScope] = useState<"selected" | "checked" | "all">(
     "selected",
   );
-  const apply = (e: Effect, preserveLight = false) =>
+  const apply = (e: Effect, preserveAccents = false) =>
     q.edit("Apply style", (p) => {
       p.moves.forEach((m, i) => {
         if (
@@ -222,7 +222,9 @@ export function StylesPanel(q: PanelProps) {
             ...structuredClone(e),
             badge: b,
             cameras: c,
-            ...(preserveLight ? { light: m.effect.light } : {}),
+            ...(preserveAccents
+              ? { light: m.effect.light, jam: m.effect.jam }
+              : {}),
           };
         }
       });

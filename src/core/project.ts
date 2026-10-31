@@ -92,6 +92,28 @@ export const moveLightDefaults = {
   hold: 0.15,
   highlights: true,
 };
+export const beatSpotlightDefaults = {
+  enabled: false,
+  rhythm: "alternate" as "alternate" | "punch",
+  duration: 2.4,
+  clock: "auto" as "auto" | "bpm",
+  bpm: 140,
+  offset: 0,
+  zoom: 0.85,
+  roll: 10,
+  shake: 0.055,
+  focus: 1,
+  primary: "#34f6e6",
+  secondary: "#f6d64b",
+  colorEvery: 4,
+  colorStrength: 0.23,
+  glow: 0.75,
+  particles: 64,
+  blur: 0.35,
+  flash: 0.2,
+  desaturate: 0.65,
+  vignette: 0.4,
+};
 export const effectSchema = z.object({
   preset: z.enum(presets),
   duration: n(0.2, 30),
@@ -118,6 +140,30 @@ export const effectSchema = z.object({
   overshoot: n(0, 0.3),
   scale: n(1, 3),
   peak: n(0.1, 0.95),
+  jam: z
+    .object({
+      enabled: z.boolean(),
+      rhythm: z.enum(["alternate", "punch"]).default("alternate"),
+      duration: n(0.6, 8),
+      clock: z.enum(["auto", "bpm"]),
+      bpm: n(40, 300),
+      offset: n(-1, 1),
+      zoom: n(0, 2),
+      roll: n(0, 30),
+      shake: n(0, 0.4),
+      focus: n(0, 1),
+      primary: color,
+      secondary: color,
+      colorEvery: n(1, 8).int(),
+      colorStrength: n(0, 0.75),
+      glow: n(0, 1.5),
+      particles: n(0, 128).int(),
+      blur: n(0, 1),
+      flash: n(0, 0.65),
+      desaturate: n(0, 1),
+      vignette: n(0, 0.8),
+    })
+    .default(() => ({ ...beatSpotlightDefaults })),
   light: z
     .object({
       enabled: z.boolean(),
@@ -200,6 +246,7 @@ export function effect(preset: Preset = "slide"): Effect {
     overshoot: 0,
     scale: 1,
     peak: 0.6,
+    jam: { ...beatSpotlightDefaults },
     light: { ...moveLightDefaults },
     capture: {
       grow: 1.45,

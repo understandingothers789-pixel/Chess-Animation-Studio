@@ -170,7 +170,10 @@ export function Timeline({
                   onClick={(event) => select(i, event)}
                 >
                   <strong>{p.moves[i].san}</strong>
-                  <small>{p.moves[i].effect.preset}</small>
+                  <small>
+                    {p.moves[i].effect.preset}
+                    {p.moves[i].effect.jam.enabled ? " · beat" : ""}
+                  </small>
                 </button>
               ))}
             </div>

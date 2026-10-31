@@ -1,5 +1,45 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Beat spotlight":
+    "Hold on the moved piece after landing and play a beat-synced zoom-and-visual transition. Disabling removes its automatic extra hold.",
+  "Spotlight beat source":
+    "Use two or more enabled music markers within the spotlight window; otherwise use the BPM grid. BPM grid always uses the chosen tempo.",
+  "Spotlight primary color":
+    "Main color for the spotlight glow, board pulses and visual accents.",
+  "Spotlight secondary color":
+    "Alternate accent color after the chosen number of beats.",
+  "Spotlight duration":
+    "Seconds reserved after the move finishes for the spotlight. Music continues and later moves shift.",
+  "Spotlight BPM":
+    "Tempo of the fallback or forced BPM grid. Marker mode follows corrected project beat times instead.",
+  "Spotlight beat offset":
+    "Seconds from spotlight start to the first BPM hit. Negative values advance the grid. Music markers keep their own timing.",
+  "Beat zoom rhythm":
+    "Alternate a close and wider view on successive beats, or punch in on every beat and relax between hits.",
+  "Beat zoom amount":
+    "Amount of camera magnification between the close and wider beat poses. Zero disables zoom pumping.",
+  "Beat camera rock":
+    "Maximum added camera roll in degrees, alternating with the beats.",
+  "Spotlight focus":
+    "How strongly the camera centers on the moved piece during the spotlight.",
+  "Beats per color":
+    "Number of beats before switching between the primary and secondary accent colors.",
+  "Beat color strength":
+    "Amount of temporary board-square and wash tint on the beat. Saved board colors stay intact.",
+  "Spotlight glow":
+    "Strength of the halo and expanding ring behind the highlighted piece.",
+  "Spotlight sparkles":
+    "Number of small particles bursting outward from the spotlight on each beat. Zero disables them.",
+  "Beat shake":
+    "Small camera jolts on beat hits, in board-square units. Zero keeps the framing steady apart from zoom and roll.",
+  "Beat zoom blur":
+    "Strength of the radial zoom blur at beat hits. Zero keeps the picture sharp.",
+  "Beat light flash":
+    "Brief brightness lift on each beat. Zero removes the light flash.",
+  "Spotlight desaturation":
+    "Temporarily mute the board colors while the colored spotlight stands out.",
+  "Spotlight vignette":
+    "Darken the edges around the spotlight during the transition.",
   "Move light wash":
     "Tint the board and pieces during this move. Applies to the selected moves; disabled by default.",
   "Move light color":

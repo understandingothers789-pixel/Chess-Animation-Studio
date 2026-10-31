@@ -54,7 +54,7 @@ export function segments(p: Project) {
       depart = start + m.effect.delay,
       land = depart + m.effect.duration * m.effect.landing,
       finish = depart + m.effect.duration;
-    at = finish + m.effect.hold;
+    at = finish + moveHold(m.effect);
     return { i, start, depart, land, finish, end: at };
   });
 }
@@ -107,10 +107,25 @@ export interface CaptureDust {
   size: number;
   seed: number;
 }
+export interface BeatSpotlight {
+  x: number;
+  y: number;
+  envelope: number;
+  pulse: number;
+  zoomLevel: number;
+  phase: number;
+  since: number;
+  interval: number;
+  beat: number;
+  color: string;
+  clock: "markers" | "bpm";
+  settings: Effect["jam"];
+}
 export interface Frame {
   time: number;
   dust: CaptureDust[];
   light: { color: string; strength: number };
+  jam: BeatSpotlight | null;
   index: number;
   u: number;
   pieces: Visual[];
@@ -354,6 +369,29 @@ export function evaluate(
     tilt: mix(previous.tilt, target.tilt, blend),
     rotation: mix(previous.rotation, target.rotation, blend),
   };
+  const jam =
+    e?.jam.enabled && step
+      ? evaluateBeatSpotlight(
+          p,
+          step.move.effect,
+          time,
+          seg.finish,
+          xy(step.to),
+        )
+      : null;
+  if (jam) {
+    const j = jam.settings,
+      env = jam.envelope;
+    cam.x =
+      mix(cam.x, jam.x, env * j.focus) +
+      Math.sin(time * 91.7) * j.shake * jam.pulse * env;
+    cam.y =
+      mix(cam.y, jam.y, env * j.focus) +
+      Math.cos(time * 71.3) * j.shake * jam.pulse * env;
+    cam.zoom *= 1 + j.zoom * env * jam.zoomLevel;
+    cam.rotation +=
+      Math.cos(jam.phase * Math.PI) * j.roll * env * (0.35 + 0.65 * jam.pulse);
+  }
   let pulse = 0;
   if (p.pulse.enabled)
     for (const b of p.beats) {
@@ -402,10 +440,20 @@ export function evaluate(
       ),
     });
   }
+  const light = evaluateMoveLight(p, time, index, seq);
+  if (jam) {
+    const strength =
+      jam.envelope * jam.settings.colorStrength * (0.15 + 0.5 * jam.pulse);
+    if (strength > light.strength) {
+      light.color = jam.color;
+      light.strength = strength;
+    }
+  }
   return {
     time,
     dust,
-    light: evaluateMoveLight(p, time, index, seq),
+    jam,
+    light,
     index,
     u,
     pieces,
@@ -458,6 +506,7 @@ export function shortsFraming(
   camera: Frame["camera"],
   width: number,
   height: number,
+  focusAmount = 0,
 ) {
   const layout = p.layouts.vertical;
   const viewH = Math.round(height * p.shorts.height);
@@ -472,12 +521,14 @@ export function shortsFraming(
     halfX,
     halfY,
     x: clamp(
-      (p.shorts.follow ? camera.x * p.shorts.tracking : 0) + layout.x,
+      camera.x * mix(p.shorts.follow ? p.shorts.tracking : 0, 1, focusAmount) +
+        layout.x,
       -limitX,
       limitX,
     ),
     y: clamp(
-      (p.shorts.follow ? camera.y * p.shorts.tracking : 0) + layout.y,
+      camera.y * mix(p.shorts.follow ? p.shorts.tracking : 0, 1, focusAmount) +
+        layout.y,
       -limitY,
       limitY,
     ),
@@ -554,4 +605,78 @@ export function evaluateMoveLight(
     if (strength > chosen.strength) chosen = { color: l.color, strength };
   }
   return chosen;
+}
+
+export function moveHold(e: Effect) {
+  return Math.max(e.hold, e.jam.enabled ? e.jam.duration : 0);
+}
+/** Reconstruct the hold-based spotlight directly from corrected marker times or a tempo grid. */
+export function evaluateBeatSpotlight(
+  p: Project,
+  effect: Effect,
+  time: number,
+  start: number,
+  anchor: [number, number],
+): BeatSpotlight | null {
+  const j = effect.jam,
+    age = time - start;
+  if (!j.enabled || time < start || time >= start + j.duration) return null;
+  const envelope =
+    ease(age / 0.12) * (1 - ease((age - j.duration + 0.2) / 0.2));
+  const times =
+    j.clock === "auto"
+      ? p.beats
+          .filter(
+            (b) => b.enabled && b.time >= start && b.time < start + j.duration,
+          )
+          .map((b) => b.time)
+          .sort((a, b) => a - b)
+          .filter((t, i, a) => !i || t - a[i - 1] > 0.001)
+      : [];
+  let beat = 0,
+    phase = 0,
+    since = Infinity,
+    interval = 60 / j.bpm;
+  const clock = times.length >= 2 ? "markers" : "bpm";
+  if (clock === "markers") {
+    let last = -1;
+    for (let i = 0; i < times.length && times[i] <= time + 1e-9; i++) last = i;
+    if (last >= 0) {
+      beat = last;
+      since = Math.max(0, time - times[last]);
+      interval =
+        last + 1 < times.length
+          ? times[last + 1] - times[last]
+          : times[last] - times[Math.max(0, last - 1)] || interval;
+      phase = last + clamp(since / interval);
+    }
+  } else if (age >= j.offset) {
+    phase = (age - j.offset) / interval;
+    beat = Math.floor(phase + 1e-9);
+    since = Math.max(0, (phase - beat) * interval);
+  }
+  const pulse = Math.exp((-since / Math.min(0.18, interval * 0.65)) * 3);
+  return {
+    x: anchor[0],
+    y: anchor[1],
+    envelope,
+    pulse,
+    zoomLevel:
+      j.rhythm === "punch"
+        ? 0.15 + 0.85 * pulse
+        : Number.isFinite(since)
+          ? mix(
+              beat % 2 ? 1 : 0.1,
+              beat % 2 ? 0.1 : 1,
+              ease(since / Math.min(0.08, interval * 0.3)),
+            )
+          : 0.1,
+    phase,
+    since,
+    interval,
+    beat,
+    color: Math.floor(beat / j.colorEvery) % 2 ? j.secondary : j.primary,
+    clock,
+    settings: j,
+  };
 }

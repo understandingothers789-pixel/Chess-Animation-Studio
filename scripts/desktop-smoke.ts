@@ -434,6 +434,77 @@ try {
   console.log(
     "PASS: per-move light wash changes pixels and reconstructs exactly after backward seeking.",
   );
+  await page.getByRole("button", { name: "motion", exact: true }).click();
+  const spotlightTime =
+    blank().lead +
+    +(await page.getByLabel("Duration value", { exact: true }).inputValue()) +
+    +(await page
+      .getByLabel("Departure delay value", { exact: true })
+      .inputValue()) +
+    0.5;
+  const ordinaryEnd = +(await page
+    .getByLabel("Seek composition", { exact: true })
+    .getAttribute("max"))!;
+  await page.getByRole("button", { name: "look", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Apply beat spotlight", exact: true })
+    .click();
+  assert.equal(
+    await page.getByLabel("Beat zoom rhythm", { exact: true }).inputValue(),
+    "alternate",
+  );
+  await page
+    .getByLabel("Spotlight beat source", { exact: true })
+    .selectOption("bpm");
+  await page.getByLabel("Spotlight BPM value", { exact: true }).fill("120");
+  assert.ok(
+    +(await page
+      .getByLabel("Seek composition", { exact: true })
+      .getAttribute("max"))! > ordinaryEnd,
+  );
+  await page
+    .getByLabel("Seek composition", { exact: true })
+    .fill(String(+spotlightTime.toFixed(3)));
+  await page.waitForTimeout(350);
+  const spotlightPixels = await page
+    .locator(".preview-host canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page
+    .getByLabel("Seek composition", { exact: true })
+    .fill(String(+(spotlightTime + 0.15).toFixed(3)));
+  await page.waitForTimeout(200);
+  assert.notEqual(
+    await page
+      .locator(".preview-host canvas")
+      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    spotlightPixels,
+  );
+  await page
+    .getByLabel("Seek composition", { exact: true })
+    .fill(String(+spotlightTime.toFixed(3)));
+  await page.waitForTimeout(350);
+  assert.equal(
+    await page
+      .locator(".preview-host canvas")
+      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    spotlightPixels,
+  );
+  await page
+    .getByRole("button", {
+      name: "Reset Beat spotlight transition",
+      exact: true,
+    })
+    .click();
+  assert.ok(
+    Math.abs(
+      +(await page
+        .getByLabel("Seek composition", { exact: true })
+        .getAttribute("max"))! - ordinaryEnd,
+    ) < 0.00001,
+  );
+  console.log(
+    "PASS: beat spotlight reserves time, renders beat-driven camera/post effects, reconstructs after seeking and restores ordinary timing.",
+  );
   const dustPgn = "1. e4 d5 2. exd5 Qxd5";
   await page.getByLabel("Game text", { exact: true }).fill(dustPgn);
   await page
@@ -451,7 +522,7 @@ try {
     0.18;
   await page
     .getByLabel("Seek composition", { exact: true })
-    .fill(String(dustTime));
+    .fill(String(+dustTime.toFixed(3)));
   await page.waitForTimeout(300);
   const dustPixels = await page
     .locator(".preview-host canvas")
@@ -460,7 +531,7 @@ try {
   await page.waitForTimeout(150);
   await page
     .getByLabel("Seek composition", { exact: true })
-    .fill(String(dustTime));
+    .fill(String(+dustTime.toFixed(3)));
   await page.waitForTimeout(300);
   assert.equal(
     await page

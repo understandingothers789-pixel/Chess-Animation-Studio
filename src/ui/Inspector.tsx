@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   effect,
   moveLightDefaults,
+  beatSpotlightDefaults,
   camera,
   channels,
   presets,
@@ -193,6 +194,7 @@ export function Inspector({
                         ...effect(v),
                         badge: m.effect.badge,
                         light: m.effect.light,
+                        jam: m.effect.jam,
                         cameras: m.effect.cameras,
                       };
                     }
@@ -516,6 +518,191 @@ export function Inspector({
           })()}
         {tab === "look" && (
           <>
+            <Section
+              title="Beat spotlight transition"
+              onReset={() => resetFields(["jam"])}
+            >
+              <button
+                className="wide"
+                title="Hold on the moved piece and add beat-synced zoom, rocking, glow, colors and sparkles to every selected move."
+                onClick={() =>
+                  change("jam", { ...beatSpotlightDefaults, enabled: true })
+                }
+              >
+                Apply beat spotlight
+              </button>
+              <Toggle
+                label="Beat spotlight"
+                checked={e.jam.enabled}
+                onChange={(v) =>
+                  edit("Beat spotlight", (p) =>
+                    each(p, (e) => {
+                      e.jam.enabled = v;
+                    }),
+                  )
+                }
+              />
+              <p className="hint">
+                Runs after the move finishes. Reserves{" "}
+                {e.jam.duration.toFixed(1)} seconds before the next move when
+                enabled; disabling it restores the ordinary hold.
+              </p>
+              {e.jam.enabled && (
+                <>
+                  <Select
+                    label="Beat zoom rhythm"
+                    value={e.jam.rhythm}
+                    options={[
+                      ["alternate", "In / out on alternating beats"],
+                      ["punch", "Punch in on each beat"],
+                    ]}
+                    onChange={(v) =>
+                      edit("Spotlight rhythm", (p) =>
+                        each(p, (e) => {
+                          e.jam.rhythm = v;
+                        }),
+                      )
+                    }
+                  />
+                  <Select
+                    label="Spotlight beat source"
+                    value={e.jam.clock}
+                    options={[
+                      ["auto", "Music markers, else BPM"],
+                      ["bpm", "BPM grid"],
+                    ]}
+                    onChange={(v) =>
+                      edit("Spotlight clock", (p) =>
+                        each(p, (e) => {
+                          e.jam.clock = v;
+                        }),
+                      )
+                    }
+                  />
+                  <Color
+                    label="Spotlight primary color"
+                    value={e.jam.primary}
+                    onChange={(v) =>
+                      edit("Spotlight color", (p) =>
+                        each(p, (e) => {
+                          e.jam.primary = v;
+                        }),
+                      )
+                    }
+                  />
+                  <Color
+                    label="Spotlight secondary color"
+                    value={e.jam.secondary}
+                    onChange={(v) =>
+                      edit("Spotlight color 2", (p) =>
+                        each(p, (e) => {
+                          e.jam.secondary = v;
+                        }),
+                      )
+                    }
+                  />
+                  {(
+                    [
+                      "duration",
+                      "bpm",
+                      "offset",
+                      "zoom",
+                      "roll",
+                      "focus",
+                      "colorEvery",
+                      "colorStrength",
+                      "glow",
+                      "particles",
+                      "shake",
+                      "blur",
+                      "flash",
+                      "desaturate",
+                      "vignette",
+                    ] as const
+                  ).map((k) => (
+                    <Range
+                      key={k}
+                      label={
+                        {
+                          duration: "Spotlight duration",
+                          bpm: "Spotlight BPM",
+                          offset: "Spotlight beat offset",
+                          zoom: "Beat zoom amount",
+                          roll: "Beat camera rock",
+                          focus: "Spotlight focus",
+                          colorEvery: "Beats per color",
+                          colorStrength: "Beat color strength",
+                          glow: "Spotlight glow",
+                          particles: "Spotlight sparkles",
+                          shake: "Beat shake",
+                          blur: "Beat zoom blur",
+                          flash: "Beat light flash",
+                          desaturate: "Spotlight desaturation",
+                          vignette: "Spotlight vignette",
+                        }[k]
+                      }
+                      value={e.jam[k]}
+                      min={
+                        k === "duration"
+                          ? 0.6
+                          : k === "bpm"
+                            ? 40
+                            : k === "offset"
+                              ? -1
+                              : k === "colorEvery"
+                                ? 1
+                                : 0
+                      }
+                      max={
+                        k === "duration" || k === "colorEvery"
+                          ? 8
+                          : k === "bpm"
+                            ? 300
+                            : k === "zoom"
+                              ? 2
+                              : k === "roll"
+                                ? 30
+                                : k === "particles"
+                                  ? 128
+                                  : k === "colorStrength"
+                                    ? 0.75
+                                    : k === "glow"
+                                      ? 1.5
+                                      : k === "shake"
+                                        ? 0.4
+                                        : k === "flash"
+                                          ? 0.65
+                                          : k === "vignette"
+                                            ? 0.8
+                                            : 1
+                      }
+                      step={
+                        ["bpm", "colorEvery", "particles"].includes(k)
+                          ? 1
+                          : 0.01
+                      }
+                      resetValue={beatSpotlightDefaults[k]}
+                      unit={
+                        k === "duration" || k === "offset"
+                          ? "s"
+                          : k === "roll"
+                            ? "°"
+                            : k === "bpm"
+                              ? "BPM"
+                              : ""
+                      }
+                      onChange={(v) =>
+                        edit("Spotlight " + k, (p) =>
+                          each(p, (e) => {
+                            e.jam[k] = v;
+                          }),
+                        )
+                      }
+                    />
+                  ))}
+                </>
+              )}
+            </Section>
             <Section
               title="Move light & flicker"
               onReset={() => resetFields(["light"])}

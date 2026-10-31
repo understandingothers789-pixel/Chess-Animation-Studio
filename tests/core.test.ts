@@ -17,6 +17,7 @@ import {
   shortsFraming,
   captureDustParticle,
   evaluateMoveLight,
+  evaluateBeatSpotlight,
 } from "../src/core/timeline";
 import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
 describe("legal state and stable identities", () => {
@@ -307,4 +308,97 @@ describe("move light and flicker", () => {
       expect(v).toBeLessThanOrEqual(l.strength);
     }
   });
+});
+
+describe("beat spotlight transition", () => {
+  it("reserves an automatic hold and returns to ordinary timing when disabled", () => {
+    const p = importPgn(blank(), "1. e4 e5");
+    const before = segments(p);
+    p.moves[0].effect.jam.enabled = true;
+    const during = segments(p),
+      j = p.moves[0].effect.jam;
+    expect(during[0].finish).toBe(before[0].finish);
+    expect(during[1].start).toBeCloseTo(during[0].finish + j.duration);
+    expect(p.moves[0].effect.hold).toBe(0.25);
+    const t = during[0].finish + 0.5,
+      f = evaluate(p, t);
+    expect(f.jam).not.toBeNull();
+    expect(f.jam!.x).toBe(0.5);
+    expect(f.jam!.y).toBe(-0.5);
+    expect(f.pieces.find((v) => v.square === "e4")).toBeDefined();
+    evaluate(p, t + 1);
+    expect(evaluate(p, t)).toEqual(f);
+    p.moves[0].effect.jam.enabled = false;
+    expect(segments(p)).toEqual(before);
+  });
+  it("hits corrected markers exactly and falls back to the selected BPM", () => {
+    const p = importPgn(blank(), "1. e4 e5");
+    const e = p.moves[0].effect;
+    e.jam.enabled = true;
+    const start = segments(p)[0].finish;
+    p.beats = [
+      { id: "a", time: start + 0.2, enabled: true, accent: true },
+      { id: "b", time: start + 0.61, enabled: true, accent: false },
+      { id: "off", time: start + 0.4, enabled: false, accent: false },
+    ];
+    const a = evaluateBeatSpotlight(p, e, start + 0.2, start, [0.5, -0.5])!;
+    expect(a.clock).toBe("markers");
+    expect(a.pulse).toBeCloseTo(1);
+    expect(a.beat).toBe(0);
+    expect(
+      evaluateBeatSpotlight(p, e, start + 0.3, start, [0.5, -0.5])!.pulse,
+    ).toBeLessThan(1);
+    expect(
+      evaluateBeatSpotlight(p, e, start + 0.61, start, [0.5, -0.5])!.pulse,
+    ).toBeCloseTo(1);
+    e.jam.clock = "bpm";
+    e.jam.bpm = 120;
+    e.jam.offset = 0.1;
+    const b = evaluateBeatSpotlight(p, e, start + 0.6, start, [0.5, -0.5])!;
+    expect(b.clock).toBe("bpm");
+    expect(b.pulse).toBeCloseTo(1);
+    expect(
+      evaluateBeatSpotlight(p, e, start - 0.001, start, [0, 0]),
+    ).toBeNull();
+    expect(
+      evaluateBeatSpotlight(p, e, start + e.jam.duration, start, [0, 0]),
+    ).toBeNull();
+  });
+  it("defaults legacy moves off and bounds zoom/focus at every output format", () => {
+    const old: any = blank();
+    delete old.defaults.jam;
+    expect(parseProject(old).defaults.jam.enabled).toBe(false);
+    const p = importPgn(blank(), "1. e4 e5");
+    p.moves[0].effect.jam.enabled = true;
+    const start = segments(p)[0].finish;
+    for (const format of [
+      "landscape",
+      "vertical",
+      "square",
+      "square-in-vertical",
+    ] as const) {
+      const f = evaluate(p, start + 0.5, undefined, format);
+      expect(Number.isFinite(f.camera.zoom)).toBe(true);
+      expect(f.camera.zoom).toBeGreaterThan(0);
+      const crop = shortsFraming(p, f.camera, 1080, 1920, f.jam!.envelope);
+      expect(Math.abs(crop.x) + crop.halfX).toBeLessThanOrEqual(4);
+    }
+  });
+});
+
+it("alternates close and wider views on successive hits, with a punch option", () => {
+  const p = importPgn(blank(), "1. e4 e5"),
+    e = p.moves[0].effect;
+  e.jam.enabled = true;
+  e.jam.clock = "bpm";
+  e.jam.bpm = 120;
+  const start = segments(p)[0].finish;
+  const inside = evaluateBeatSpotlight(p, e, start + 0.2, start, [0, 0])!;
+  const outside = evaluateBeatSpotlight(p, e, start + 0.7, start, [0, 0])!;
+  expect(inside.zoomLevel).toBeCloseTo(1);
+  expect(outside.zoomLevel).toBeCloseTo(0.1);
+  e.jam.rhythm = "punch";
+  expect(
+    evaluateBeatSpotlight(p, e, start + 0.5, start, [0, 0])!.zoomLevel,
+  ).toBeCloseTo(1);
 });

@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## 0.2.10
+
+Adds optional playhead snapping to move clip boundaries, with Alt to bypass snapping while seeking. Fits and centers the board across the available width in standard 9:16 Vertical output, and keeps the default camera settled through the intro into the first move.
+
 ## 0.2.9
 
 All 26 core/service tests and native Windows packaged editing, dust/light/spotlight, presentation and all export-format checks passed. The published ZIP was independently downloaded and its checksum, archive CRCs, version and source manifest verified.

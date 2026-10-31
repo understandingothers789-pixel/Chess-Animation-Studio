@@ -1,7 +1,7 @@
 {
   "name": "chess-animation-studio",
   "productName": "Chess Animation Studio",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "private": true,
   "description": "Local chess animation editor",
   "author": "Chess Animation Studio contributors",

@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.8
+# Chess Animation Studio · 0.2.9
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
-![Editor with the brown/beige default board palette](docs/images/palette-help-028.png)
+![Version 0.2.9 beat spotlight in the cropped Shorts view](docs/images/release-029.png)
 
 ## Windows downloads
+
+**[Download 0.2.9 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.9/Chess-Animation-Studio-0.2.9-Windows-Portable.zip).** Adds cropped **9:16 Shorts** framing, captured pieces that crumble into artwork-colored dust, optional per-move red/colored light flicker, and a **Beat spotlight transition** with music-marker/BPM zoom rhythms, camera rocking, neon glow, sparkles, color changes and zoom blur. Includes selected-move editing, resets, tooltips and reversible automatic spotlight holds. All 26 tests and native Windows packaged editing, dust/light/spotlight, presentation and export checks passed. Published ZIP SHA-256: `2d9643cca0df3cfd5a003e0149bb1434678f85c18e6724d0e5d9984899dad711`.
 
 **[Download 0.2.8 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.8/Chess-Animation-Studio-0.2.8-Windows-Portable.zip).** Sets the requested default board colors to **brown #B88762** (dark squares) and **beige #EDD6B0** (light squares). Adds explanatory hover tooltips and accessible descriptions across all setting inputs, including units and numeric ranges. New compositions and Board & pieces reset use the palette; saved custom board colors stay intact. All 16 tests and native Windows palette/tooltip, editing and export checks passed. Published ZIP SHA-256: `5ec5ec999c0ae3643cf313c41355cdb7c1f73488169b42442e913556f0cb58e0`.
 

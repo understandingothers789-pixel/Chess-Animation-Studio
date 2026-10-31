@@ -2,6 +2,8 @@
 
 ## 0.2.9
 
+All 26 core/service tests and native Windows packaged editing, dust/light/spotlight, presentation and all export-format checks passed. The published ZIP was independently downloaded and its checksum, archive CRCs, version and source manifest verified.
+
 Adds a configurable beat spotlight transition after selected moves: alternating in/out or per-beat punch zoom, piece focus, rocking/shake, expanding glow/ring, sparkles, alternating color pulses, radial zoom blur, brightness accents and selective desaturation/vignette. Uses corrected music markers or a BPM grid, automatically reserves a reversible hold, preserves motion presets and supports reset/tooltips.
 
 Adds optional per-move colored light washes with restrained flicker, a one-click red look, highlight color matching, selectable-move editing, fade/hold controls, numeric/group resets and tooltips. Uses deterministic time evaluation and leaves Shorts bars and badge artwork untinted. Built-in motion-preset changes preserve the light settings.

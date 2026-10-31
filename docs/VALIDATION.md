@@ -1,25 +1,35 @@
 # Validation and scope
 
-## Unreleased beat spotlight — source-only work
+## Release 0.2.9
+
+- Native Windows run [41165820915](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41165820915) completed successfully. All **26** core/service tests passed, followed by packaged launch, sample/music, palette/tooltips, artwork, backward seeking, intro, selection editing, resets/Undo, save/open, H.264/AAC at 60 FPS, native-sized vertical/square/square-in-vertical exports, cancellation cleanup and presentation.
+- New native rendering checks passed for per-move colored light, beat spotlight automatic hold/camera/post effects and timing restoration, and captured-piece dust. All reconstructed the same rendered pixels after backward seeking, with no recorded renderer errors.
+- Release source: `366a5aa85118bb12e7ef49987f60a09912df0781`, clean Windows checkout. The published ZIP was downloaded again: every CRC passed; BUILD.json matched version, source and clean state; the bundled sample contained the 0.2.9 effect fields and default dust exits.
+- Published ZIP SHA-256: `2d9643cca0df3cfd5a003e0149bb1434678f85c18e6724d0e5d9984899dad711` (141,012,032 bytes). Runtime executable SHA-256 remained the unchanged official value `9ba4530b08adeae75c13324a95b0fc8e87c5aa2889cfdc894474f8684b9f6c59`. The application remains unsigned; CI launch does not establish Smart App Control acceptance on the user's PC.
+- Published release: https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/tag/studio-v0.2.9 . Previous release assets were retained. The user lifted the source-only hold and authorized this publication.
+
+The source-only sections below are historical checkpoint records; their release hold was lifted for 0.2.9.
+
+## Development checkpoint: beat spotlight — before release validation
 
 - Production build and all 26 core/service tests passed locally. Added checks for automatic hold reservation/restoration, stationary focus after landing, deterministic backward evaluation, exact corrected-marker hits, BPM offset/grid timing with floating-point boundary tolerance, legacy defaults, alternating/punch zoom rhythms and camera framing across all formats.
 - Actual Electron/SwiftShader checks passed: spotlight activation extends the timeline; hit/offbeat frames differ; repeated seeking gives identical pixels; Shorts bars remain black; post-effect controls change the output; built-in motion changes retain the transition; and group Reset disables it. No shader/renderer errors were recorded. The internal spotlight frame was visually inspected against the reference sheets.
 - A separate hidden-worker export successfully encoded an internal 360×640 H.264 clip at 60 FPS with the spotlight, glow, color and post effects. The framebuffer copy uses display RGB and an isolated five-tap radial filter, preserving the existing render pipeline when the effect is off. This is an artistic interpretation of the stills; audio timing comes from the selected markers/grid.
 - Added a desktop spotlight regression for the next authorized native validation. No Windows package, version bump or release was produced; source commits use [skip ci] and the 0.2.9 hold remains in place.
 
-## Unreleased move light — source-only work
+## Development checkpoint: move light — before release validation
 
 - Production build and all 22 core/service tests passed locally. New checks cover optional/backward-compatible defaults, timing gates and fades, bounded flicker, and reconstruction after backward seeking.
 - Actual Electron/SwiftShader checks passed: red wash applies to the selected two moves, changes rendered pixels, reconstructs identical pixels after backward seeking, preserves clean black Shorts bars, survives a built-in motion-preset change, leaves the next unselected move off, and resets correctly. No shader or renderer exceptions were recorded. The internal screenshot was visually inspected against the red-light reference sheets.
 - The full-viewport tint draws after board/pieces/dust and before badge artwork. In cropped/square portrait views it is clipped to the board viewport and hidden during the outer-background pass. Added a light-render/repeated-seek check to the desktop smoke script for the next authorized native build. No new native Windows build, release or download was produced; the 0.2.9 hold remains in effect.
 
-## Unreleased capture dust — source-only work
+## Development checkpoint: capture dust — before release validation
 
 - Production build and all 20 core/service tests passed locally. Tests cover dust on ordinary slide captures, victim color/type/location, fragments lasting into the following move, deterministic evaluation, particle expiry, en passant positioning and backward compatibility with explicit legacy fade choices.
 - Actual Electron/SwiftShader checks passed: a normal capture defaults to dust, the eroding artwork and sampled cloud render without shader/renderer errors, backward seeking restores identical pixels, and changing the exit to Fade produces different pixels. The internal capture frame was visually inspected; dust is depth-tested behind the capturing piece.
 - Added a capture/repeated-seek regression to the existing desktop smoke script for the next authorized native build. No native Windows build or release was run for this unreleased work. The existing source-only hold and [skip ci] commit policy remain in effect.
 
-## Unreleased Shorts framing — source-only work
+## Development checkpoint: Shorts framing — before release validation
 
 - Production build and all 18 core/service tests passed locally. New checks cover legacy projects without Shorts data, portrait viewport dimensions, cropped board width, bounded camera centers and deterministic backward-seek framing.
 - Actual Electron UI checks passed for selecting Shorts from the output menu, the enlarged partial-board view, black bars above/below, repeatable pixels after backward seeking, width editing, group reset and absence of renderer exceptions. The internal screenshot was visually inspected against the four two-frame reference sheets.

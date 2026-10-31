@@ -1,5 +1,11 @@
 # Validation and scope
 
+## Unreleased Shorts framing — source-only work
+
+- Production build and all 18 core/service tests passed locally. New checks cover legacy projects without Shorts data, portrait viewport dimensions, cropped board width, bounded camera centers and deterministic backward-seek framing.
+- Actual Electron UI checks passed for selecting Shorts from the output menu, the enlarged partial-board view, black bars above/below, repeatable pixels after backward seeking, width editing, group reset and absence of renderer exceptions. The internal screenshot was visually inspected against the four two-frame reference sheets.
+- Shared renderer changes apply to preview, presentation and export; no new Windows package or Shorts MP4 release was published. Native Windows validation has not been rerun for this unreleased change. Package version remains 0.2.8; 0.2.9 is explicitly held at the user's request. Source commits use [skip ci] to avoid the automatic Windows publication workflow.
+
 ## Release 0.2.8 update checks
 
 - Native Windows run [41145830234](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41145830234) passed all 16 tests and packaged palette/tooltip checks across every settings panel, logo/resets/Undo, selection editing, intro, snow controls, backward seeks, save/open, H.264/AAC at 60 FPS, vertical/square/square-in-vertical exports, cancellation cleanup and presentation.

@@ -114,3 +114,13 @@ The app’s new cyan-frame/coral-play logo replaces the knight in the header, fa
 The owner-specified brown/beige palette is now the app default: **dark squares #B88762** and **light squares #EDD6B0**. New compositions and **Scene → Board & pieces → Reset** use these exact base colors. Existing saved projects keep their own colors; you can enter the two colors individually to keep other style choices. Shimmer and beat pulses can temporarily tint the base colors during playback.
 
 Hover a setting label or its input to read an explanation. Numeric controls also show their allowed range; the same help is supplied as an accessible description for assistive technology. Help covers all settings panels, the move inspector, keyframes, intro, timeline and export settings. Reset buttons have their own restoration tooltip.
+
+## Unreleased development: cropped Shorts view
+
+Choose **Output format → 9:16 Shorts · cropped board**, or enable **Scene → Shorts framing → Shorts crop**. It uses the vertical 1080×1920 output with a taller-than-square board window: enlarged pieces and cropped outer files, with clean bars above and below. It does not squeeze the full board into the portrait frame.
+
+Adjust **Visible board width** (smaller means closer), **Shorts board height** (fraction of the portrait frame), **Shorts board position**, and **Shorts bar color**. **Follow action in Shorts** uses the existing smooth move-camera transitions; **Shorts tracking strength** controls how strongly they steer the crop. Turn following off for a centered crop. Layout X/Y and zoom still provide framing offsets; the camera is bounded to retain board content. Move camera zoom, tilt, roll and the chosen intro still apply.
+
+Reset restores the Shorts group defaults. These controls have explanatory tooltips. Older saved projects load with Shorts disabled. The same crop renderer serves preview, presentation and export, and clicking in the surrounding bars does not enter board moves. Background images remain available in the other views; Shorts uses its dedicated bar color.
+
+Reference: four user-uploaded sheets, each with a top and bottom frame (eight reference frames total), showing an enlarged partial board in a portrait video. This implements the board framing rather than the video's social-media overlays. This work is committed for a later release; **0.2.9 has not been published**.

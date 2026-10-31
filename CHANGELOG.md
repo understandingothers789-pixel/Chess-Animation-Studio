@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## Unreleased
+
+Adds a cropped 9:16 Shorts view based on the eight reference frames across four sheets. Includes adjustable board width, window height/position, bar color and action-tracking strength, plus reset and tooltips. Shares framing across preview, presentation and export and preserves older projects with the new mode off. Source-only development; no 0.2.9 download or release is published yet.
+
 ## 0.2.8
 
 [Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.8/Chess-Animation-Studio-0.2.8-Windows-Portable.zip). Saves the requested brown/beige default board palette: dark #B88762, light #EDD6B0. Adds explanatory hover tooltips and accessible descriptions to every setting input across the editor, including numeric ranges. Existing saved board colors remain intact; new compositions and board-style reset use the new palette. All 16 tests and native Windows palette/tooltip, editing and export checks passed; published ZIP integrity was independently verified.

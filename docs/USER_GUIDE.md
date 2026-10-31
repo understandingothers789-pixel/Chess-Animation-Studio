@@ -115,7 +115,7 @@ The owner-specified brown/beige palette is now the app default: **dark squares #
 
 Hover a setting label or its input to read an explanation. Numeric controls also show their allowed range; the same help is supplied as an accessible description for assistive technology. Help covers all settings panels, the move inspector, keyframes, intro, timeline and export settings. Reset buttons have their own restoration tooltip.
 
-## Unreleased development: cropped Shorts view
+## 0.2.9: cropped Shorts view
 
 Choose **Output format → 9:16 Shorts · cropped board**, or enable **Scene → Shorts framing → Shorts crop**. It uses the vertical 1080×1920 output with a taller-than-square board window: enlarged pieces and cropped outer files, with clean bars above and below. It does not squeeze the full board into the portrait frame.
 
@@ -123,25 +123,25 @@ Adjust **Visible board width** (smaller means closer), **Shorts board height** (
 
 Reset restores the Shorts group defaults. These controls have explanatory tooltips. Older saved projects load with Shorts disabled. The same crop renderer serves preview, presentation and export, and clicking in the surrounding bars does not enter board moves. Background images remain available in the other views; Shorts uses its dedicated bar color.
 
-Reference: four user-uploaded sheets, each with a top and bottom frame (eight reference frames total), showing an enlarged partial board in a portrait video. This implements the board framing rather than the video's social-media overlays. This work is committed for a later release; **0.2.9 has not been published**.
+Reference: four user-uploaded sheets, each with a top and bottom frame (eight reference frames total), showing an enlarged partial board in a portrait video. This implements the board framing rather than the video's social-media overlays. Included in version **0.2.9**.
 
-## Unreleased development: captured pieces crumble into dust
+## 0.2.9: captured pieces crumble into dust
 
 New move presets use **Crumble into dust** as the default captured-piece exit, including captures made with Clean slide, Half sway and other movement presets. The victim erodes in small patches while fragments sampled from its silhouette and artwork colors drift outward/downward and fade. The dust sits behind the capturing piece and can remain briefly after the move ends. En passant dust originates on the captured pawn’s actual square.
 
 Select a capture and open **Motion → Capture impact → Captured piece exit**. The section opens automatically for capture moves. Choose **Crumble into dust**, then adjust **Dust duration**, **Dust amount**, **Dust spread** and **Dust fragment size**. These settings support tooltips, individual resets, the capture-group reset and editing multiple selected moves. Impact particles are the separate optional capture-preset burst; dust comes from the selected exit mode.
 
-Existing saved moves that explicitly use Fade, Shrink or Drop keep their choices. Select **Crumble into dust** or use the capture-group Reset to apply the new default to those moves. The bundled Opera sample now uses the new default. This remains source-only work; the 0.2.9 release hold still applies.
+Existing saved moves that explicitly use Fade, Shrink or Drop keep their choices. Select **Crumble into dust** or use the capture-group Reset to apply the new default to those moves. The bundled Opera sample now uses the new default. Included in version 0.2.9.
 
-## Unreleased development: move light and flicker
+## 0.2.9: move light and flicker
 
 Select one or more moves, then open **Look → Move light & flicker → Apply red flicker**. This adds a red wash over the board and pieces during those moves, with restrained brightness variation. **Match move highlights** temporarily makes their square highlights match the light color while keeping the saved highlight colors intact. Badges draw above the wash; Shorts and square-in-vertical surrounding bars retain their normal colors.
 
 Edit light color, strength, flicker depth/speed, fade-in time, post-move hold and fade-out time. Zero flicker makes the wash steady. The board remains visible at every flicker level. Each numeric setting has a reset; the group Reset turns the effect off and restores its defaults. Edits apply to the selected moves and support Undo. The effect is optional and disabled on older projects and new moves until chosen.
 
-Changing a built-in movement preset preserves the move’s light settings. A saved full custom style includes its light settings. The effect uses exact project time for preview, presentation and export, including the fade after a move. This remains source-only work under the 0.2.9 release hold.
+Changing a built-in movement preset preserves the move’s light settings. A saved full custom style includes its light settings. The effect uses exact project time for preview, presentation and export, including the fade after a move. Included in version 0.2.9.
 
-## Unreleased development: beat spotlight transition
+## 0.2.9: beat spotlight transition
 
 Select a move (for example the knight move), then choose **Look → Beat spotlight transition → Apply beat spotlight**. After the move finishes, the camera focuses on that piece and alternates close and wider views on successive beats. **Beat zoom rhythm** can instead punch in on every beat and relax between hits. Rocking, small camera jolts, an expanding halo/ring, sparkles, color accents, a short radial zoom blur and a brightness lift create the energetic look in the reference sheets. The default cyan/gold colors alternate after four beats. Existing move badges are preserved; use Badge hold after move if you want a chosen badge to remain through the whole spotlight.
 
@@ -151,4 +151,4 @@ The enabled transition automatically reserves at least **Spotlight duration** se
 
 Adjust duration, zoom punch, camera rock/focus/shake, primary/secondary colors, beats per color, color strength, glow, sparkle amount, zoom blur, light flash, desaturation and vignette. Zero disables an individual visual component. All controls have tooltips and numeric resets; the group Reset turns the transition off. These edits work across selected moves and support Undo. Normal playback, presentation, backward seeks and export evaluate the same project time. Shorts framing focuses on the selected piece during this effect and keeps its surrounding bars unchanged.
 
-The zoom blur uses five samples of the freshly rendered frame rather than previous-frame history, so seeking does not leave stale trails. This is source-only work under the existing 0.2.9 release hold.
+The zoom blur uses five samples of the freshly rendered frame rather than previous-frame history, so seeking does not leave stale trails. Included in version 0.2.9.

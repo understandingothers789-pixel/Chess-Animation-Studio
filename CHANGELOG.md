@@ -1,6 +1,6 @@
 # Fresh implementation history
 
-## Unreleased
+## 0.2.9
 
 Adds a configurable beat spotlight transition after selected moves: alternating in/out or per-beat punch zoom, piece focus, rocking/shake, expanding glow/ring, sparkles, alternating color pulses, radial zoom blur, brightness accents and selective desaturation/vignette. Uses corrected music markers or a BPM grid, automatically reserves a reversible hold, preserves motion presets and supports reset/tooltips.
 
@@ -8,7 +8,7 @@ Adds optional per-move colored light washes with restrained flicker, a one-click
 
 Makes captured-piece dust the default exit for new move presets and the Opera sample. Adds cell-based silhouette erosion and artwork-colored fragments, bounded particle tails that survive move boundaries, en passant positioning, adjustable duration/amount/spread/size, reset controls and tooltips. Existing explicit exit choices remain valid.
 
-Adds a cropped 9:16 Shorts view based on the eight reference frames across four sheets. Includes adjustable board width, window height/position, bar color and action-tracking strength, plus reset and tooltips. Shares framing across preview, presentation and export and preserves older projects with the new mode off. Source-only development; no 0.2.9 download or release is published yet.
+Adds a cropped 9:16 Shorts view based on the eight reference frames across four sheets. Includes adjustable board width, window height/position, bar color and action-tracking strength, plus reset and tooltips. Shares framing across preview, presentation and export and preserves older projects with the new mode off. [Windows portable download](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.9/Chess-Animation-Studio-0.2.9-Windows-Portable.zip).
 
 ## 0.2.8
 

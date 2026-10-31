@@ -688,6 +688,101 @@ export function ScenePanel(q: PanelProps) {
   return (
     <>
       <Section
+        title="Shorts framing"
+        onReset={() =>
+          edit("Reset Shorts framing", (p) => {
+            p.shorts = blank().shorts;
+          })
+        }
+      >
+        <Toggle
+          label="Shorts crop"
+          checked={p.shorts.enabled}
+          onChange={(v) =>
+            edit("Shorts crop", (p) => {
+              p.shorts.enabled = v;
+              if (v) p.format = "vertical";
+            })
+          }
+        />
+        <Toggle
+          label="Follow action in Shorts"
+          checked={p.shorts.follow}
+          onChange={(v) =>
+            edit("Shorts tracking", (p) => {
+              p.shorts.follow = v;
+            })
+          }
+        />
+        <Range
+          label="Shorts tracking strength"
+          value={p.shorts.tracking}
+          min={0}
+          max={1}
+          step={0.01}
+          resetValue={0.35}
+          onChange={(v) =>
+            edit("Shorts tracking strength", (p) => {
+              p.shorts.tracking = v;
+            })
+          }
+        />
+        <Range
+          label="Visible board width"
+          value={p.shorts.width}
+          min={4}
+          max={8}
+          step={0.1}
+          unit=" squares"
+          resetValue={6}
+          onChange={(v) =>
+            edit("Shorts width", (p) => {
+              p.shorts.width = v;
+            })
+          }
+        />
+        <Range
+          label="Shorts board height"
+          value={p.shorts.height}
+          min={0.55}
+          max={1}
+          step={0.01}
+          resetValue={0.72}
+          onChange={(v) =>
+            edit("Shorts height", (p) => {
+              p.shorts.height = v;
+            })
+          }
+        />
+        <Range
+          label="Shorts board position"
+          value={p.shorts.position}
+          min={0}
+          max={1}
+          step={0.01}
+          resetValue={0.5}
+          onChange={(v) =>
+            edit("Shorts position", (p) => {
+              p.shorts.position = v;
+            })
+          }
+        />
+        <Color
+          label="Shorts bar color"
+          value={p.shorts.barColor}
+          onChange={(v) =>
+            edit("Shorts bars", (p) => {
+              p.shorts.barColor = v;
+            })
+          }
+        />
+        <p className="hint">
+          A portrait close-up that crops the outer files, with space above and
+          below. Camera settings and the intro still apply. Background images
+          apply to the other views.
+        </p>
+      </Section>
+      <Section
         title="Snow particles · amount & appearance"
         onReset={() =>
           edit("Reset ambient", (p) => {

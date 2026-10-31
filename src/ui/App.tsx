@@ -713,16 +713,22 @@ export function App() {
             </div>
             <Select
               label="Output format"
-              value={p.format}
+              value={
+                p.format === "vertical" && p.shorts.enabled
+                  ? "shorts"
+                  : p.format
+              }
               options={[
                 ["landscape", "16:9 Landscape"],
                 ["vertical", "9:16 Vertical"],
+                ["shorts", "9:16 Shorts · cropped board"],
                 ["square", "1:1 Square"],
                 ["square-in-vertical", "Square in vertical"],
               ]}
               onChange={(v) =>
                 edit("Output format", (p) => {
-                  p.format = v;
+                  p.format = v === "shorts" ? "vertical" : v;
+                  p.shorts.enabled = v === "shorts";
                 })
               }
             />

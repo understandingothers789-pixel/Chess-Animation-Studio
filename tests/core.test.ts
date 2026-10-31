@@ -14,6 +14,7 @@ import {
   duration,
   sway,
   particle,
+  shortsFraming,
 } from "../src/core/timeline";
 import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
 describe("legal state and stable identities", () => {
@@ -180,4 +181,39 @@ it("defaults legacy projects to board-only snow and a selectable zoom-turn opene
     p.boardFX.introPreset = preset;
     expect(parseProject(p).boardFX.introPreset).toBe(preset);
   }
+});
+
+describe("Shorts close-up framing", () => {
+  it("loads older projects with Shorts off and computes a cropped portrait window", () => {
+    const old: any = blank();
+    delete old.shorts;
+    const p = parseProject(old);
+    expect(p.shorts.enabled).toBe(false);
+    const frame = evaluate(p, 0).camera;
+    const c = shortsFraming(p, { ...frame, zoom: 1, x: 0, y: 0 }, 1080, 1920);
+    expect(c.halfX * 2).toBeCloseTo(6);
+    expect(c.halfY * 2).toBeLessThan(8);
+    expect(c.viewH).toBe(1382);
+    expect(c.viewY).toBe(269);
+  });
+  it("bounds tracking to the board and reconstructs identical framing after seeking", () => {
+    const p = sample();
+    p.shorts.enabled = true;
+    p.format = "vertical";
+    const first = shortsFraming(p, evaluate(p, 6).camera, 1080, 1920);
+    shortsFraming(p, evaluate(p, 30).camera, 1080, 1920);
+    expect(shortsFraming(p, evaluate(p, 6).camera, 1080, 1920)).toEqual(first);
+    const c = shortsFraming(
+      p,
+      { ...evaluate(p, 6).camera, x: 100, y: -100, zoom: 1 },
+      1080,
+      1920,
+    );
+    expect(c.x + c.halfX).toBeLessThanOrEqual(4);
+    expect(c.y - c.halfY).toBeGreaterThanOrEqual(-4);
+    p.shorts.follow = false;
+    expect(
+      shortsFraming(p, { ...evaluate(p, 6).camera, x: 100 }, 1080, 1920).x,
+    ).toBe(0);
+  });
 });

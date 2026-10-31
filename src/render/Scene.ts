@@ -1,6 +1,12 @@
 import * as T from "three";
 import { createPiece, preloadPieces, type PieceSet } from "./pieces";
-import { evaluate, particle, clamp, type Frame } from "../core/timeline";
+import {
+  evaluate,
+  particle,
+  clamp,
+  type Frame,
+  shortsFraming,
+} from "../core/timeline";
 import { buildGame, type Game } from "../core/chess";
 import { type Project, type Format } from "../core/project";
 const symbols: Record<string, string> = {
@@ -303,6 +309,7 @@ export class Scene {
     }
     const e = evaluate(p, time, this.game, format);
     const fx = p.boardFX;
+    const short = format === "vertical" && p.shorts.enabled;
     if (fx.intro && fx.introPreset !== "still" && time < p.lead) {
       const u = Math.min(1, time / Math.min(p.lead, fx.introDuration)),
         k = u * u * (3 - 2 * u);
@@ -326,6 +333,7 @@ export class Scene {
     }
     this.renderer.setScissorTest(false);
     this.renderer.setViewport(0, 0, w, h);
+    this.renderer.setClearColor(short ? p.shorts.barColor : "#111918");
     this.renderer.clear(true, true, true);
     const bg = p.layouts[format],
       bgMat = this.background.material as T.ShaderMaterial;
@@ -351,9 +359,10 @@ export class Scene {
       ? fx.vignette * (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283))
       : 0;
     bgMat.uniforms.vignetteTint.value.set(fx.vignetteColor ?? "#080c0b");
-    this.renderer.render(this.backgroundScene, this.backgroundCamera);
+    if (!short)
+      this.renderer.render(this.backgroundScene, this.backgroundCamera);
     const image = bg.image ? this.assetTextures.get(bg.image) : null;
-    if (image && bg.background === "image") {
+    if (!short && image && bg.background === "image") {
       const m = new T.Mesh(
         new T.PlaneGeometry(2, 2),
         new T.MeshBasicMaterial({ map: image }),
@@ -369,21 +378,26 @@ export class Scene {
       (m.material as T.Material).dispose();
     }
     const square = format === "square-in-vertical",
-      viewH = square ? w : h,
-      viewY = square ? Math.round((h - w) / 2 + (bg.y * w) / 8) : 0;
+      crop = short ? shortsFraming(p, e.camera, w, h) : null,
+      viewH = crop ? crop.viewH : square ? w : h,
+      viewY = crop
+        ? crop.viewY
+        : square
+          ? Math.round((h - w) / 2 + (bg.y * w) / 8)
+          : 0;
     this.layout = { x: 0, y: viewY, w, h: viewH };
     this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
     const sign = p.style.orientation === "white" ? 1 : -1,
       aspect = w / viewH,
       half = 4.65 / Math.max(0.1, e.camera.zoom * bg.zoom);
-    this.camera.left = -half * Math.max(1, aspect);
-    this.camera.right = half * Math.max(1, aspect);
-    this.camera.top = half * Math.max(1, 1 / aspect);
-    this.camera.bottom = -half * Math.max(1, 1 / aspect);
+    this.camera.left = -(crop?.halfX ?? half * Math.max(1, aspect));
+    this.camera.right = crop?.halfX ?? half * Math.max(1, aspect);
+    this.camera.top = crop?.halfY ?? half * Math.max(1, 1 / aspect);
+    this.camera.bottom = -(crop?.halfY ?? half * Math.max(1, 1 / aspect));
     this.camera.near = 0.1;
     this.camera.far = 100;
-    const x = (e.camera.x + bg.x) * sign,
-      y = (e.camera.y + (square ? 0 : bg.y)) * sign,
+    const x = (crop ? crop.x : e.camera.x + bg.x) * sign,
+      y = (crop ? crop.y : e.camera.y + (square ? 0 : bg.y)) * sign,
       tilt = (e.camera.tilt * Math.PI) / 180;
     this.camera.position.set(x, y + Math.sin(tilt) * 25, Math.cos(tilt) * 25);
     this.camera.up.set(0, 1, 0);
@@ -636,13 +650,13 @@ export class Scene {
     );
     (this.bursts.material as T.ShaderMaterial).uniforms.pixels.value =
       viewH / 9;
-    if (square) {
+    if (square || short) {
       this.root.visible = false;
       this.renderer.clearDepth();
-      this.renderer.render(this.scene, this.camera);
+      if (!short) this.renderer.render(this.scene, this.camera);
       this.root.visible = true;
-      this.renderer.setViewport(0, viewY, w, w);
-      this.renderer.setScissor(0, viewY, w, w);
+      this.renderer.setViewport(0, viewY, w, viewH);
+      this.renderer.setScissor(0, viewY, w, viewH);
       this.renderer.setScissorTest(true);
     }
     this.renderer.clearDepth();

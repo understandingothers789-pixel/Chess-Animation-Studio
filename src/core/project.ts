@@ -354,6 +354,25 @@ export const projectSchema = z.object({
       vignette: 0.08,
       vignetteSpeed: 0.2,
     }),
+  shorts: z
+    .object({
+      enabled: z.boolean(),
+      width: n(4, 8),
+      tracking: n(0, 1).default(0.35),
+      height: n(0.55, 1),
+      position: n(0, 1),
+      follow: z.boolean(),
+      barColor: color,
+    })
+    .default({
+      enabled: false,
+      width: 6,
+      tracking: 0.35,
+      height: 0.72,
+      position: 0.5,
+      follow: true,
+      barColor: "#000000",
+    }),
   format: z.enum(formats),
   layouts: z.record(
     z.enum(formats),
@@ -488,6 +507,15 @@ export function blank(): Project {
       sweepSpeed: 0.12,
       vignette: 0.08,
       vignetteSpeed: 0.2,
+    },
+    shorts: {
+      enabled: false,
+      width: 6,
+      tracking: 0.35,
+      height: 0.72,
+      position: 0.5,
+      follow: true,
+      barColor: "#000000",
     },
     format: "landscape",
     layouts: Object.fromEntries(

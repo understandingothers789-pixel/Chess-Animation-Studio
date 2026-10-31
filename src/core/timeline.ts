@@ -382,3 +382,35 @@ export function particle(i: number, time: number, a: Project["ambient"]) {
     alpha: a.opacity * (0.3 + 0.7 * random(seed + 5)),
   };
 }
+
+/** Portrait crop in board-square units, shared by rendering and framing checks. */
+export function shortsFraming(
+  p: Project,
+  camera: Frame["camera"],
+  width: number,
+  height: number,
+) {
+  const layout = p.layouts.vertical;
+  const viewH = Math.round(height * p.shorts.height);
+  const viewY = Math.round((height - viewH) * (1 - p.shorts.position));
+  const halfX = p.shorts.width / (2 * Math.max(0.1, camera.zoom * layout.zoom));
+  const halfY = (halfX * viewH) / width;
+  const limitX = Math.max(0, 4 - halfX),
+    limitY = Math.max(0, 4 - halfY);
+  return {
+    viewH,
+    viewY,
+    halfX,
+    halfY,
+    x: clamp(
+      (p.shorts.follow ? camera.x * p.shorts.tracking : 0) + layout.x,
+      -limitX,
+      limitX,
+    ),
+    y: clamp(
+      (p.shorts.follow ? camera.y * p.shorts.tracking : 0) + layout.y,
+      -limitY,
+      limitY,
+    ),
+  };
+}

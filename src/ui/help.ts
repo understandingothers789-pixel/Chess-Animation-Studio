@@ -1,5 +1,19 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Shorts tracking strength":
+    "How strongly move cameras steer the crop. Lower values keep more board context; higher values move closer to the action.",
+  "Shorts crop":
+    "Use a 9:16 portrait close-up with the outer files cropped off and clean space above and below the board.",
+  "Follow action in Shorts":
+    "Smoothly reframe using each move's camera route. Turn off to keep the crop centered; layout offsets still apply.",
+  "Visible board width":
+    "Board squares visible across the crop at camera zoom 1. Lower values make the pieces larger and crop more files.",
+  "Shorts board height":
+    "Fraction of the portrait frame occupied by the board window. 0.72 leaves 28% for the surrounding bars.",
+  "Shorts board position":
+    "Vertical position of the board window: 0 is top, 0.5 is centered, 1 is bottom.",
+  "Shorts bar color":
+    "Solid color of the space above and below the cropped board. Defaults to black.",
   "Maximum depth":
     "Maximum Stockfish search depth per position; higher values can take longer.",
   Variation:
@@ -268,7 +282,7 @@ const help: Record<string, string> = {
   "Asset name":
     "Display name of an imported asset; does not rename its source file.",
   "Output format":
-    "Choose landscape, vertical, square or square-in-vertical framing for preview and export.",
+    "Choose landscape, vertical, Shorts cropped-board, square or square-in-vertical framing for preview and export.",
   "Export start": "First project time to render, in seconds.",
   "Export end":
     "Last project time to render, in seconds; it must be later than Export start.",

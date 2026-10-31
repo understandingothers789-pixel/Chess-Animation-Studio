@@ -260,10 +260,16 @@ app.whenReady().then(async () => {
   handle("save", save);
   handle("projectReport", async (input: Project) => {
     const p = parseProject(input);
-    const r = await dialog.showSaveDialog(editor!, { defaultPath: p.title.replace(/[^a-z0-9 _-]/gi, "") + "-settings.json", filters: [{ name: "Project settings report", extensions: ["json"] }] });
+    const r = await dialog.showSaveDialog(editor!, {
+      defaultPath: p.title.replace(/[^a-z0-9 _-]/gi, "") + "-settings.json",
+      filters: [{ name: "Project settings report", extensions: ["json"] }],
+    });
     if (r.canceled || !r.filePath) return null;
     const report = structuredClone(p);
-    report.assets = report.assets.map((asset) => ({ ...asset, path: "[local path omitted]" }));
+    report.assets = report.assets.map((asset) => ({
+      ...asset,
+      path: "[local path omitted]",
+    }));
     await fs.writeFile(r.filePath, JSON.stringify(report, null, 2), "utf8");
     return r.filePath;
   });

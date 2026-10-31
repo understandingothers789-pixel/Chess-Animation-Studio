@@ -133,9 +133,7 @@ export function Inspector({
   return (
     <aside className="inspector">
       <div className="inspector-title">
-        <span className="eyebrow">
-          MOVE {index + 1} · {move.id.slice(0, 6)}
-        </span>
+        <span className="eyebrow">SELECTED MOVE · {index + 1}</span>
         <h2>
           {move.san}
           <small>{presetLabels[e.preset]}</small>
@@ -146,8 +144,18 @@ export function Inspector({
           edits use the active move.
         </p>
         <div className="button-row">
-          <button onClick={onCopy}>Copy</button>
-          <button onClick={onPaste}>Paste</button>
+          <button
+            onClick={onCopy}
+            title="Copy all animation, camera and Look settings from this move"
+          >
+            Copy
+          </button>
+          <button
+            onClick={onPaste}
+            title="Paste the copied effect onto the selected moves"
+          >
+            Paste
+          </button>
           <button onClick={() => change("keys", {})}>Clear keys</button>
         </div>
       </div>
@@ -163,6 +171,18 @@ export function Inspector({
         ))}
       </nav>
       <div className="inspector-content">
+        <p className="inspector-guide">
+          {
+            (
+              {
+                motion: "How the piece moves and lands.",
+                camera: "Framing and camera movement for this move.",
+                look: "Highlights, badges and Beat spotlight — the music-synced zoom effect.",
+                keys: "Advanced: animate individual values over the move.",
+              } as Record<string, string>
+            )[tab]
+          }
+        </p>
         {tab === "motion" && (
           <>
             <Section

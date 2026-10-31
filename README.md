@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.10
+# Chess Animation Studio · 0.2.11
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
 ![Version 0.2.9 beat spotlight in the cropped Shorts view](docs/images/release-029.png)
 
 ## Windows downloads
+
+**[Download 0.2.11 for Windows](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.11/Chess-Animation-Studio-0.2.11-Windows-Portable.zip).** Clearer workflow and panel organization, live music volume, volume points, beat locking, preserved music settings and an exportable project settings report. Windows build and packaged checks run before publication.
 
 **[Download 0.2.10 for Windows (unsigned application, x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.10/Chess-Animation-Studio-0.2.10-Windows-Portable.zip).** Adds playhead snapping to move boundaries with an optional toggle and Alt bypass. Standard **9:16 Vertical** framing now centers the board and uses the available width; the default camera stays settled through the intro into the first move. Windows packaging and app validation are running; download will be available when the release completes.
 

@@ -611,10 +611,6 @@ export function App() {
             <Save size={15} /> Save
           </button>
           <button onClick={() => save(true)}>Save as</button>
-          <button onClick={() => run(async () => {
-            const result = await window.studio.projectReport(latest.current);
-            if (result) message("Project settings report saved.");
-          })}>Export settings report</button>
           <span className="divider" />
           <button
             title="Undo"
@@ -676,14 +672,16 @@ export function App() {
           <nav className="library-tabs">
             {[
               ["game", BookOpen],
+              ["scene", Palette],
               ["styles", SlidersHorizontal],
               ["music", Music2],
-              ["scene", Palette],
               ["analysis", Activity],
               ["files", FolderOpen],
             ].map(([name, Icon]) => (
               <button
                 key={name as string}
+                aria-label={name as string}
+                aria-current={tab === name ? "page" : undefined}
                 className={tab === name ? "active" : ""}
                 onClick={() => setTab(name as string)}
               >
@@ -692,7 +690,43 @@ export function App() {
               </button>
             ))}
           </nav>
-          <div className="library-content">
+          <div className="panel-context">
+            <span className="eyebrow">PROJECT SETTINGS</span>
+            <h2>
+              {
+                (
+                  {
+                    game: "1. Choose your game",
+                    scene: "2. Set the scene",
+                    styles: "3. Style the moves",
+                    music: "4. Add music & beats",
+                    analysis: "Analysis & suggestions",
+                    files: "Files & setup",
+                  } as Record<string, string>
+                )[tab]
+              }
+            </h2>
+            <p>
+              {
+                (
+                  {
+                    game: "Import a PGN or start with the sample. Select a move to edit it on the right.",
+                    scene:
+                      "Board, framing and atmosphere for the whole video. Set the output format above the preview.",
+                    styles:
+                      "Apply a starting style, then fine-tune selected moves in the right panel.",
+                    music:
+                      "Import a track, set its level, then arrange beats. Lock markers when timing is right.",
+                    analysis:
+                      "Optional suggestions for move badges. Your manual edits stay under your control.",
+                    files:
+                      "Set up local tools, manage assets and export a settings report for help.",
+                  } as Record<string, string>
+                )[tab]
+              }
+            </p>
+          </div>
+          <div className="library-content" key={tab}>
             {tab === "game" && (
               <button
                 className="sample-button"

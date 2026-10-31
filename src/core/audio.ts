@@ -46,8 +46,12 @@ export function musicVolumeAt(p: Project, time: number) {
   if (!points.length) return p.music.volume;
   if (time <= points[0].time) return points[0].value;
   for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1], b = points[i];
-    if (time <= b.time) return a.value + (b.value - a.value) * (time - a.time) / (b.time - a.time);
+    const a = points[i - 1],
+      b = points[i];
+    if (time <= b.time)
+      return (
+        a.value + ((b.value - a.value) * (time - a.time)) / (b.time - a.time)
+      );
   }
   return points[points.length - 1].value;
 }

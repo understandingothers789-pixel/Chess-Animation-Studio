@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const VERSION = "0.2.9";
+export const VERSION = "0.2.11";
 export const formats = [
   "landscape",
   "vertical",
@@ -496,7 +496,10 @@ export const projectSchema = z.object({
     trimStart: n(0, 3600),
     trimEnd: n(0, 3600),
     volume: n(0, 2),
-    volumePoints: z.array(z.object({ time: n(0, 7200), value: n(0, 2) })).max(1000).default([]),
+    volumePoints: z
+      .array(z.object({ time: n(0, 7200), value: n(0, 2) }))
+      .max(1000)
+      .default([]),
     muted: z.boolean(),
     fadeIn: n(0, 30),
     fadeOut: n(0, 30),

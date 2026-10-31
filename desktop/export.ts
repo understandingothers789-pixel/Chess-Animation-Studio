@@ -263,12 +263,15 @@ export class VideoJob {
         ),
         p.music.fadeOut,
         (() => {
-          const points = [...p.music.volumePoints].sort((a, b) => a.time - b.time);
+          const points = [...p.music.volumePoints].sort(
+            (a, b) => a.time - b.time,
+          );
           if (!points.length) return "";
           const origin = Math.max(this.options.start, p.music.offset);
           let expr = String(points[points.length - 1].value);
           for (let i = points.length - 2; i >= 0; i--) {
-            const a = points[i], b = points[i + 1];
+            const a = points[i],
+              b = points[i + 1];
             expr = `if(lt(t+${origin},${b.time}),${a.value}+(${b.value}-${a.value})*(t+${origin}-${a.time})/${b.time - a.time},${expr})`;
           }
           return `if(lt(t+${origin},${points[0].time}),${points[0].value},${expr})`;

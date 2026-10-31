@@ -1,5 +1,11 @@
 # Fresh implementation history
 
+## 0.2.11
+
+Improves editor organization with a numbered workflow, contextual panel guidance, clearer section cards, board/framing controls first in Scene, and selected-move guidance that identifies Beat spotlight in Look. Moves the settings report into Files.
+
+Adds live music volume changes, timeline volume points for preview/export, a shareable project settings report, beat-marker locking and preservation of Scene/Music controls when importing another track. New compositions and pulse resets use all enabled beats instead of accents only.
+
 ## 0.2.10
 
 Adds optional playhead snapping to move clip boundaries, with Alt to bypass snapping while seeking. Fits and centers the board across the available width in standard 9:16 Vertical output, and keeps the default camera settled through the intro into the first move.

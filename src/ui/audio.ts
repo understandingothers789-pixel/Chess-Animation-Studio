@@ -42,20 +42,27 @@ export class AudioPlayer {
       if (length > 0) {
         const elapsed = Math.max(0, time - m.offset);
         gain.gain.setValueAtTime(
-          gainAt({ ...p, music: { ...m, volume: 1, volumePoints: [], muted: false } }, Math.max(time, m.offset), b.duration),
+          gainAt(
+            {
+              ...p,
+              music: { ...m, volume: 1, volumePoints: [], muted: false },
+            },
+            Math.max(time, m.offset),
+            b.duration,
+          ),
           start,
         );
         if (m.fadeIn > elapsed)
-          gain.gain.linearRampToValueAtTime(
-            1,
-            start + m.fadeIn - elapsed,
-          );
+          gain.gain.linearRampToValueAtTime(1, start + m.fadeIn - elapsed);
         const fadeStart = Math.max(start, start + length - m.fadeOut);
         gain.gain.setValueAtTime(
           Math.min(
             1,
             gainAt(
-              { ...p, music: { ...m, volume: 1, volumePoints: [], muted: false } },
+              {
+                ...p,
+                music: { ...m, volume: 1, volumePoints: [], muted: false },
+              },
               m.offset + Math.max(0, trimEnd - m.trimStart - m.fadeOut),
               b.duration,
             ),
@@ -116,7 +123,11 @@ export class AudioPlayer {
     return perf;
   }
   updateMusic(p: Project, time: number) {
-    this.musicGain?.gain.setTargetAtTime(p.music.muted ? 0 : musicVolumeAt(p, time), this.context.currentTime, 0.01);
+    this.musicGain?.gain.setTargetAtTime(
+      p.music.muted ? 0 : musicVolumeAt(p, time),
+      this.context.currentTime,
+      0.01,
+    );
   }
   stop() {
     this.musicGain = null;

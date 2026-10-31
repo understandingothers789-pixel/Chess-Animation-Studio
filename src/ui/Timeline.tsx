@@ -52,9 +52,22 @@ export function Timeline({
           b.sourceTime = t + p.music.trimStart - p.music.offset;
       });
     } else {
-      const boundaries = [0, p.lead, length, ...seq.flatMap((segment) => [segment.start, segment.end])];
-      const nearest = boundaries.reduce((best, boundary) => Math.abs(boundary - t) < Math.abs(best - t) ? boundary : best, boundaries[0]);
-      seek(snap && !e.altKey && Math.abs(nearest - t) * r.width / length <= 8 ? nearest : t);
+      const boundaries = [
+        0,
+        p.lead,
+        length,
+        ...seq.flatMap((segment) => [segment.start, segment.end]),
+      ];
+      const nearest = boundaries.reduce(
+        (best, boundary) =>
+          Math.abs(boundary - t) < Math.abs(best - t) ? boundary : best,
+        boundaries[0],
+      );
+      seek(
+        snap && !e.altKey && (Math.abs(nearest - t) * r.width) / length <= 8
+          ? nearest
+          : t,
+      );
     }
   };
   const sourceLength = p.music.sourceDuration || length,
@@ -80,10 +93,30 @@ export function Timeline({
           </small>
         </div>
         <label title="Lock beat markers to prevent accidental edits">
-          <input type="checkbox" aria-label="Lock beat markers" title="Prevent beat marker dragging, keyboard edits and adding markers" aria-description="Prevent beat marker dragging, keyboard edits and adding markers" checked={p.beatsLocked} onChange={(e) => edit("Lock beat markers", (p) => { p.beatsLocked = e.target.checked; })} /> Lock beats
+          <input
+            type="checkbox"
+            aria-label="Lock beat markers"
+            title="Prevent beat marker dragging, keyboard edits and adding markers"
+            aria-description="Prevent beat marker dragging, keyboard edits and adding markers"
+            checked={p.beatsLocked}
+            onChange={(e) =>
+              edit("Lock beat markers", (p) => {
+                p.beatsLocked = e.target.checked;
+              })
+            }
+          />{" "}
+          Lock beats
         </label>
         <label title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping">
-          <input type="checkbox" aria-label="Snap" title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping" aria-description="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap
+          <input
+            type="checkbox"
+            aria-label="Snap"
+            title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
+            aria-description="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
+            checked={snap}
+            onChange={(e) => setSnap(e.target.checked)}
+          />{" "}
+          Snap
         </label>
         <label>
           Timeline zoom

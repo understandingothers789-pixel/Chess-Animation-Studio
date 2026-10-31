@@ -420,15 +420,42 @@ export function MusicPanel(q: PanelProps) {
             onChange={(v) => changeMusic(k, v)}
           />
         ))}
-        <p className="hint">Volume points smoothly change music level over time. At the playhead, set Music volume, then add a point.</p>
-        <button className="wide" onClick={() => edit("Add music volume point", (p) => {
-          const t = Math.round(q.time * 1000) / 1000;
-          p.music.volumePoints = [...p.music.volumePoints.filter((point) => point.time !== t), { time: t, value: p.music.volume }].sort((a, b) => a.time - b.time);
-        })}>Add volume point at {clock(q.time)}</button>
-        {p.music.volumePoints.map((point) => <div key={point.time}>
-          <button onClick={() => q.seek(point.time)}>Go to {clock(point.time)} · {point.value.toFixed(2)}</button>
-          <button onClick={() => edit("Remove music volume point", (p) => { p.music.volumePoints = p.music.volumePoints.filter((item) => item.time !== point.time); })}>Remove</button>
-        </div>)}
+        <p className="hint">
+          Volume points smoothly change music level over time. At the playhead,
+          set Music volume, then add a point.
+        </p>
+        <button
+          className="wide"
+          onClick={() =>
+            edit("Add music volume point", (p) => {
+              const t = Math.round(q.time * 1000) / 1000;
+              p.music.volumePoints = [
+                ...p.music.volumePoints.filter((point) => point.time !== t),
+                { time: t, value: p.music.volume },
+              ].sort((a, b) => a.time - b.time);
+            })
+          }
+        >
+          Add volume point at {clock(q.time)}
+        </button>
+        {p.music.volumePoints.map((point) => (
+          <div key={point.time}>
+            <button onClick={() => q.seek(point.time)}>
+              Go to {clock(point.time)} · {point.value.toFixed(2)}
+            </button>
+            <button
+              onClick={() =>
+                edit("Remove music volume point", (p) => {
+                  p.music.volumePoints = p.music.volumePoints.filter(
+                    (item) => item.time !== point.time,
+                  );
+                })
+              }
+            >
+              Remove
+            </button>
+          </div>
+        ))}
         <button
           className="wide"
           disabled={!p.music.asset || p.beatsLocked}
@@ -482,85 +509,96 @@ export function MusicPanel(q: PanelProps) {
         </p>
       </Section>
       <Section title="Beat markers">
-        <Toggle label="Lock beat markers" checked={p.beatsLocked} onChange={(v) => edit("Lock beat markers", (p) => { p.beatsLocked = v; })} />
-        <fieldset disabled={p.beatsLocked} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-        <button
-          className="wide"
-          onClick={() =>
-            edit("Add beat", (p) => {
-              p.beats.push({
-                id: crypto.randomUUID(),
-                time: q.time,
-                accent: true,
-                enabled: true,
-              });
-              p.beats.sort((a, b) => a.time - b.time);
+        <Toggle
+          label="Lock beat markers"
+          checked={p.beatsLocked}
+          onChange={(v) =>
+            edit("Lock beat markers", (p) => {
+              p.beatsLocked = v;
             })
           }
+        />
+        <fieldset
+          disabled={p.beatsLocked}
+          style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
         >
-          + Marker at playhead
-        </button>
-        <div className="marker-list">
-          {p.beats.map((b) => (
-            <div className="marker-row" key={b.id}>
-              <input
-                title={settingHelp("Enable beat")}
-                aria-description={settingHelp("Enable beat")}
-                aria-label="Enable beat"
-                type="checkbox"
-                checked={b.enabled}
-                onChange={(e) =>
-                  edit("Enable beat", (p) => {
-                    p.beats.find((v) => v.id === b.id)!.enabled =
-                      e.target.checked;
-                  })
-                }
-              />
-              <input
-                title={settingHelp("Beat time")}
-                aria-description={settingHelp("Beat time")}
-                aria-label="Beat time"
-                type="number"
-                step={0.01}
-                value={Number(b.time.toFixed(3))}
-                onChange={(e) => {
-                  const time = +e.target.value;
-                  if (Number.isFinite(time) && time >= 0)
-                    edit("Beat time", (p) => {
+          <button
+            className="wide"
+            onClick={() =>
+              edit("Add beat", (p) => {
+                p.beats.push({
+                  id: crypto.randomUUID(),
+                  time: q.time,
+                  accent: true,
+                  enabled: true,
+                });
+                p.beats.sort((a, b) => a.time - b.time);
+              })
+            }
+          >
+            + Marker at playhead
+          </button>
+          <div className="marker-list">
+            {p.beats.map((b) => (
+              <div className="marker-row" key={b.id}>
+                <input
+                  title={settingHelp("Enable beat")}
+                  aria-description={settingHelp("Enable beat")}
+                  aria-label="Enable beat"
+                  type="checkbox"
+                  checked={b.enabled}
+                  onChange={(e) =>
+                    edit("Enable beat", (p) => {
+                      p.beats.find((v) => v.id === b.id)!.enabled =
+                        e.target.checked;
+                    })
+                  }
+                />
+                <input
+                  title={settingHelp("Beat time")}
+                  aria-description={settingHelp("Beat time")}
+                  aria-label="Beat time"
+                  type="number"
+                  step={0.01}
+                  value={Number(b.time.toFixed(3))}
+                  onChange={(e) => {
+                    const time = +e.target.value;
+                    if (Number.isFinite(time) && time >= 0)
+                      edit("Beat time", (p) => {
+                        const v = p.beats.find((v) => v.id === b.id)!;
+                        v.time = time;
+                        if (v.sourceTime !== undefined)
+                          v.sourceTime =
+                            time + p.music.trimStart - p.music.offset;
+                      });
+                  }}
+                />
+                <button
+                  className={b.accent ? "accent" : ""}
+                  title={settingHelp("Beat accent")}
+                  aria-label="Beat accent"
+                  onClick={() =>
+                    edit("Beat accent", (p) => {
                       const v = p.beats.find((v) => v.id === b.id)!;
-                      v.time = time;
-                      if (v.sourceTime !== undefined)
-                        v.sourceTime =
-                          time + p.music.trimStart - p.music.offset;
-                    });
-                }}
-              />
-              <button
-                className={b.accent ? "accent" : ""}
-                title={settingHelp("Beat accent")}
-                aria-label="Beat accent"
-                onClick={() =>
-                  edit("Beat accent", (p) => {
-                    const v = p.beats.find((v) => v.id === b.id)!;
-                    v.accent = !v.accent;
-                  })
-                }
-              >
-                {b.accent ? "●" : "○"}
-              </button>
-              <button
-                aria-label="Delete beat"
-                onClick={() =>
-                  edit("Delete beat", (p) => {
-                    p.beats = p.beats.filter((v) => v.id !== b.id);
-                  })
-                }
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
+                      v.accent = !v.accent;
+                    })
+                  }
+                >
+                  {b.accent ? "●" : "○"}
+                </button>
+                <button
+                  aria-label="Delete beat"
+                  onClick={() =>
+                    edit("Delete beat", (p) => {
+                      p.beats = p.beats.filter((v) => v.id !== b.id);
+                    })
+                  }
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
         </fieldset>
       </Section>
       <Section
@@ -706,6 +744,118 @@ export function ScenePanel(q: PanelProps) {
   const layout = p.layouts[p.format];
   return (
     <>
+      <Section
+        title="Board & pieces"
+        onReset={() =>
+          edit("Reset style", (p) => {
+            p.style = blank().style;
+          })
+        }
+      >
+        <Select
+          label="Piece artwork"
+          value={p.style.pieceSet}
+          options={[
+            ["merida", "Nibbler (Merida)"],
+            ["neo", "Neo"],
+            ["cburnett", "Lichess (Cburnett)"],
+          ]}
+          onChange={(v) =>
+            edit("Piece artwork", (p) => {
+              p.style.pieceSet = v;
+            })
+          }
+        />
+        <p className="hint">
+          Nocturne's vector artwork, with a thin solid edge and mirrored reverse
+          face.
+        </p>
+        {(["light", "dark", "rim", "background", "accent"] as const).map(
+          (k) => (
+            <Color
+              label={
+                {
+                  light: "Light squares",
+                  dark: "Dark squares",
+                  rim: "Board rim",
+                  background: "Background",
+                  accent: "Accent",
+                }[k]
+              }
+              key={k}
+              value={p.style[k]}
+              onChange={(v) =>
+                edit("Color " + k, (p) => {
+                  p.style[k] = v;
+                })
+              }
+            />
+          ),
+        )}
+        <Select
+          label="Orientation"
+          value={p.style.orientation}
+          options={["white", "black"]}
+          onChange={(v) =>
+            edit("Orientation", (p) => {
+              p.style.orientation = v;
+            })
+          }
+        />
+        <Toggle
+          label="Board coordinates"
+          checked={p.style.coordinates}
+          onChange={(v) =>
+            edit("Coordinates", (p) => {
+              p.style.coordinates = v;
+            })
+          }
+        />
+      </Section>
+      <Section
+        title={"Composition · " + p.format}
+        onReset={() =>
+          edit("Reset composition", (p) => {
+            p.layouts[p.format] = blank().layouts[p.format];
+          })
+        }
+      >
+        <Select
+          label="Background treatment"
+          value={layout.background}
+          options={["solid", "gradient", "particles", "image"]}
+          onChange={(v) =>
+            edit("Background treatment", (p) => {
+              p.layouts[p.format].background = v;
+              if (v === "particles") p.ambient.enabled = true;
+            })
+          }
+        />
+        <button
+          className="wide"
+          onClick={() => q.run(() => q.importAsset("image", "background"))}
+        >
+          Import background image
+        </button>
+        {(["x", "y", "zoom"] as const).map((k) => (
+          <Range
+            key={k}
+            label={{ x: "Layout X", y: "Layout Y", zoom: "Layout zoom" }[k]}
+            value={layout[k]}
+            min={k === "zoom" ? 0.6 : k === "y" ? -4 : -3}
+            max={k === "zoom" ? 1.5 : k === "y" ? 4 : 3}
+            onChange={(v) =>
+              edit("Layout " + k, (p) => {
+                p.layouts[p.format][k] = v;
+              })
+            }
+          />
+        ))}
+        <p className="hint">
+          Square-in-vertical keeps a square chess viewport. Layout Y positions
+          it within the vertical canvas.
+        </p>
+      </Section>
       <Section
         title="Shorts framing"
         onReset={() =>
@@ -895,118 +1045,6 @@ export function ScenePanel(q: PanelProps) {
             })
           }
         />
-      </Section>
-      <Section
-        title="Board & pieces"
-        onReset={() =>
-          edit("Reset style", (p) => {
-            p.style = blank().style;
-          })
-        }
-      >
-        <Select
-          label="Piece artwork"
-          value={p.style.pieceSet}
-          options={[
-            ["merida", "Nibbler (Merida)"],
-            ["neo", "Neo"],
-            ["cburnett", "Lichess (Cburnett)"],
-          ]}
-          onChange={(v) =>
-            edit("Piece artwork", (p) => {
-              p.style.pieceSet = v;
-            })
-          }
-        />
-        <p className="hint">
-          Nocturne's vector artwork, with a thin solid edge and mirrored reverse
-          face.
-        </p>
-        {(["light", "dark", "rim", "background", "accent"] as const).map(
-          (k) => (
-            <Color
-              label={
-                {
-                  light: "Light squares",
-                  dark: "Dark squares",
-                  rim: "Board rim",
-                  background: "Background",
-                  accent: "Accent",
-                }[k]
-              }
-              key={k}
-              value={p.style[k]}
-              onChange={(v) =>
-                edit("Color " + k, (p) => {
-                  p.style[k] = v;
-                })
-              }
-            />
-          ),
-        )}
-        <Select
-          label="Orientation"
-          value={p.style.orientation}
-          options={["white", "black"]}
-          onChange={(v) =>
-            edit("Orientation", (p) => {
-              p.style.orientation = v;
-            })
-          }
-        />
-        <Toggle
-          label="Board coordinates"
-          checked={p.style.coordinates}
-          onChange={(v) =>
-            edit("Coordinates", (p) => {
-              p.style.coordinates = v;
-            })
-          }
-        />
-      </Section>
-      <Section
-        title={"Composition · " + p.format}
-        onReset={() =>
-          edit("Reset composition", (p) => {
-            p.layouts[p.format] = blank().layouts[p.format];
-          })
-        }
-      >
-        <Select
-          label="Background treatment"
-          value={layout.background}
-          options={["solid", "gradient", "particles", "image"]}
-          onChange={(v) =>
-            edit("Background treatment", (p) => {
-              p.layouts[p.format].background = v;
-              if (v === "particles") p.ambient.enabled = true;
-            })
-          }
-        />
-        <button
-          className="wide"
-          onClick={() => q.run(() => q.importAsset("image", "background"))}
-        >
-          Import background image
-        </button>
-        {(["x", "y", "zoom"] as const).map((k) => (
-          <Range
-            key={k}
-            label={{ x: "Layout X", y: "Layout Y", zoom: "Layout zoom" }[k]}
-            value={layout[k]}
-            min={k === "zoom" ? 0.6 : k === "y" ? -4 : -3}
-            max={k === "zoom" ? 1.5 : k === "y" ? 4 : 3}
-            onChange={(v) =>
-              edit("Layout " + k, (p) => {
-                p.layouts[p.format][k] = v;
-              })
-            }
-          />
-        ))}
-        <p className="hint">
-          Square-in-vertical keeps a square chess viewport. Layout Y positions
-          it within the vertical canvas.
-        </p>
       </Section>
       <Section
         title="Board atmosphere & intro"
@@ -1443,6 +1481,23 @@ export function FilesPanel(q: PanelProps) {
     [token, setToken] = useState("");
   return (
     <>
+      <Section title="Share project settings">
+        <p className="hint">
+          Save a readable report of move animations, cameras, music and scene
+          settings. Share it when you need help identifying an effect. Media
+          files are not included.
+        </p>
+        <button
+          onClick={() =>
+            q.run(async () => {
+              const file = await window.studio.projectReport(p);
+              if (file) q.message("Project settings report saved.");
+            })
+          }
+        >
+          Export settings report
+        </button>
+      </Section>
       <Section title="Local tools">
         <button
           title="Choose your local FFmpeg executable to enable MP4 export. The app does not bundle an encoder."

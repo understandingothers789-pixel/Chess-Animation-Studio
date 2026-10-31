@@ -1097,3 +1097,77 @@ progress {
 .section summary > span {
   flex: 1;
 }
+
+/* Clear separation between project settings, preview and selected-move edits. */
+.panel-context {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line);
+  background: #1b291f;
+}
+.panel-context h2 {
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 6px 0;
+  color: #e2ecd6;
+}
+.panel-context p,
+.inspector-guide {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #aabdac;
+  margin: 0;
+}
+.inspector-guide {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.library-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 8px;
+}
+.library-tabs button {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 9px 7px;
+  font-size: 11px;
+  text-transform: capitalize;
+  border-radius: 6px;
+}
+.section {
+  margin: 8px 0;
+  padding: 12px 10px;
+  border: 1px solid #30402f;
+  border-radius: 8px;
+  background: #1a261e;
+}
+.section summary {
+  text-transform: none;
+  letter-spacing: 0.15px;
+  font-size: 12px;
+  line-height: 1.5;
+  gap: 8px;
+  align-items: center;
+}
+.section-body {
+  gap: 12px;
+}
+.hint {
+  line-height: 1.6;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #c6e3a4;
+  outline-offset: 3px;
+}
+.timeline header {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (min-width: 1500px) {
+  .workspace {
+    grid-template-columns: 310px minmax(400px, 1fr) 320px;
+  }
+}

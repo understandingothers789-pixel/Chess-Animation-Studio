@@ -270,7 +270,7 @@ export function effect(preset: Preset = "slide"): Effect {
       path: "#a8a0f5",
       showSource: true,
       showDestination: true,
-      showPath: false,
+      showPath: true,
       trail: false,
       width: 0.13,
       opacity: 0.38,

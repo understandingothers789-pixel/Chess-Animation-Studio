@@ -512,7 +512,9 @@ export class Scene {
     this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
     const sign = p.style.orientation === "white" ? 1 : -1,
       aspect = w / viewH,
-      half = (format === "vertical" && !short ? 4.11 : 4.65) / Math.max(0.1, e.camera.zoom * bg.zoom);
+      half =
+        (format === "vertical" && !short ? 4.11 : 4.65) /
+        Math.max(0.1, e.camera.zoom * bg.zoom);
     this.camera.left = -(crop?.halfX ?? half * Math.max(1, aspect));
     this.camera.right = crop?.halfX ?? half * Math.max(1, aspect);
     this.camera.top = crop?.halfY ?? half * Math.max(1, 1 / aspect);
@@ -592,6 +594,7 @@ export class Scene {
         const i = (Number(s[1]) - 1) * 8 + s.charCodeAt(0) - 97,
           m = this.paths[i];
         m.visible = true;
+        m.scale.set(1, 1, 1);
         m.position.x = s.charCodeAt(0) - 97 - 3.5;
         m.position.y = Number(s[1]) - 1 - 3.5;
         const mat = m.material as T.MeshBasicMaterial;
@@ -610,6 +613,37 @@ export class Scene {
         );
         mat.opacity = hl.opacity * fade * reveal;
         mat.color.multiplyScalar(1 + hl.glow * 0.3);
+      }
+      // Knights jump rather than pass through squares. Show two soft, inset
+      // accents along the long side of the L without implying captures there.
+      const step = this.game?.steps[e.index];
+      const piece = step?.before.find((v) => v.id === step.pieceId);
+      if (hl.showPath && piece?.type === "n" && e.source && e.destination) {
+        const fx = e.source.charCodeAt(0) - 97,
+          fy = Number(e.source[1]) - 1;
+        const tx = e.destination.charCodeAt(0) - 97,
+          ty = Number(e.destination[1]) - 1;
+        const dx = tx - fx,
+          dy = ty - fy;
+        const accents =
+          Math.abs(dx) === 2
+            ? [
+                [fx + Math.sign(dx), fy],
+                [fx + Math.sign(dx), ty],
+              ]
+            : [
+                [fx, fy + Math.sign(dy)],
+                [tx, fy + Math.sign(dy)],
+              ];
+        for (const [x, y] of accents) {
+          const m = this.paths[y * 8 + x];
+          m.visible = true;
+          m.position.set(x - 3.5, y - 3.5, m.position.z);
+          m.scale.set(0.58, 0.58, 1);
+          const mat = m.material as T.MeshBasicMaterial;
+          mat.color.set(hl.path).multiplyScalar(1 + hl.glow * 0.3);
+          mat.opacity = hl.opacity * fade * reveal * 0.35;
+        }
       }
     }
     for (const [k, m] of this.meshes)

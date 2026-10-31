@@ -193,6 +193,7 @@ const help: Record<string, string> = {
     "Choose a motion channel: travel = route progress; x/y/z = piece offsets; rx/ry/rz = rotation in degrees; scale/opacity = size/visibility; cameraX/Y/Zoom = framing.",
   "Mute music":
     "Silence the soundtrack in preview and export without removing it.",
+  "Lock beat markers": "Prevent accidental dragging, keyboard edits, adding, deleting or changing beat markers. Unlock to edit them again.",
   "Music volume":
     "Soundtrack gain. 1 is its original level; values above 1 amplify it.",
   "Project start offset":

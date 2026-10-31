@@ -501,6 +501,7 @@ export const projectSchema = z.object({
     fadeIn: n(0, 30),
     fadeOut: n(0, 30),
   }),
+  beatsLocked: z.boolean().default(false),
   beats: z
     .array(
       z.object({
@@ -626,7 +627,7 @@ export function blank(): Project {
       intensity: 0.25,
       attack: 0.05,
       decay: 0.22,
-      accentsOnly: true,
+      accentsOnly: false,
     },
     assets: [],
     badgeAssets: {},
@@ -642,6 +643,7 @@ export function blank(): Project {
       fadeIn: 0.3,
       fadeOut: 1,
     },
+    beatsLocked: false,
     beats: [],
     waveform: [],
     cues: [],

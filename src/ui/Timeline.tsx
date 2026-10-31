@@ -43,6 +43,7 @@ export function Timeline({
       Math.min(length, ((e.clientX - r.left) / r.width) * length),
     );
     if (dragged.current) {
+      if (p.beatsLocked) return;
       const id = dragged.current;
       edit("Drag beat", (p) => {
         const b = p.beats.find((b) => b.id === id)!;
@@ -78,6 +79,9 @@ export function Timeline({
             {p.moves.length} moves · {clock(length)}
           </small>
         </div>
+        <label title="Lock beat markers to prevent accidental edits">
+          <input type="checkbox" aria-label="Lock beat markers" title="Prevent beat marker dragging, keyboard edits and adding markers" aria-description="Prevent beat marker dragging, keyboard edits and adding markers" checked={p.beatsLocked} onChange={(e) => edit("Lock beat markers", (p) => { p.beatsLocked = e.target.checked; })} /> Lock beats
+        </label>
         <label title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping">
           <input type="checkbox" aria-label="Snap" title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping" aria-description="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping" checked={snap} onChange={(e) => setSnap(e.target.checked)} /> Snap
         </label>
@@ -120,6 +124,7 @@ export function Timeline({
               dragged.current = null;
             }}
             onDoubleClick={(e) => {
+              if (p.beatsLocked) return;
               const r = e.currentTarget.getBoundingClientRect(),
                 at = ((e.clientX - r.left) / r.width) * length;
               edit("Add beat", (p) => {
@@ -244,6 +249,7 @@ export function Timeline({
                   style={{ left: x(b.time) }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
+                    if (p.beatsLocked) return;
                     dragged.current = b.id;
                     (
                       e.currentTarget.parentElement!
@@ -251,6 +257,7 @@ export function Timeline({
                     ).setPointerCapture(e.pointerId);
                   }}
                   onKeyDown={(e) => {
+                    if (p.beatsLocked) return;
                     if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
                       e.preventDefault();
                       edit("Move beat", (p) => {

@@ -431,7 +431,7 @@ export function MusicPanel(q: PanelProps) {
         </div>)}
         <button
           className="wide"
-          disabled={!p.music.asset}
+          disabled={!p.music.asset || p.beatsLocked}
           onClick={() => q.run(q.analyzeMusic)}
         >
           Analyze waveform & likely beats
@@ -482,6 +482,8 @@ export function MusicPanel(q: PanelProps) {
         </p>
       </Section>
       <Section title="Beat markers">
+        <Toggle label="Lock beat markers" checked={p.beatsLocked} onChange={(v) => edit("Lock beat markers", (p) => { p.beatsLocked = v; })} />
+        <fieldset disabled={p.beatsLocked} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <button
           className="wide"
           onClick={() =>
@@ -559,6 +561,7 @@ export function MusicPanel(q: PanelProps) {
             </div>
           ))}
         </div>
+        </fieldset>
       </Section>
       <Section
         title="Sound library"

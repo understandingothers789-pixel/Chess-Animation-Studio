@@ -440,8 +440,6 @@ export function App() {
           ...p.music,
           asset: a.id,
           sourceDuration: 0,
-          trimStart: 0,
-          trimEnd: 0,
         };
         p.waveform = [];
         p.beats = [];

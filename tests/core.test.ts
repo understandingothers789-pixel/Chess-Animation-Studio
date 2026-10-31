@@ -15,6 +15,7 @@ import {
   sway,
   particle,
   shortsFraming,
+  captureDustParticle,
 } from "../src/core/timeline";
 import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
 describe("legal state and stable identities", () => {
@@ -215,5 +216,53 @@ describe("Shorts close-up framing", () => {
     expect(
       shortsFraming(p, { ...evaluate(p, 6).camera, x: 100 }, 1080, 1920).x,
     ).toBe(0);
+  });
+});
+
+describe("captured-piece dust", () => {
+  it("defaults to dust on ordinary captures and carries the cloud into the next move", () => {
+    const p = importPgn(blank(), "1. e4 d5 2. exd5 Qxd5");
+    expect(p.moves[2].effect.preset).toBe("slide");
+    expect(p.moves[2].effect.capture.exit).toBe("dust");
+    const seq = segments(p),
+      start =
+        seq[2].depart +
+        p.moves[2].effect.duration * p.moves[2].effect.capture.exitAt;
+    expect(evaluate(p, start - 0.001).dust).toEqual([]);
+    const f = evaluate(p, start + 0.18);
+    expect(f.dust).toHaveLength(1);
+    expect(f.dust[0]).toMatchObject({ color: "b", type: "p", x: -0.5, y: 0.5 });
+    expect(
+      f.pieces.find((v) => v.id === f.dust[0].id)!.crumble,
+    ).toBeGreaterThan(0);
+    expect(
+      evaluate(p, seq[2].end + 0.02).dust.some((d) => d.id === f.dust[0].id),
+    ).toBe(true);
+    const a = captureDustParticle(3, f.dust[0], { x: 0.1, y: 0.2 });
+    evaluate(p, seq[3].end);
+    expect(evaluate(p, start + 0.18).dust).toEqual(f.dust);
+    expect(captureDustParticle(3, f.dust[0], { x: 0.1, y: 0.2 })).toEqual(a);
+    expect(
+      evaluate(
+        p,
+        start + p.moves[2].effect.capture.dustDuration + 0.001,
+      ).dust.some((d) => d.id === f.dust[0].id),
+    ).toBe(false);
+  });
+  it("uses the actual en passant victim square and preserves older explicit exit modes", () => {
+    const p = importPgn(blank(), "1. e4 a6 2. e5 d5 3. exd6");
+    const seq = segments(p),
+      m = p.moves[4];
+    const f = evaluate(
+      p,
+      seq[4].depart + m.effect.duration * m.effect.capture.exitAt + 0.05,
+    );
+    expect(f.dust[0]).toMatchObject({ x: -0.5, y: 0.5, color: "b", type: "p" });
+    const old: any = structuredClone(p);
+    old.moves[4].effect.capture.exit = "fade";
+    for (const key of ["dustDuration", "dustAmount", "dustSpread", "dustSize"])
+      delete old.moves[4].effect.capture[key];
+    expect(parseProject(old).moves[4].effect.capture.dustDuration).toBe(0.7);
+    expect(evaluate(parseProject(old), f.time).dust).toEqual([]);
   });
 });

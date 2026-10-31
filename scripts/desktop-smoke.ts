@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
+import { blank } from "../src/core/project";
+import { importPgn } from "../src/core/chess";
 import { duration, segments } from "../src/core/timeline";
 const dir = path.resolve("test-results");
 await fs.mkdir(dir, { recursive: true });
@@ -399,6 +401,44 @@ try {
   );
   console.log(
     "PASS: cancellation removes temporary files and preserves the project.",
+  );
+  await page.getByRole("button", { name: "game", exact: true }).click();
+  const dustPgn = "1. e4 d5 2. exd5 Qxd5";
+  await page.getByLabel("Game text", { exact: true }).fill(dustPgn);
+  await page
+    .getByLabel("Preserve matching move effects", { exact: true })
+    .uncheck();
+  await page.getByRole("button", { name: "Import PGN", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".move-track button").length === 5,
+  );
+  const dustProbe = importPgn(blank(), dustPgn),
+    dustMove = dustProbe.moves[2];
+  const dustTime =
+    segments(dustProbe)[2].depart +
+    dustMove.effect.duration * dustMove.effect.capture.exitAt +
+    0.18;
+  await page
+    .getByLabel("Seek composition", { exact: true })
+    .fill(String(dustTime));
+  await page.waitForTimeout(300);
+  const dustPixels = await page
+    .locator(".preview-host canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page.getByLabel("Seek composition", { exact: true }).fill("4");
+  await page.waitForTimeout(150);
+  await page
+    .getByLabel("Seek composition", { exact: true })
+    .fill(String(dustTime));
+  await page.waitForTimeout(300);
+  assert.equal(
+    await page
+      .locator(".preview-host canvas")
+      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    dustPixels,
+  );
+  console.log(
+    "PASS: captured-piece dust renders and backward seeking reconstructs it exactly.",
   );
   await page.evaluate(() => window.studio.presentation());
   let win = launch.windows().find((w) => w.url().includes("role=presentation"));

@@ -270,7 +270,7 @@ export function Inspector({
             </Section>
             <Section
               title="Capture impact"
-              open={e.preset === "capture"}
+              open={e.preset === "capture" || move.san.includes("x")}
               onReset={() => resetFields(["capture"])}
             >
               {(
@@ -335,9 +335,55 @@ export function Inspector({
               <Select
                 label="Captured piece exit"
                 value={e.capture.exit}
-                options={["fade", "shrink", "drop"]}
+                options={[
+                  ["dust", "Crumble into dust"],
+                  ["fade", "Fade"],
+                  ["shrink", "Shrink"],
+                  ["drop", "Drop"],
+                ]}
                 onChange={(v) => capture("exit", v)}
               />
+              {e.capture.exit === "dust" && (
+                <>
+                  <Range
+                    label="Dust duration"
+                    value={e.capture.dustDuration}
+                    min={0.15}
+                    max={1.5}
+                    step={0.05}
+                    resetValue={0.7}
+                    onChange={(v) => capture("dustDuration", v)}
+                    unit="s"
+                  />
+                  <Range
+                    label="Dust amount"
+                    value={e.capture.dustAmount}
+                    min={16}
+                    max={256}
+                    step={1}
+                    resetValue={128}
+                    onChange={(v) => capture("dustAmount", v)}
+                  />
+                  <Range
+                    label="Dust spread"
+                    value={e.capture.dustSpread}
+                    min={0.1}
+                    max={2}
+                    step={0.05}
+                    resetValue={0.85}
+                    onChange={(v) => capture("dustSpread", v)}
+                  />
+                  <Range
+                    label="Dust fragment size"
+                    value={e.capture.dustSize}
+                    min={0.015}
+                    max={0.15}
+                    step={0.005}
+                    resetValue={0.055}
+                    onChange={(v) => capture("dustSize", v)}
+                  />
+                </>
+              )}
               <Toggle
                 label="Impact particles"
                 checked={e.capture.particles}

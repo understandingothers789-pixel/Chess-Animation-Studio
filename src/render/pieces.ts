@@ -162,5 +162,52 @@ export async function createPiece(set: PieceSet, color: string, type: string) {
   });
   const mesh = new T.Mesh(a.geometry, [face, edge]);
   mesh.userData.materials = [face, edge];
+  const canvas = a.texture.image as HTMLCanvasElement;
+  const ctx = canvas.getContext("2d")!;
+  const samples = [];
+  for (let y = 0; y < 24; y++)
+    for (let x = 0; x < 24; x++) {
+      const pixel = ctx.getImageData(
+        Math.floor(((x + 0.5) / 24) * canvas.width),
+        Math.floor(((y + 0.5) / 24) * canvas.height),
+        1,
+        1,
+      ).data;
+      if (pixel[3] < 128) continue;
+      const c = new T.Color().setRGB(
+        pixel[0] / 255,
+        pixel[1] / 255,
+        pixel[2] / 255,
+        T.SRGBColorSpace,
+      );
+      samples.push({
+        x: ((x + 0.5) / 24 - 0.5) * 0.96,
+        y: (0.5 - (y + 0.5) / 24) * 0.96,
+        color: [c.r, c.g, c.b],
+      });
+    }
+  mesh.userData.dustSamples = samples;
   return mesh;
+}
+
+/** Erode both artwork and extruded edges in small cells, rather than fading a whole sprite. */
+export function enableCrumble(material: T.Material) {
+  const uniform = { value: 0 };
+  material.userData.crumble = uniform;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.crumble = uniform;
+    shader.vertexShader =
+      "varying vec2 crumbleUV;\n" +
+      shader.vertexShader.replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\ncrumbleUV = uv;",
+      );
+    shader.fragmentShader =
+      "uniform float crumble; varying vec2 crumbleUV;\n" +
+      shader.fragmentShader.replace(
+        "#include <alphatest_fragment>",
+        "#include <alphatest_fragment>\nif (crumble > 0.0) { vec2 cell = floor(crumbleUV * 24.0); float grit = fract(sin(dot(cell, vec2(12.9898,78.233))) * 43758.5453); if (grit < crumble) discard; }",
+      );
+  };
+  material.customProgramCacheKey = () => "piece-crumble-v1";
 }

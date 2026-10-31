@@ -91,9 +91,25 @@ export interface Visual extends Piece {
   scale: number;
   opacity: number;
   moving: boolean;
+  crumble?: number;
+}
+export interface CaptureDust {
+  id: string;
+  color: string;
+  type: string;
+  x: number;
+  y: number;
+  elapsed: number;
+  duration: number;
+  crumbleDuration: number;
+  amount: number;
+  spread: number;
+  size: number;
+  seed: number;
 }
 export interface Frame {
   time: number;
+  dust: CaptureDust[];
   index: number;
   u: number;
   pieces: Visual[];
@@ -252,7 +268,22 @@ export function evaluate(
     if (step.capturedId) {
       const c = pieces.find((x) => x.id === step.capturedId)!;
       const exit = clamp((u - e.capture.exitAt) / 0.12);
-      c.opacity = 1 - exit;
+      if (e.capture.exit === "dust") {
+        c.crumble = clamp(
+          (time - seg.depart - e.duration * e.capture.exitAt) /
+            Math.max(
+              0.001,
+              Math.min(
+                e.capture.dustDuration * 0.6,
+                e.duration * (1 - e.capture.exitAt),
+              ),
+            ),
+        );
+        c.opacity = 1 - c.crumble * 0.25;
+        c.scale = 1 - c.crumble * 0.12;
+        c.rz = -c.crumble * 0.18;
+        c.z = -0.012;
+      } else c.opacity = 1 - exit;
       if (e.capture.exit === "shrink") c.scale = 1 - exit;
       if (e.capture.exit === "drop") c.z = -exit * 2;
     }
@@ -335,8 +366,44 @@ export function evaluate(
             : Math.exp((-dt / p.pulse.decay) * 4),
         );
     }
+  const dust: CaptureDust[] = [];
+  // Reconstruct recent captures from time, including dust that outlives a move.
+  for (let j = index; j >= 0; j--) {
+    const s = seq[j],
+      step = g.steps[j],
+      cap = p.moves[j].effect.capture;
+    if (time - s.finish > 1.5) break;
+    if (!step.capturedId || cap.exit !== "dust") continue;
+    const elapsed = time - s.depart - p.moves[j].effect.duration * cap.exitAt;
+    if (elapsed <= 0 || elapsed >= cap.dustDuration) continue;
+    const victim = step.before.find((v) => v.id === step.capturedId)!;
+    dust.push({
+      id: victim.id,
+      color: victim.color,
+      type: victim.type,
+      x: xy(victim.square)[0],
+      y: xy(victim.square)[1],
+      elapsed,
+      duration: cap.dustDuration,
+      crumbleDuration: Math.max(
+        0.001,
+        Math.min(
+          cap.dustDuration * 0.6,
+          p.moves[j].effect.duration * (1 - cap.exitAt),
+        ),
+      ),
+      amount: cap.dustAmount,
+      spread: cap.dustSpread,
+      size: cap.dustSize,
+      seed: [...victim.id].reduce(
+        (a, c) => (a * 31 + c.charCodeAt(0)) % 100003,
+        j + 1,
+      ),
+    });
+  }
   return {
     time,
+    dust,
     index,
     u,
     pieces,
@@ -412,5 +479,30 @@ export function shortsFraming(
       -limitY,
       limitY,
     ),
+  };
+}
+
+export function captureDustParticle(
+  i: number,
+  event: CaptureDust,
+  sample: { x: number; y: number },
+) {
+  const seed = event.seed + i * 17;
+  const released = random(seed + 2) * event.crumbleDuration;
+  const age = Math.max(0, event.elapsed - released);
+  const t = age / Math.max(0.001, event.duration - released);
+  const angle = random(seed + 3) * Math.PI * 2;
+  const speed = (0.3 + random(seed + 4)) * event.spread;
+  return {
+    x: event.x + sample.x + Math.cos(angle) * speed * t,
+    y:
+      event.y +
+      sample.y +
+      Math.sin(angle) * speed * t -
+      t * t * event.spread * 0.45,
+    z: 0.04 + Math.sin(t * Math.PI) * 0.01,
+    alpha:
+      event.elapsed > released ? Math.pow(Math.max(0, 1 - t), 1.6) * 0.9 : 0,
+    size: event.size * (0.55 + random(seed + 5)) * (1 - t * 0.55),
   };
 }

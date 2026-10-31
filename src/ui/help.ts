@@ -1,5 +1,13 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Dust duration":
+    "Seconds for captured-piece fragments to disperse and fade, including a tail after the move ends.",
+  "Dust amount":
+    "Number of fragments sampled from the captured piece's silhouette and colors.",
+  "Dust spread":
+    "How far captured-piece fragments drift outward and downward before disappearing.",
+  "Dust fragment size":
+    "Size of the individual dust flecks. Their colors come from the captured artwork.",
   "Shorts tracking strength":
     "How strongly move cameras steer the crop. Lower values keep more board context; higher values move closer to the action.",
   "Shorts crop":

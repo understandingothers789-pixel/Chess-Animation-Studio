@@ -1,11 +1,17 @@
 import * as T from "three";
-import { createPiece, preloadPieces, type PieceSet } from "./pieces";
+import {
+  createPiece,
+  preloadPieces,
+  enableCrumble,
+  type PieceSet,
+} from "./pieces";
 import {
   evaluate,
   particle,
   clamp,
   type Frame,
   shortsFraming,
+  captureDustParticle,
 } from "../core/timeline";
 import { buildGame, type Game } from "../core/chess";
 import { type Project, type Format } from "../core/project";
@@ -41,6 +47,7 @@ export class Scene {
   private halo: T.Mesh;
   private snow: T.Points;
   private bursts: T.Points;
+  private captureDust: T.Points;
   private game: Game | undefined;
   private project: Project | undefined;
   private width = 1;
@@ -197,6 +204,25 @@ export class Scene {
     this.snow = makePoints(400);
     this.snow.frustumCulled = false;
     this.bursts = makePoints(36);
+    this.captureDust = makePoints(2048);
+    this.captureDust.geometry.setAttribute(
+      "color",
+      new T.Float32BufferAttribute(new Float32Array(2048 * 3), 3),
+    );
+    const dustMat = this.captureDust.material as T.ShaderMaterial;
+    dustMat.vertexShader = dustMat.vertexShader
+      .replace(
+        "varying float a;",
+        "attribute vec3 color; varying vec3 dustColor; varying float a;",
+      )
+      .replace("a=alpha;", "a=alpha; dustColor=color;");
+    dustMat.fragmentShader = dustMat.fragmentShader
+      .replace("uniform vec3 color;", "varying vec3 dustColor;")
+      .replace("vec4(color,", "vec4(pow(dustColor,vec3(1.0/2.2)),");
+    dustMat.depthTest = true;
+    this.captureDust.renderOrder = 25;
+    this.captureDust.frustumCulled = false;
+    this.root.add(this.captureDust);
     this.bursts.frustumCulled = false;
     this.scene.add(this.snow);
     this.root.add(this.bursts);
@@ -482,11 +508,17 @@ export class Scene {
         );
         if (!template) continue;
         m = template.clone();
-        m.material = (template.material as T.Material[]).map((x) => x.clone());
+        m.material = (template.material as T.Material[]).map((x) => {
+          const mat = x.clone();
+          enableCrumble(mat);
+          return mat;
+        });
         this.meshes.set(key, m);
         this.root.add(m);
       }
-      m.visible = v.opacity > 0.001;
+      m.visible = v.opacity > 0.001 && (v.crumble ?? 0) < 1;
+      for (const mat of m.material as T.Material[])
+        mat.userData.crumble.value = v.crumble ?? 0;
       m.position.set(v.x, v.y, 0.08 + v.z);
       m.rotation.set(v.rx, v.ry, v.rz + (sign < 0 ? Math.PI : 0));
       m.scale.setScalar(v.scale);
@@ -650,6 +682,42 @@ export class Scene {
     );
     (this.bursts.material as T.ShaderMaterial).uniforms.pixels.value =
       viewH / 9;
+    const dg = this.captureDust.geometry,
+      dp = dg.attributes.position,
+      da = dg.attributes.alpha,
+      ds = dg.attributes.size,
+      dc = dg.attributes.color;
+    let dustIndex = 0;
+    for (const event of e.dust) {
+      const template = this.meshes.get(
+        `template-${p.style.pieceSet}-${event.color}-${event.type}`,
+      );
+      const samples = template?.userData.dustSamples as
+        | { x: number; y: number; color: number[] }[]
+        | undefined;
+      if (!samples?.length) continue;
+      for (let i = 0; i < event.amount && dustIndex < 2048; i++, dustIndex++) {
+        const sample =
+          samples[
+            (Math.floor((i * samples.length) / event.amount) + event.seed) %
+              samples.length
+          ];
+        const a = captureDustParticle(i, event, {
+          x: sample.x * sign,
+          y: sample.y * sign,
+        });
+        dp.setXYZ(dustIndex, a.x, a.y, a.z);
+        da.setX(dustIndex, a.alpha);
+        ds.setX(dustIndex, a.size);
+        dc.setXYZ(dustIndex, sample.color[0], sample.color[1], sample.color[2]);
+      }
+    }
+    this.captureDust.geometry.setDrawRange(0, dustIndex);
+    dp.needsUpdate = da.needsUpdate = ds.needsUpdate = dc.needsUpdate = true;
+    (this.captureDust.material as T.ShaderMaterial).uniforms.softness.value =
+      0.35;
+    (this.captureDust.material as T.ShaderMaterial).uniforms.pixels.value =
+      viewH / (this.camera.top - this.camera.bottom);
     if (square || short) {
       this.root.visible = false;
       this.renderer.clearDepth();

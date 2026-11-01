@@ -1,5 +1,10 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Horse sound for knight moves": "Play a horse sound when a knight lands, in previews and exports.",
+  "Show evaluation bar": "Display the latest available Stockfish evaluation on the left of the video.",
+  "Show animated title": "Display the animated title during the intro, independently of the board opener.",
+  "Attacking piece": "Choose the piece that launches the spear in the intro.",
+  "Game close-up width (all moves)": "Set the visible width in board squares for every move using game close-up.",
   "Beat spotlight":
     "Hold on the moved piece after landing and play a beat-synced zoom-and-visual transition. Disabling removes its automatic extra hold.",
   "Spotlight beat source":

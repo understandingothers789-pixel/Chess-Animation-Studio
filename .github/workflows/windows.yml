@@ -1,7 +1,7 @@
 name: Windows portable build
 on:
   push:
-    branches: [fresh-start]
+    branches: [fresh-start, architecture/effect-compositor]
     paths-ignore: ['**.md', '**.txt', 'docs/**']
   workflow_dispatch:
 permissions:

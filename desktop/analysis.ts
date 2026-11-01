@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { type Project } from "../src/core/project";
 import { buildGame } from "../src/core/chess";
+import { starterBook } from "../src/core/openingBook";
 import { atomic } from "./files";
 const key = (s: string) => createHash("sha256").update(s).digest("hex");
 async function cached(dir: string, id: string, ttl = 7 * 864e5) {
@@ -118,7 +119,7 @@ class Uci {
 }
 export async function analyze(
   p: Project,
-  kind: "book" | "engine",
+  kind: "book" | "engine" | "starter",
   indices: number[],
   dir: string,
   executable: string,
@@ -147,7 +148,16 @@ export async function analyze(
         s = g.steps[i];
       if (!s) continue;
       const a = structuredClone(s.move.analysis);
-      if (kind === "book") {
+      if (kind === "starter") {
+        const found = starterBook(s.fen, s.uci, i);
+        a.book = {
+          state: i >= 8 ? "not-analyzed" : found ? "found" : "not-found",
+          games: 0,
+          frequency: 0,
+          message:
+            "Built-in starter opening repertoire (curated lines; no game counts).",
+        };
+      } else if (kind === "book") {
         if (i >= p.analysis.cutoff) {
           a.book = {
             state: "not-analyzed",

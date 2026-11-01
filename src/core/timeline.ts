@@ -159,6 +159,8 @@ function cameraTarget(p: Project, g: Game, i: number, f: Format, end = false) {
   const a = xy(s.from),
     b = xy(s.to),
     d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (c.mode === "game")
+    return { x: b[0] * 0.65 + c.x, y: b[1] * 0.65 + c.y, zoom: 1.45, tilt: c.tilt, rotation: c.rotation };
   return {
     x:
       c.mode === "manual"
@@ -374,10 +376,11 @@ export function evaluate(
         (time - seg.start) /
           (e?.cameras[format]?.transition ?? camera().transition),
       );
+  const cameraBlend = e?.cameras[format]?.mode === "game" ? 1 - Math.pow(1 - clamp((time - seg.start) / (e.cameras[format]?.transition ?? camera().transition), 0, 1), 3) : blend;
   const cam = {
-    x: mix(previous.x, target.x, blend),
-    y: mix(previous.y, target.y, blend),
-    zoom: mix(previous.zoom, target.zoom, blend),
+    x: mix(previous.x, target.x, cameraBlend),
+    y: mix(previous.y, target.y, cameraBlend),
+    zoom: mix(previous.zoom, target.zoom, cameraBlend),
     tilt: mix(previous.tilt, target.tilt, blend),
     rotation: mix(previous.rotation, target.rotation, blend),
   };

@@ -195,6 +195,10 @@ const help: Record<string, string> = {
     "Silence the soundtrack in preview and export without removing it.",
   "Lock beat markers":
     "Prevent accidental dragging, keyboard edits, adding, deleting or changing beat markers. Unlock to edit them again.",
+  "Use different colors for White and Black":
+    "Use separate highlight colors based on which side moves. Turn this off to choose source, destination and route colors separately.",
+  "White move color": "Color for highlights on moves made by White.",
+  "Black move color": "Color for highlights on moves made by Black.",
   "Music volume":
     "Soundtrack gain. 1 is its original level; values above 1 amplify it.",
   "Project start offset":
@@ -369,6 +373,14 @@ export function settingHelp(label: string): string {
     return "Include this color in the cycle; disable it to skip the color.";
   if (/^(Snow|Pulse) color [1-6]$/.test(label))
     return "Choose this color for the cycle, including darker shades.";
+  if (label === "Color moves by review")
+    return "Color destination and route squares by their review badge; source squares retain the mover color.";
+  if (
+    /^Review (book|brilliant|best|good|inaccuracy|mistake|blunder) color$/.test(
+      label,
+    )
+  )
+    return "Color for destination and route squares with this review badge.";
   if (/^Check move /.test(label))
     return "Include this move in batch edits. Ctrl-click toggles moves; Shift-click selects a range.";
   if (/^Key \d+ time$/.test(label))

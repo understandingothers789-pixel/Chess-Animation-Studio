@@ -46,7 +46,7 @@ export interface Studio {
   logs(): Promise<void>;
   analyze(
     p: Project,
-    kind: "book" | "engine",
+    kind: "book" | "engine" | "starter",
     indices: number[],
   ): Promise<Record<string, Project["moves"][number]["analysis"]>>;
   cancelAnalysis(): Promise<void>;

@@ -300,6 +300,10 @@ export class VideoJob {
           bus: "chess",
           absolute: seq[i].land,
         });
+    if (p.audio.knightHorse)
+      for (let i = 0; i < seq.length; i++)
+        if (game.steps[i].before.find(piece => piece.id === game.steps[i].pieceId)?.type === "n")
+          cues.push({ id: "horse" + i, asset: "__knightHorse", move: null, time: 0, volume: 0.7, kind: "custom", bus: "chess", absolute: seq[i].land });
     for (const c of cues) {
       if (
         c.absolute < this.options.start - 0.3 ||
@@ -308,7 +312,7 @@ export class VideoJob {
         continue;
       const asset = c.asset ? map.get(c.asset) : null;
       add(
-        asset?.path ?? (c.kind === "capture" ? captureSound : moveSound),
+        c.asset === "__knightHorse" ? path.resolve(__dirname, "../dist/sounds/horse.oga") : asset?.path ?? (c.kind === "capture" ? captureSound : moveSound),
         Math.max(0, this.options.start - c.absolute),
         0,
         c.absolute - this.options.start,

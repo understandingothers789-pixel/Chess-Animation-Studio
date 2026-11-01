@@ -480,11 +480,15 @@ export function Inspector({
                   options={[
                     ["route", "Include source & destination"],
                     ["follow", "Follow moving piece"],
+                    ["game", "Game close-up"],
                     ["manual", "Manual framing"],
                     ["full", "Full board"],
                   ]}
                   onChange={(v) => changeCamera("mode", v)}
                 />
+                <Range label="Game close-up width (all moves)" value={project.gameViewWidth} resetValue={8} min={3} max={16} step={0.1} onChange={(v) => edit("Game close-up width", p => { p.gameViewWidth = v; })} />
+                <p className="hint">Width in board squares. Shorts close-ups use an 8-by-7 window with background above and below. Square videos show equal width and height.</p>
+                <button onClick={() => edit("Use game close-up for all moves", p => { for (const move of p.moves) move.effect.cameras[p.format] = { ...(move.effect.cameras[p.format] ?? camera()), mode: "game" }; })}>Use game close-up for all moves</button>
                 {(
                   [
                     "x",
@@ -835,6 +839,54 @@ export function Inspector({
               title="Highlights & trail"
               onReset={() => resetFields(["highlight"])}
             >
+              <Toggle
+                label="Use different colors for White and Black"
+                checked={e.highlight.byMover}
+                onChange={(v) => look("byMover", v)}
+              />
+              {e.highlight.byMover ? (
+                <>
+                  <Color
+                    label="White move color"
+                    value={e.highlight.whiteColor}
+                    onChange={(v) => look("whiteColor", v)}
+                  />
+                  <Color
+                    label="Black move color"
+                    value={e.highlight.blackColor}
+                    onChange={(v) => look("blackColor", v)}
+                  />
+                </>
+              ) : (
+                <>
+                  {(["source", "destination", "path"] as const).map((k) => (
+                    <div className="highlight-color-apply" key={k}>
+                      <Color
+                        label={k + " color"}
+                        value={e.highlight[k]}
+                        onChange={(v) => look(k, v)}
+                      />
+                      <button
+                        type="button"
+                        title={`Apply the ${k} color to all highlight squares for the selected moves`}
+                        aria-label={`Apply ${k} color to all`}
+                        onClick={() => {
+                          const color = e.highlight[k];
+                          edit("Apply color to all highlights", (p) =>
+                            each(p, (v) => {
+                              v.highlight.source = color;
+                              v.highlight.destination = color;
+                              v.highlight.path = color;
+                            }),
+                          );
+                        }}
+                      >
+                        Apply to all
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
               {(
                 [
                   "showSource",
@@ -856,14 +908,6 @@ export function Inspector({
                     }[k]
                   }
                   checked={e.highlight[k]}
-                  onChange={(v) => look(k, v)}
-                />
-              ))}
-              {(["source", "destination", "path"] as const).map((k) => (
-                <Color
-                  key={k}
-                  label={k + " color"}
-                  value={e.highlight[k]}
                   onChange={(v) => look(k, v)}
                 />
               ))}

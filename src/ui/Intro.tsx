@@ -19,6 +19,11 @@ export function IntroInspector({
         </p>
       </div>
       <div className="inspector-content">
+        <Section title="Animated title">
+          <Toggle label="Show animated title" checked={p.introTitle.enabled} onChange={(v) => edit("Intro title", p => { p.introTitle.enabled = v; })} />
+          <Select label="Attacking piece" value={p.introTitle.piece} options={[["pawn", "Pawn"], ["knight", "Knight"], ["bishop", "Bishop"], ["rook", "Rook"], ["queen", "Queen"], ["king", "King"]]} onChange={(v) => edit("Intro attacking piece", p => { p.introTitle.piece = v; })} />
+          <label>Intro text<input value={p.introTitle.text} maxLength={120} onChange={(e) => edit("Intro text", p => { p.introTitle.text = e.target.value; })} /></label>
+        </Section>
         <Section
           title="Opener"
           onReset={() =>
@@ -50,6 +55,7 @@ export function IntroInspector({
             value={p.boardFX.introPreset}
             options={[
               ["zoom-turn", "Zoom & turn"],
+              ["board-level", "Board-level fly-in"],
               ["zoom", "Gentle zoom"],
               ["turn", "Board turn"],
               ["still", "Still board"],

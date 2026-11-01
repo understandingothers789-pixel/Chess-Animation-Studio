@@ -425,9 +425,13 @@ app.whenReady().then(async () => {
   });
   handle(
     "analyze",
-    async (value: unknown, kind: "book" | "engine", indices: number[]) => {
+    async (
+      value: unknown,
+      kind: "book" | "engine" | "starter",
+      indices: number[],
+    ) => {
       if (
-        !["book", "engine"].includes(kind) ||
+        !["book", "engine", "starter"].includes(kind) ||
         !Array.isArray(indices) ||
         indices.length > 3000 ||
         indices.some((i) => !Number.isInteger(i) || i < 0)

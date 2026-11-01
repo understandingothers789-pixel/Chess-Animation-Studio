@@ -22,6 +22,9 @@ export class AudioPlayer {
   async play(p: Project, time: number) {
     this.stop();
     await this.context.resume();
+    if (p.audio.knightHorse && !this.buffers.has("__knightHorse")) {
+      await this.load("__knightHorse", new URL("sounds/horse.oga", document.baseURI).href);
+    }
     const origin = this.context.currentTime + 0.09;
     const perf = performance.now() + 90;
     const m = p.music,
@@ -92,6 +95,10 @@ export class AudioPlayer {
           volume: 0.7,
           bus: "chess",
         });
+    if (p.audio.knightHorse)
+      for (let i = 0; i < seq.length; i++)
+        if (game.steps[i].before.find(piece => piece.id === game.steps[i].pieceId)?.type === "n")
+          events.push({ id: "horse" + i, asset: "__knightHorse", move: null, time: 0, at: seq[i].land, kind: "custom", volume: 0.7, bus: "chess" });
     for (const cue of events) {
       if (cue.at < time) continue;
       const at = origin + cue.at - time,

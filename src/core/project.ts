@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const VERSION = "0.2.12";
+export const VERSION = "0.2.13";
 export const formats = [
   "landscape",
   "vertical",
@@ -75,7 +75,7 @@ export const keySchema = z.object({
 });
 export type Key = z.infer<typeof keySchema>;
 export const cameraSchema = z.object({
-  mode: z.enum(["route", "follow", "manual", "full"]),
+  mode: z.enum(["route", "follow", "manual", "full", "game"]),
   x: n(-10, 10),
   y: n(-10, 10),
   zoom: n(0.6, 3),
@@ -213,6 +213,9 @@ export const effectSchema = z.object({
     source: color,
     destination: color,
     path: color,
+    byMover: z.boolean().default(true),
+    whiteColor: color.default("#FFA878"),
+    blackColor: color.default("#FFE04C"),
     showSource: z.boolean(),
     showDestination: z.boolean(),
     showPath: z.boolean(),
@@ -284,6 +287,9 @@ export function effect(preset: Preset = "slide"): Effect {
       source: "#a8a0f5",
       destination: "#a8a0f5",
       path: "#a8a0f5",
+      byMover: true,
+      whiteColor: "#FFA878",
+      blackColor: "#FFE04C",
       showSource: true,
       showDestination: true,
       showPath: true,
@@ -439,7 +445,7 @@ export const projectSchema = z.object({
       shimmerSpeed: n(0.05, 5),
       intro: z.boolean(),
       introPreset: z
-        .enum(["zoom-turn", "zoom", "turn", "still"])
+        .enum(["zoom-turn", "zoom", "turn", "still", "board-level"])
         .default("zoom-turn"),
       introDuration: n(0.2, 8),
       introZoom: n(0.2, 1),
@@ -500,6 +506,7 @@ export const projectSchema = z.object({
       follow: true,
       barColor: "#000000",
     }),
+  gameViewWidth: n(3, 16).default(8),
   format: z.enum(formats),
   layouts: z.record(
     z.enum(formats),
@@ -553,6 +560,29 @@ export const projectSchema = z.object({
     fadeIn: n(0, 30),
     fadeOut: n(0, 30),
   }),
+  evalBar: z.boolean().default(false),
+  introTitle: z.object({ enabled: z.boolean(), text: z.string().max(120), piece: z.enum(["pawn", "knight", "bishop", "rook", "queen", "king"]).default("knight") }).default({ enabled: false, text: "CHESS STORY", piece: "knight" }),
+  reviewColors: z
+    .object({
+      enabled: z.boolean(),
+      book: color,
+      brilliant: color,
+      best: color,
+      good: color,
+      inaccuracy: color,
+      mistake: color,
+      blunder: color,
+    })
+    .default({
+      enabled: true,
+      book: "#FFA878",
+      brilliant: "#44D9D6",
+      best: "#83CE60",
+      good: "#83CE60",
+      inaccuracy: "#F3D253",
+      mistake: "#F49A4A",
+      blunder: "#E63336",
+    }),
   beatsLocked: z.boolean().default(false),
   beats: z
     .array(
@@ -579,7 +609,7 @@ export const projectSchema = z.object({
       }),
     )
     .max(6000),
-  audio: z.object({ chess: n(0, 2), effects: n(0, 2), automatic: z.boolean() }),
+  audio: z.object({ chess: n(0, 2), effects: n(0, 2), automatic: z.boolean(), knightHorse: z.boolean().default(false) }),
   presets: z
     .array(z.object({ name: z.string().max(100), effect: effectSchema }))
     .max(100),
@@ -651,6 +681,7 @@ export function blank(): Project {
       follow: true,
       barColor: "#000000",
     },
+    gameViewWidth: 8,
     format: "landscape",
     layouts: Object.fromEntries(
       formats.map((f) => [
@@ -697,22 +728,34 @@ export function blank(): Project {
       fadeIn: 0.3,
       fadeOut: 1,
     },
+    evalBar: false,
+    introTitle: { enabled: false, text: "CHESS STORY", piece: "knight" },
+    reviewColors: {
+      enabled: true,
+      book: "#FFA878",
+      brilliant: "#44D9D6",
+      best: "#83CE60",
+      good: "#83CE60",
+      inaccuracy: "#F3D253",
+      mistake: "#F49A4A",
+      blunder: "#E63336",
+    },
     beatsLocked: false,
     beats: [],
     waveform: [],
     cues: [],
-    audio: { chess: 0.4, effects: 0.5, automatic: true },
+    audio: { chess: 0.4, effects: 0.5, automatic: true, knightHorse: false },
     presets: [],
     lead: 2,
     tail: 1.5,
     analysis: {
-      depth: 12,
+      depth: 6,
       milliseconds: 1500,
       threads: 2,
       hash: 128,
       minGames: 20,
       frequency: 0.005,
-      cutoff: 24,
+      cutoff: 8,
     },
     scenes: [],
   };

@@ -7,6 +7,7 @@ import {
 } from "./pieces";
 import {
   evaluate,
+  badge,
   particle,
   clamp,
   type Frame,
@@ -44,6 +45,9 @@ const symbols: Record<string, string> = {
 export class Scene {
   readonly renderer: T.WebGLRenderer;
   readonly ready: Promise<void>;
+  private overlayScene = new T.Scene();
+  private overlayCanvas = document.createElement("canvas");
+  private overlayTexture = new T.CanvasTexture(this.overlayCanvas);
   private scene = new T.Scene();
   private root = new T.Group();
   private camera = new T.OrthographicCamera();
@@ -94,6 +98,7 @@ export class Scene {
     this.renderer.autoClear = false;
     this.renderer.setClearColor("#111918");
     this.scene.add(this.root);
+    this.overlayScene.add(new T.Mesh(new T.PlaneGeometry(2, 2), new T.MeshBasicMaterial({ map: this.overlayTexture, transparent: true, depthTest: false, depthWrite: false })));
     this.moveLight = new T.Mesh(
       new T.PlaneGeometry(2, 2),
       new T.ShaderMaterial({
@@ -390,7 +395,45 @@ export class Scene {
     x.font = "bold 112px system-ui";
     x.textAlign = "center";
     x.textBaseline = "middle";
-    x.fillText(kind === "custom" ? text : (symbols[kind] ?? kind), 128, 132);
+    if (kind === "book") {
+      x.strokeStyle = "#fff";
+      x.lineWidth = 9;
+      x.lineJoin = "round";
+      x.beginPath();
+      x.moveTo(128, 88);
+      x.bezierCurveTo(108, 76, 84, 77, 65, 83);
+      x.lineTo(65, 161);
+      x.bezierCurveTo(88, 155, 109, 157, 128, 168);
+      x.bezierCurveTo(147, 157, 168, 155, 191, 161);
+      x.lineTo(191, 83);
+      x.bezierCurveTo(172, 77, 148, 76, 128, 88);
+      x.closePath();
+      x.fill();
+      x.stroke();
+      x.strokeStyle = colors.book;
+      x.lineWidth = 5;
+      x.beginPath();
+      x.moveTo(128, 88);
+      x.lineTo(128, 168);
+      x.stroke();
+    } else if (kind === "best" || kind === "good") {
+      x.beginPath();
+      x.moveTo(76, 116);
+      x.lineTo(102, 116);
+      x.lineTo(115, 92);
+      x.lineTo(123, 65);
+      x.quadraticCurveTo(129, 52, 140, 62);
+      x.quadraticCurveTo(148, 70, 142, 99);
+      x.lineTo(176, 99);
+      x.quadraticCurveTo(193, 99, 188, 116);
+      x.lineTo(175, 160);
+      x.quadraticCurveTo(171, 171, 158, 171);
+      x.lineTo(102, 166);
+      x.lineTo(76, 166);
+      x.closePath();
+      x.fill();
+    } else
+      x.fillText(kind === "custom" ? text : (symbols[kind] ?? kind), 128, 132);
     const t = new T.CanvasTexture(c);
     t.colorSpace = T.SRGBColorSpace;
     return t;
@@ -440,13 +483,20 @@ export class Scene {
     }
     const e = evaluate(p, time, this.game, format);
     const fx = p.boardFX;
-    const short = format === "vertical" && p.shorts.enabled;
+    const gameFraming = p.moves[e.index]?.effect.cameras[format]?.mode === "game" && time >= p.lead;
+    const short = format === "vertical" && (p.shorts.enabled || gameFraming);
+    let boardLevel = 0;
     if (fx.intro && fx.introPreset !== "still" && time < p.lead) {
       const u = Math.min(1, time / Math.min(p.lead, fx.introDuration)),
         k = u * u * (3 - 2 * u);
+      if (fx.introPreset === "board-level") {
+        const rise = Math.min(1, Math.max(0, (u - 0.3) / 0.7));
+        boardLevel = 1 - rise * rise * (3 - 2 * rise);
+        e.camera.tilt += 82 * boardLevel;
+      }
       if (fx.introPreset !== "turn")
         e.camera.zoom = fx.introZoom + (e.camera.zoom - fx.introZoom) * k;
-      if (fx.introPreset !== "zoom")
+      if (fx.introPreset !== "zoom" && fx.introPreset !== "board-level")
         e.camera.rotation += fx.introTurn * (1 - k);
     }
     const shimmer = fx.enabled
@@ -518,12 +568,18 @@ export class Scene {
             (e.jam?.envelope ?? 0) * (e.jam?.settings.focus ?? 0),
           )
         : null,
-      viewH = crop ? crop.viewH : square ? w : h,
+      viewH = crop ? (gameFraming ? Math.min(h, Math.round(w * 7 / 8)) : crop.viewH) : square ? w : h,
       viewY = crop
-        ? crop.viewY
+        ? (gameFraming ? Math.round((h - viewH) * (1 - p.shorts.position)) : crop.viewY)
         : square
           ? Math.round((h - w) / 2 + (bg.y * w) / 8)
           : 0;
+    if (gameFraming && crop) {
+      crop.halfX = p.gameViewWidth / 2 * 1.45 / Math.max(0.1, e.camera.zoom);
+      crop.halfY = crop.halfX * viewH / w;
+      crop.x = e.camera.x;
+      crop.y = e.camera.y;
+    }
     this.layout = { x: 0, y: viewY, w, h: viewH };
     this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
     const sign = p.style.orientation === "white" ? 1 : -1,
@@ -531,10 +587,12 @@ export class Scene {
       half =
         (format === "vertical" && !short ? 4.11 : 4.65) /
         Math.max(0.1, e.camera.zoom * bg.zoom);
-    this.camera.left = -(crop?.halfX ?? half * Math.max(1, aspect));
-    this.camera.right = crop?.halfX ?? half * Math.max(1, aspect);
-    this.camera.top = crop?.halfY ?? half * Math.max(1, 1 / aspect);
-    this.camera.bottom = -(crop?.halfY ?? half * Math.max(1, 1 / aspect));
+    const gameHalfX = p.gameViewWidth / 2 * 1.45 / Math.max(0.1, e.camera.zoom);
+    const gameHalfY = gameHalfX / aspect;
+    this.camera.left = -(crop?.halfX ?? (gameFraming ? gameHalfX : half * Math.max(1, aspect)));
+    this.camera.right = crop?.halfX ?? (gameFraming ? gameHalfX : half * Math.max(1, aspect));
+    this.camera.top = crop?.halfY ?? (gameFraming ? gameHalfY : half * Math.max(1, 1 / aspect));
+    this.camera.bottom = -(crop?.halfY ?? (gameFraming ? gameHalfY : half * Math.max(1, 1 / aspect)));
     this.camera.near = 0.1;
     this.camera.far = 100;
     const x = (crop ? crop.x : e.camera.x + bg.x) * sign,
@@ -545,6 +603,18 @@ export class Scene {
     this.camera.lookAt(x, y, 0);
     this.camera.rotateZ((e.camera.rotation * Math.PI) / 180);
     this.camera.updateProjectionMatrix();
+    if (boardLevel > 0) {
+      // Match the perspective projection to the orthographic camera at the board center.
+      const near = this.camera.near, distance = 25;
+      const perspective = new T.Matrix4().makePerspective(
+        this.camera.left * near / distance, this.camera.right * near / distance,
+        this.camera.top * near / distance, this.camera.bottom * near / distance,
+        near, this.camera.far,
+      ).multiplyScalar(distance);
+      const current = this.camera.projectionMatrix.elements, target = perspective.elements;
+      for (let i = 0; i < 16; i++) current[i] += (target[i] - current[i]) * boardLevel;
+      this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
+    }
     (this.rim.material as T.MeshStandardMaterial).color.set(p.style.rim);
     (this.rim.material as T.MeshStandardMaterial).emissive
       .set(fx.rimColor ?? p.style.accent)
@@ -593,6 +663,23 @@ export class Scene {
     for (const m of this.paths) m.visible = false;
     if (e.effect) {
       const hl = e.effect.highlight;
+      const step = this.game?.steps[e.index];
+      const mover = step?.before.find((v) => v.id === step.pieceId);
+      const rating = step ? badge(step.move) : null;
+      const ratingColor =
+        p.reviewColors.enabled &&
+        rating &&
+        rating !== "custom" &&
+        rating in p.reviewColors
+          ? p.reviewColors[
+              rating as keyof Omit<Project["reviewColors"], "enabled">
+            ]
+          : null;
+      const sideColor = hl.byMover
+        ? mover?.color === "w"
+          ? hl.whiteColor
+          : hl.blackColor
+        : null;
       const fade = hl.persist
         ? 1
         : clamp(1 - (time - segmentsFinish(p, e.index)) / hl.fade);
@@ -622,18 +709,21 @@ export class Scene {
                 e.effect.light.highlights &&
                 e.light.strength > 0
               ? e.effect.light.color
-              : isFrom
-                ? hl.source
-                : isTo
-                  ? hl.destination
-                  : hl.path,
+              : !isFrom && ratingColor
+                ? ratingColor
+                : sideColor
+                  ? sideColor
+                  : isFrom
+                    ? hl.source
+                    : isTo
+                      ? hl.destination
+                      : hl.path,
         );
         mat.opacity = hl.opacity * fade * reveal;
         mat.color.multiplyScalar(1 + hl.glow * 0.3);
       }
       // Knights jump rather than pass through squares. Show two soft, inset
       // accents along the long side of the L without implying captures there.
-      const step = this.game?.steps[e.index];
       const piece = step?.before.find((v) => v.id === step.pieceId);
       if (hl.showPath && piece?.type === "n" && e.source && e.destination) {
         const fx = e.source.charCodeAt(0) - 97,
@@ -658,7 +748,9 @@ export class Scene {
           m.position.set(x - 3.5, y - 3.5, m.position.z);
           m.scale.set(0.58, 0.58, 1);
           const mat = m.material as T.MeshBasicMaterial;
-          mat.color.set(hl.path).multiplyScalar(1 + hl.glow * 0.3);
+          mat.color
+            .set(ratingColor ?? sideColor ?? hl.path)
+            .multiplyScalar(1 + hl.glow * 0.3);
           mat.opacity = hl.opacity * fade * reveal * 0.35;
         }
       }
@@ -998,6 +1090,60 @@ export class Scene {
       pm.uniforms.vignette.value = j.settings.vignette * j.envelope;
       this.renderer.clearDepth();
       this.renderer.render(this.jamPostScene, this.backgroundCamera);
+    }
+    if (p.evalBar || (p.introTitle.enabled && time < p.lead)) {
+      const canvas = this.overlayCanvas;
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      const ctx = canvas.getContext("2d")!;
+      ctx.clearRect(0, 0, w, h);
+      if (p.evalBar) {
+        let score = 0;
+        for (let i = Math.min(e.index, p.moves.length - 1); i >= 0; i--) {
+          const engine = p.moves[i].analysis?.engine;
+          if (engine?.state === "done") { score = engine.score * (this.game?.steps[i].fen.split(" ")[1] === "w" ? 1 : -1); break; }
+        }
+        const x = w * .018, y = h * .17, bw = Math.max(6, w * .045), bh = h * .66;
+        const white = 1 / (1 + Math.exp(-score / 400));
+        ctx.save(); ctx.shadowColor = "#000"; ctx.shadowBlur = w * .02;
+        ctx.fillStyle = "#333333"; ctx.fillRect(x, y, bw, bh);
+        ctx.fillStyle = "#eeeeee"; ctx.fillRect(x, y + bh * (1 - white), bw, bh * white); ctx.restore();
+      }
+      if (p.introTitle.enabled && time < p.lead) {
+        const u = Math.min(1, time / Math.max(0.2, Math.min(p.lead * 0.82, 1.5)));
+        const flight = clamp((u - 0.16) / 0.42);
+        const impact = clamp((u - 0.58) / 0.32);
+        const kingX = w * .68, kingY = h * .39, size = w * .12;
+        ctx.save(); ctx.globalAlpha = Math.min(1, time * 5, (p.lead - time) * 4);
+        ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.shadowColor = "black"; ctx.shadowBlur = 12;
+        ctx.fillStyle = "white"; ctx.font = `bold ${Math.round(size)}px sans-serif`;
+        const attacker = { pawn: "♙", knight: "♘", bishop: "♗", rook: "♖", queen: "♕", king: "♔" }[p.introTitle.piece];
+        ctx.fillText(attacker, w * .32, h * .39);
+        // Clip the same king into two halves, then separate them after impact.
+        for (const upper of [true, false]) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(kingX - size, upper ? kingY - size : kingY, size * 2, size);
+          ctx.clip();
+          ctx.translate((upper ? 1 : -1) * impact * size * .17, (upper ? -1 : 1) * impact * size * .10);
+          ctx.fillStyle = "#999";
+          ctx.fillText("♚", kingX, kingY);
+          ctx.restore();
+        }
+        if (flight > 0 && impact < 1) {
+          const tip = w * (.38 + .31 * flight), sy = kingY;
+          ctx.save(); ctx.globalAlpha *= 1 - impact;
+          ctx.strokeStyle = "#f4f7fa"; ctx.lineWidth = Math.max(2, w * .004);
+          ctx.shadowColor = "#fff"; ctx.shadowBlur = w * .018;
+          ctx.beginPath(); ctx.moveTo(tip - w * .10, sy); ctx.lineTo(tip, sy); ctx.stroke();
+          ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(tip + w * .02, sy); ctx.lineTo(tip - w * .015, sy - w * .012); ctx.lineTo(tip - w * .015, sy + w * .012); ctx.closePath(); ctx.fill();
+          ctx.restore();
+        }
+        ctx.fillStyle = "#fff176"; ctx.font = `bold ${Math.round(w * .065)}px sans-serif`;
+        ctx.fillText(p.introTitle.text.toUpperCase(), w / 2, h * .49, w * .9); ctx.restore();
+      }
+      this.overlayTexture.needsUpdate = true;
+      this.renderer.setViewport(0, 0, w, h); this.renderer.clearDepth();
+      this.renderer.render(this.overlayScene, this.backgroundCamera);
     }
     return e;
   }

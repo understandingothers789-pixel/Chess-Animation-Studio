@@ -1,5 +1,11 @@
 # Fresh implementation history
 
+## 0.2.13
+
+- Add local Stockfish game review, a curated starter opening book, move badges and review colors.
+- Add game close-up framing, an optional evaluation bar, and animated title and board-level fly-in intros.
+- Add an optional horse sound for knight moves and side-specific move highlights.
+
 ## 0.2.12
 
 Adds click-and-drag numeric scrubbing, a fast–slow–fast 360° Capture flip preset applied automatically on captures, and a beat-driven Final move boom preset for the end of new/imported games. Adds individual slider resets and optional configurable dark rainbow cycles for snow and dark-square pulses. Move presets can be changed manually; existing edited moves retain their saved effects.

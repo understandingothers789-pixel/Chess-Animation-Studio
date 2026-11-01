@@ -1,5 +1,10 @@
 # Fresh implementation history
 
+## 0.2.12
+
+Adds click-and-drag numeric scrubbing, a fast–slow–fast 360° Capture flip preset applied automatically on captures, and a beat-driven Final move boom preset for the end of new/imported games. Adds individual slider resets and optional configurable dark rainbow cycles for snow and dark-square pulses. Move presets can be changed manually; existing edited moves retain their saved effects.
+
+
 ## 0.2.11
 
 Improves editor organization with a numbered workflow, contextual panel guidance, clearer section cards, board/framing controls first in Scene, and selected-move guidance that identifies Beat spotlight in Look. Moves the settings report into Files.

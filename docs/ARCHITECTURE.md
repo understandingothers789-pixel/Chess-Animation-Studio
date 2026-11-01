@@ -1,6 +1,6 @@
 # Architecture
 
-This branch is a new implementation. The previous main branch is not imported or modified.
+`architecture/effect-compositor` contains the experimental rendering overhaul. `studio-main` remains the protected 0.2.15 baseline.
 
 `src/core/project.ts` defines bounded schema-2 project data and presets. `chess.ts` validates input with chess.js, retains raw PGN and separate SAN variation lines, and reconstructs before/after snapshots with stable piece identities. Move IDs hash the starting FEN and legal prefix, preserving common-prefix effects. Promotion preserves identity; en passant removes the actual captured square, and castling stores coordinated rook motion.
 
@@ -8,7 +8,7 @@ This branch is a new implementation. The previous main branch is not imported or
 
 `src/render/pieces.ts` rasterizes Nocturne SVGs to 1024px textures and traces their alpha contours at 256px using d3-contour. Extruded silhouettes, including holes, provide real thin sides; surface UVs map to the complete artwork. No transparent rectangle is extruded. Front and back share the illustration, physically mirrored when seen from behind. Artwork preparation is awaited before rendering export frames.
 
-`Scene.ts` owns Three.js objects, caches piece meshes, renders per-format camera/layout, board pulses, ribbon trails, original badge sprites and deterministic particles. Square-in-vertical uses a square scissored viewport with a separate background/ambient pass. Picking converts camera rays into board-local coordinates. Exact raw RGBA rows are flipped from WebGL bottom-up order.
+`Scene.ts` is a facade over a compiled dependency-aware render graph. Ten specialized systems own background, camera, board, pieces, motion, capture, atmosphere, lighting, spotlight and overlay resources. `engine/frame.ts` adapts the existing pure timeline evaluation into a deterministic render frame; optional capture accents share the move contact clock. Preview, presentation and exact-time export call the same facade. Unchanged immutable project/time/format/size inputs reuse the last successful frame; asset changes and preparation invalidate it. Square-in-vertical retains its scissored viewport and background/ambient pass. Picking uses centralized board-local coordinate utilities. Raw RGBA readback is flipped from WebGL bottom-up order. See [the render graph and ownership guide](EFFECT_COMPOSITOR.md) for module responsibilities, lifecycle and the effect extension API.
 
 The React editor owns project history and monotonic playback time. WebAudio schedules music/cues ahead of playback, then provides a common performance-clock origin. Decode, waveform analysis and PGN parsing run asynchronously; analysis and imports use workers or native services. Undo groups rapid adjustments and retains up to 80 snapshots.
 

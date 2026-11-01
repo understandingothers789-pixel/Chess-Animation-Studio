@@ -1,0 +1,46 @@
+{
+  "fixtures": 168,
+  "exact": 160,
+  "tolerated": [
+    {
+      "fixture": "visual-landscape-8",
+      "changed_pixels": 5,
+      "max_channel_error": 2
+    },
+    {
+      "fixture": "visual-landscape-24",
+      "changed_pixels": 29,
+      "max_channel_error": 3
+    },
+    {
+      "fixture": "visual-vertical-8",
+      "changed_pixels": 7,
+      "max_channel_error": 1
+    },
+    {
+      "fixture": "visual-vertical-24",
+      "changed_pixels": 49,
+      "max_channel_error": 4
+    },
+    {
+      "fixture": "visual-square-8",
+      "changed_pixels": 5,
+      "max_channel_error": 2
+    },
+    {
+      "fixture": "visual-square-24",
+      "changed_pixels": 29,
+      "max_channel_error": 3
+    },
+    {
+      "fixture": "visual-square-in-vertical-8",
+      "changed_pixels": 5,
+      "max_channel_error": 2
+    },
+    {
+      "fixture": "visual-square-in-vertical-24",
+      "changed_pixels": 29,
+      "max_channel_error": 3
+    }
+  ]
+}

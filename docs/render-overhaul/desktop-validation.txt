@@ -1,0 +1,17 @@
+
+> chess-animation-studio@0.2.15 test:desktop
+> node --import tsx scripts/desktop-smoke.ts
+
+PASS: application launches, vector art prepares, and bundled sample opens.
+PASS: requested brown/beige defaults and explanatory tooltips across every settings panel.
+PASS: both artwork sets render; backward seeking reproduces identical pixels.
+PASS: new logo, individual/group snow reset, Undo and selection-wide preset-aware movement reset.
+PASS: selectable intro presets, multi-move Half sway and duration edits, board-only snow controls.
+PASS: native IPC saves and reopens the sample with relative asset references.
+PASS: exact-time H.264/AAC MP4 exported at 60 FPS.
+PASS: native-sized vertical, square and square-in-vertical exports.
+PASS: cancellation removes temporary files and preserves the project.
+PASS: per-move light wash changes pixels and reconstructs exactly after backward seeking.
+PASS: beat spotlight reserves time, renders beat-driven camera/post effects, reconstructs after seeking and restores ordinary timing.
+PASS: captured-piece dust renders and backward seeking reconstructs it exactly.
+PASS: clean presentation window has no editor controls.

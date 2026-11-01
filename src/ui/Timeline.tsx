@@ -99,6 +99,7 @@ export function Timeline({
             aria-label="Playhead position"
             aria-valuetext={clock(time)}
             title="Seek with the arrow keys"
+            aria-description="Seek through the timeline with the arrow keys"
             min={0}
             max={length}
             step={0.1}

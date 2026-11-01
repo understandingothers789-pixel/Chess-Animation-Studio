@@ -1,4 +1,5 @@
 import * as T from "three";
+import { executePasses } from "./effectCompositor";
 import {
   createPiece,
   preloadPieces,
@@ -1054,6 +1055,13 @@ export class Scene {
     this.renderer.clearDepth();
     this.renderer.render(this.scene, this.camera);
     this.renderer.setScissorTest(false);
+    // Post-processing and 2D overlays share a deterministic pass plan.
+    // The existing Three.js draw code remains unchanged inside each stage.
+    executePasses(time, [
+      { id: "spotlight-post", stage: "post" },
+      { id: "information-overlay", stage: "overlay" },
+    ], (pass) => {
+      if (pass.id === "spotlight-post") {
     if (
       j &&
       j.envelope > 0.001 &&
@@ -1091,6 +1099,7 @@ export class Scene {
       this.renderer.clearDepth();
       this.renderer.render(this.jamPostScene, this.backgroundCamera);
     }
+      } else if (pass.id === "information-overlay") {
     if (p.evalBar || (p.introTitle.enabled && time < p.lead)) {
       const canvas = this.overlayCanvas;
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
@@ -1145,6 +1154,8 @@ export class Scene {
       this.renderer.setViewport(0, 0, w, h); this.renderer.clearDepth();
       this.renderer.render(this.overlayScene, this.backgroundCamera);
     }
+      }
+    });
     return e;
   }
   pick(clientX: number, clientY: number) {

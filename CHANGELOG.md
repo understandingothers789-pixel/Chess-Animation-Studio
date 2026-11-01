@@ -1,5 +1,9 @@
 # Fresh implementation history
 
+## 0.2.14
+
+Adds the architecture branch's composable effect graph for ordering and validating scene effects.
+
 ## 0.2.13
 
 - Add local Stockfish game review, a curated starter opening book, move badges and review colors.

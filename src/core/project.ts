@@ -17,11 +17,13 @@ export const presets = [
   "slide",
   "soft",
   "spin",
+  "flip",
   "sway",
   "sway-half",
   "hop",
   "dramatic",
   "capture",
+  "finale",
 ] as const;
 export type Preset = (typeof presets)[number];
 export const channels = [
@@ -313,6 +315,16 @@ export function effect(preset: Preset = "slide"): Effect {
   if (preset === "soft") e.easing = "soft";
   if (preset === "spin")
     Object.assign(e, { rotation: 360, axis: "y", hop: 0.25, scale: 1.08 });
+  if (preset === "flip")
+    Object.assign(e, {
+      duration: 1.7,
+      rotation: 360,
+      axis: "y",
+      hop: 0.4,
+      scale: 1.12,
+      landing: 0.88,
+      settle: 0.12,
+    });
   if (preset === "sway")
     Object.assign(e, { duration: 2.2, sway: 24, landing: 0.88, settle: 0.12 });
   if (preset === "sway-half")
@@ -334,6 +346,26 @@ export function effect(preset: Preset = "slide"): Effect {
       landing: 0.86,
     });
   if (preset === "capture") Object.assign(e, { duration: 1.8 });
+  if (preset === "finale") {
+    Object.assign(e, { duration: 2.2, hold: 0.8, hop: 0.5, scale: 1.55 });
+    Object.assign(e.capture, {
+      grow: 1.9,
+      glow: 1.4,
+      impact: 0.84,
+      color: "#f6d64b",
+    });
+    Object.assign(e.jam, {
+      enabled: true,
+      rhythm: "punch",
+      duration: 2.4,
+      zoom: 1.2,
+      glow: 1,
+      particles: 112,
+      flash: 0.38,
+      primary: "#f6d64b",
+      secondary: "#34f6e6",
+    });
+  }
   return e;
 }
 const assetSchema = z.object({
@@ -384,6 +416,7 @@ export const projectSchema = z.object({
         id: str,
         san: z.string().max(30),
         effect: effectSchema,
+        autoPreset: z.enum(["flip", "finale"]).optional(),
         analysis: analysisSchema,
       }),
     )

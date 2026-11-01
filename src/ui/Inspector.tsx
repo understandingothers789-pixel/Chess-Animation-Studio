@@ -14,16 +14,18 @@ import {
   type Preset,
 } from "../core/project";
 import type { Edit } from "./state";
-import { Section, Range, Select, Toggle, Color } from "./controls";
+import { Section, Range, Select, Toggle, Color, ScrubNumber } from "./controls";
 export const presetLabels: Record<Preset, string> = {
   slide: "Clean slide",
   soft: "Soft landing",
   spin: "Thin-edge spin",
+  flip: "Capture flip",
   sway: "Slow sway",
   "sway-half": "Half sway",
   hop: "Soft hop",
   dramatic: "Dramatic landing",
   capture: "Capture impact",
+  finale: "Final move boom",
 };
 export function Inspector({
   project,
@@ -1043,40 +1045,33 @@ export function Inspector({
             />
             {(e.keys[channel] ?? []).map((k, i) => (
               <div className="key-row" key={i}>
-                <input
+                <ScrubNumber
                   title={settingHelp(`Key ${i + 1} time`)}
                   aria-description={settingHelp(`Key ${i + 1} time`)}
                   aria-label={`Key ${i + 1} time`}
-                  type="number"
                   min={0}
                   max={1}
                   step={0.01}
                   value={k.at}
-                  onChange={(v) => {
-                    const n = +v.target.value;
-                    if (Number.isFinite(n))
-                      edit("Key time", (p) => {
-                        p.moves[index].effect.keys[channel]![i].at = Math.max(
-                          0,
-                          Math.min(1, n),
-                        );
-                      });
-                  }}
+                  onValueChange={(n) =>
+                    edit("Key time", (p) => {
+                      p.moves[index].effect.keys[channel]![i].at = n;
+                    })
+                  }
                 />
-                <input
+                <ScrubNumber
                   title={settingHelp(`Key ${i + 1} value`)}
                   aria-description={settingHelp(`Key ${i + 1} value`)}
                   aria-label={`Key ${i + 1} value`}
-                  type="number"
+                  min={-10000}
+                  max={10000}
                   step={0.1}
                   value={k.value}
-                  onChange={(v) => {
-                    const n = +v.target.value;
-                    if (Number.isFinite(n))
-                      edit("Key value", (p) => {
-                        p.moves[index].effect.keys[channel]![i].value = n;
-                      });
-                  }}
+                  onValueChange={(n) =>
+                    edit("Key value", (p) => {
+                      p.moves[index].effect.keys[channel]![i].value = n;
+                    })
+                  }
                 />
                 <select
                   title={settingHelp(`Key ${i + 1} easing`)}

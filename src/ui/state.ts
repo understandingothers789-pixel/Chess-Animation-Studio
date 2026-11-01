@@ -35,6 +35,15 @@ export function useProject() {
       h.future = [];
       const next = structuredClone(old);
       fn(next);
+      const previous = new Map(old.moves.map((move) => [move.id, move]));
+      for (const move of next.moves) {
+        const before = previous.get(move.id);
+        if (
+          before?.autoPreset &&
+          JSON.stringify(move.effect) !== JSON.stringify(before.effect)
+        )
+          delete move.autoPreset;
+      }
       next.appVersion = VERSION;
       return next;
     });

@@ -1,5 +1,63 @@
 import { settingHelp } from "./help";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode, type InputHTMLAttributes } from "react";
+export function ScrubNumber({
+  value,
+  min,
+  max,
+  step = 1,
+  onValueChange,
+  ...rest
+}: Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "min" | "max" | "step"
+> & {
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  onValueChange: (value: number) => void;
+}) {
+  const drag = useRef<{ x: number; y: number; value: number } | null>(null);
+  return (
+    <input
+      {...rest}
+      title={`${rest.title ?? "Adjust value"} Drag left/right or up/down to adjust; hold Shift for finer control.`}
+      type="number"
+      value={value}
+      min={min}
+      max={max}
+      step={step}
+      style={{ ...rest.style, cursor: "ew-resize" }}
+      onChange={(e) => {
+        const v = e.currentTarget.valueAsNumber;
+        if (Number.isFinite(v)) onValueChange(Math.max(min, Math.min(max, v)));
+      }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        drag.current = { x: e.clientX, y: e.clientY, value };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        const start = drag.current;
+        if (!start || !(e.buttons & 1)) return;
+        const distance = e.clientX - start.x + start.y - e.clientY;
+        if (Math.abs(distance) < 3) return;
+        e.preventDefault();
+        const amount = Math.round(distance / (e.shiftKey ? 40 : 8));
+        const v = Math.max(min, Math.min(max, start.value + amount * step));
+        onValueChange(Number(v.toFixed(6)));
+      }}
+      onPointerUp={(e) => {
+        drag.current = null;
+        if (e.currentTarget.hasPointerCapture(e.pointerId))
+          e.currentTarget.releasePointerCapture(e.pointerId);
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+      }}
+    />
+  );
+}
 export function Section({
   title,
   children,
@@ -78,22 +136,18 @@ export function Range({
           )}
         </span>
         <span className="number-wrap">
-          <input
+          <ScrubNumber
             aria-label={label + " value"}
             title={
               settingHelp(label) +
               ` Range: ${min}–${max}${unit ? " " + unit : ""}.`
             }
             aria-description={settingHelp(label)}
-            type="number"
             min={min}
             max={max}
             step={step}
             value={Number(value.toFixed(4))}
-            onChange={(e) => {
-              const v = e.target.valueAsNumber;
-              if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)));
-            }}
+            onValueChange={onChange}
           />
           {unit}
         </span>

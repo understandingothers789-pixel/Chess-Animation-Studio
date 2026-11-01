@@ -21,6 +21,29 @@ import {
 } from "../src/core/timeline";
 import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
 describe("legal state and stable identities", () => {
+  it("assigns capture flips and a final impact while retaining manual move effects", () => {
+    const p = importPgn(blank(), "1. e4 d5 2. exd5 Qxd5");
+    expect(p.moves[2].effect.preset).toBe("flip");
+    expect(p.moves[3].effect.preset).toBe("finale");
+    expect(p.moves[3].effect.jam.enabled).toBe(true);
+    const step = buildGame(p).steps[2],
+      seg = segments(p)[2];
+    const rotation = (at: number) =>
+      evaluate(p, seg.depart + at * p.moves[2].effect.duration).pieces.find(
+        (v) => v.id === step.pieceId,
+      )!.ry;
+    expect(rotation(0.2)).toBeGreaterThan(2 * Math.PI * 0.2);
+    expect(rotation(0.5)).toBeCloseTo(
+      2 * Math.PI * (0.5 / p.moves[2].effect.landing),
+      0,
+    );
+    p.moves[2].effect = effect("soft");
+    delete p.moves[2].autoPreset;
+    expect(importPgn(p, p.pgn).moves[2].effect.preset).toBe("soft");
+    const extended = importPgn(p, "1. e4 d5 2. exd5 Qxd5 3. Nc3");
+    expect(extended.moves[3].effect.preset).toBe("flip");
+    expect(extended.moves.at(-1)!.effect.preset).toBe("finale");
+  });
   it("coordinates castling, en passant and promotion", () => {
     const p = importPgn(blank(), "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. O-O");
     const s = buildGame(p).steps.at(-1)!;
@@ -224,7 +247,7 @@ describe("Shorts close-up framing", () => {
 describe("captured-piece dust", () => {
   it("defaults to dust on ordinary captures and carries the cloud into the next move", () => {
     const p = importPgn(blank(), "1. e4 d5 2. exd5 Qxd5");
-    expect(p.moves[2].effect.preset).toBe("slide");
+    expect(p.moves[2].effect.preset).toBe("flip");
     expect(p.moves[2].effect.capture.exit).toBe("dust");
     const seq = segments(p),
       start =

@@ -79,10 +79,21 @@ export function buildGame(p: Project): Game {
   }
   return { initial, steps, end: chess.fen() };
 }
-function movesFirstEffect(p: Project, index: number) {
-  return index === 0 && p.defaults.preset === "slide"
-    ? effect("sway")
-    : structuredClone(p.defaults);
+function defaultMove(
+  p: Project,
+  index: number,
+  last: number,
+  capture: boolean,
+) {
+  if (index === last)
+    return { effect: effect("finale"), autoPreset: "finale" as const };
+  if (capture) return { effect: effect("flip"), autoPreset: "flip" as const };
+  return {
+    effect:
+      index === 0 && p.defaults.preset === "slide"
+        ? effect("sway")
+        : structuredClone(p.defaults),
+  };
 }
 export function setLine(
   p: Project,
@@ -100,14 +111,21 @@ export function setLine(
     prefix += " " + m.san;
     const id = hash(prefix),
       match = preserve ? old.get(id) : undefined;
-    return match
-      ? structuredClone(match)
-      : {
-          id,
-          san: m.san,
-          effect: movesFirstEffect(p, index),
-          analysis: {},
-        };
+    const automatic = defaultMove(
+      p,
+      index,
+      sans.length - 1,
+      !!m.captured || m.isEnPassant(),
+    );
+    if (match) {
+      const kept = structuredClone(match);
+      if (kept.autoPreset && kept.effect.preset === kept.autoPreset) {
+        kept.effect = automatic.effect;
+        kept.autoPreset = automatic.autoPreset;
+      }
+      return kept;
+    }
+    return { id, san: m.san, ...automatic, analysis: {} };
   });
   return { ...structuredClone(p), fen, pgn: raw, moves };
 }
@@ -206,6 +224,7 @@ export function sample(): Project {
   p.moves[6].effect.badge.manual = "brilliant";
   p.moves[12].effect = effect("dramatic");
   p.moves[18].effect = effect("hop");
+  for (const i of [2, 4, 6, 12, 18]) delete p.moves[i].autoPreset;
   p.moves[0].effect.highlight.trail = true;
   return p;
 }

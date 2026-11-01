@@ -150,7 +150,11 @@ export interface Frame {
 function cameraTarget(p: Project, g: Game, i: number, f: Format, end = false) {
   const s = g.steps[i],
     c = s?.move.effect.cameras[f] ?? camera();
-  if (!s || c.mode === "full" || (f === "vertical" && !p.shorts.enabled && !s.move.effect.cameras[f]))
+  if (
+    !s ||
+    c.mode === "full" ||
+    (f === "vertical" && !p.shorts.enabled && !s.move.effect.cameras[f])
+  )
     return { x: 0, y: 0, zoom: 1, tilt: c.tilt, rotation: c.rotation };
   const a = xy(s.from),
     b = xy(s.to),
@@ -237,8 +241,13 @@ export function evaluate(
       u,
       e.hop * Math.sin(Math.PI * clamp(travel)) * e.intensity,
     );
+    const spinTime = clamp(u / e.landing);
+    const spinEase =
+      e.preset === "flip"
+        ? spinTime + (0.72 * Math.sin(2 * Math.PI * spinTime)) / (2 * Math.PI)
+        : ease(spinTime);
     const degrees = mix(
-      e.rotation * ease(u / e.landing),
+      e.rotation * spinEase,
       Math.round(e.rotation / 360) * 360,
       ease((u - e.landing) / e.settle),
     );
@@ -255,7 +264,7 @@ export function evaluate(
         180;
     }
     let growth = Math.sin(Math.PI * clamp(u / (e.peak * 2)));
-    if (e.preset === "capture") {
+    if (e.preset === "capture" || e.preset === "finale") {
       growth =
         u < e.capture.impact
           ? clamp(
@@ -272,7 +281,10 @@ export function evaluate(
         u,
         1 +
           Math.max(0, growth) *
-            ((e.preset === "capture" ? e.capture.grow : e.scale) - 1) *
+            ((e.preset === "capture" || e.preset === "finale"
+              ? e.capture.grow
+              : e.scale) -
+              1) *
             e.intensity,
       ),
       0.05,

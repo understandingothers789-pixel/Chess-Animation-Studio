@@ -15,7 +15,15 @@ import {
 import { selectLine } from "../core/chess";
 import { align, syncMarkers } from "../core/audio";
 import { badge, segments } from "../core/timeline";
-import { Section, Range, Toggle, Color, Select, clock } from "./controls";
+import {
+  Section,
+  Range,
+  Toggle,
+  Color,
+  Select,
+  ScrubNumber,
+  clock,
+} from "./controls";
 import { presetLabels } from "./Inspector";
 import type { Edit } from "./state";
 import type { Settings } from "../bridge";
@@ -335,11 +343,13 @@ export function StylesPanel(q: PanelProps) {
                     slide: "↗",
                     soft: "⌁",
                     spin: "⟳",
+                    flip: "↻",
                     sway: "〰",
                     "sway-half": "◜",
                     hop: "⌒",
                     dramatic: "✦",
                     capture: "◎",
+                    finale: "✹",
                   }[v]
                 }
               </span>
@@ -351,7 +361,11 @@ export function StylesPanel(q: PanelProps) {
                     ? "A thin solid turn"
                     : v === "capture"
                       ? "Grow, glow, return"
-                      : "Refine in the inspector"}
+                      : v === "flip"
+                        ? "Fast–slow–fast 360° turn"
+                        : v === "finale"
+                          ? "Checkmate-style impact and beat zoom"
+                          : "Refine in the inspector"}
               </small>
             </button>
           ))}
@@ -634,24 +648,23 @@ export function MusicPanel(q: PanelProps) {
                     })
                   }
                 />
-                <input
+                <ScrubNumber
                   title={settingHelp("Beat time")}
                   aria-description={settingHelp("Beat time")}
                   aria-label="Beat time"
-                  type="number"
+                  min={0}
+                  max={7200}
                   step={0.01}
                   value={Number(b.time.toFixed(3))}
-                  onChange={(e) => {
-                    const time = +e.target.value;
-                    if (Number.isFinite(time) && time >= 0)
-                      edit("Beat time", (p) => {
-                        const v = p.beats.find((v) => v.id === b.id)!;
-                        v.time = time;
-                        if (v.sourceTime !== undefined)
-                          v.sourceTime =
-                            time + p.music.trimStart - p.music.offset;
-                      });
-                  }}
+                  onValueChange={(time) =>
+                    edit("Beat time", (p) => {
+                      const v = p.beats.find((v) => v.id === b.id)!;
+                      v.time = time;
+                      if (v.sourceTime !== undefined)
+                        v.sourceTime =
+                          time + p.music.trimStart - p.music.offset;
+                    })
+                  }
                 />
                 <button
                   className={b.accent ? "accent" : ""}

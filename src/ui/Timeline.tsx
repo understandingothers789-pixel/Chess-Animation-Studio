@@ -92,6 +92,20 @@ export function Timeline({
             {p.moves.length} moves · {clock(length)}
           </small>
         </div>
+        <label>
+          Playhead
+          <input
+            type="range"
+            aria-label="Playhead position"
+            aria-valuetext={clock(time)}
+            title="Seek with the arrow keys"
+            min={0}
+            max={length}
+            step={0.1}
+            value={Math.max(0, Math.min(length, time))}
+            onChange={(e) => seek(Number(e.target.value))}
+          />
+        </label>
         <label title="Lock beat markers to prevent accidental edits">
           <input
             type="checkbox"

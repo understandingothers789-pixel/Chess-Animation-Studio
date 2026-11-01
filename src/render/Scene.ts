@@ -14,6 +14,16 @@ import { LightingSystem } from "./systems/LightingSystem";
 import { AtmosphereSystem } from "./systems/AtmosphereSystem";
 import { SpotlightSystem } from "./systems/SpotlightSystem";
 import { OverlaySystem } from "./systems/OverlaySystem";
+export interface RenderServices {
+  renderer: T.WebGLRenderer;
+  camera: T.OrthographicCamera;
+  world: T.Scene;
+  root: T.Group;
+  assets: ReadonlyMap<string, T.Texture>;
+}
+export type SceneExtensions =
+  | readonly Pass<RenderFrame>[]
+  | ((services: RenderServices) => readonly Pass<RenderFrame>[]);
 /** Public preview/export facade. Every visual update belongs to a graph system. */
 export class Scene {
   readonly renderer: T.WebGLRenderer;
@@ -29,13 +39,12 @@ export class Scene {
   private game?: Game;
   private current?: RenderFrame;
   private dead = false;
+  private revision = 0;
+  private renderedRevision = -1;
   private width = 1;
   private height = 1;
   private readback = new Uint8Array(0);
-  constructor(
-    canvas: HTMLCanvasElement,
-    extensions: readonly Pass<RenderFrame>[] = [],
-  ) {
+  constructor(canvas: HTMLCanvasElement, extensions: SceneExtensions = []) {
     this.renderer = new T.WebGLRenderer({
       canvas,
       antialias: true,
@@ -61,118 +70,151 @@ export class Scene {
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
     const capture = new CaptureSystem(this.root, camera, pieces.meshes);
-    this.ready = pieces.ready;
-    this.graph = new RenderGraph<RenderFrame>([
-      {
-        id: "background",
-        stage: "background",
-        outputs: ["background"],
-        render: (c) => background.update(c),
-        dispose: () => background.dispose(),
-      },
-      {
-        id: "camera",
-        stage: "board",
-        outputs: ["camera"],
-        render: (c) => this.cameras.update(c),
-      },
-      {
-        id: "board",
-        stage: "board",
-        inputs: ["camera"],
-        outputs: ["board"],
-        render: (c) => this.board.update(c),
-        dispose: () => this.board.dispose(),
-      },
-      {
-        id: "motion",
-        stage: "board",
-        inputs: ["board"],
-        outputs: ["motion"],
-        render: (c) => motion.update(c),
-        dispose: () => motion.dispose(),
-      },
-      {
-        id: "pieces",
-        stage: "board",
-        inputs: ["motion"],
-        outputs: ["pieces"],
-        render: (c) => pieces.update(c),
-        dispose: () => pieces.dispose(),
-      },
-      {
-        id: "capture",
-        stage: "board",
-        inputs: ["pieces"],
-        render: (c) => capture.update(c),
-        dispose: () => capture.dispose(),
-      },
-      {
-        id: "atmosphere",
-        stage: "board",
-        inputs: ["camera"],
-        render: (c) => atmosphere.update(c),
-        dispose: () => atmosphere.dispose(),
-      },
-      {
-        id: "spotlight",
-        stage: "board",
-        inputs: ["board"],
-        render: (c) => spotlight.update(c),
-        dispose: () => spotlight.dispose(),
-      },
-      {
-        id: "lighting",
-        stage: "board",
-        render: (c) => lighting.update(c),
-        dispose: () => lighting.dispose(),
-      },
-      {
-        id: "badges",
-        stage: "board",
-        inputs: ["pieces"],
-        render: (c) => overlay.update(c),
-        dispose: () => overlay.dispose(),
-      },
-      {
-        id: "world",
-        stage: "board",
-        after: ["capture", "atmosphere", "spotlight", "lighting", "badges"],
-        outputs: ["scene-color"],
-        render: (c) => {
-          if (c.square || c.short) {
-            this.root.visible = false;
-            lighting.moveLight.visible = false;
-            r.clearDepth();
-            if (!c.short) r.render(this.world, camera);
-            this.root.visible = true;
-            lighting.moveLight.visible = c.e.light.strength > 0.0001;
-            r.setViewport(0, c.viewY, c.w, c.viewH);
-            r.setScissor(0, c.viewY, c.w, c.viewH);
-            r.setScissorTest(true);
-          }
-          r.clearDepth();
-          r.render(this.world, camera);
-          r.setScissorTest(false);
+    this.ready = pieces.ready.then(() => {
+      this.revision++;
+    });
+    try {
+      const extraPasses =
+        typeof extensions === "function"
+          ? extensions({
+              renderer: r,
+              camera,
+              world: this.world,
+              root: this.root,
+              assets: this.assets,
+            })
+          : extensions;
+      this.graph = new RenderGraph<RenderFrame>([
+        {
+          id: "background",
+          stage: "background",
+          outputs: ["background"],
+          render: (c) => background.update(c),
+          dispose: () => background.dispose(),
         },
-      },
-      {
-        id: "spotlight-post",
-        stage: "post",
-        inputs: ["scene-color"],
-        active: (c) => !!c.e.jam && c.e.jam.envelope > 0.001,
-        render: (c) => spotlight.post(c),
-      },
-      {
-        id: "information-overlay",
-        stage: "overlay",
-        inputs: ["scene-color"],
-        active: (c) =>
-          c.p.evalBar || (c.p.introTitle.enabled && c.time < c.p.lead),
-        render: (c) => overlay.post(c),
-      },
-      ...extensions,
-    ]);
+        {
+          id: "camera",
+          stage: "board",
+          outputs: ["camera"],
+          render: (c) => this.cameras.update(c),
+        },
+        {
+          id: "board",
+          stage: "board",
+          inputs: ["camera"],
+          outputs: ["board"],
+          render: (c) => this.board.update(c),
+          dispose: () => this.board.dispose(),
+        },
+        {
+          id: "motion",
+          stage: "board",
+          inputs: ["board"],
+          outputs: ["motion"],
+          render: (c) => motion.update(c),
+          dispose: () => motion.dispose(),
+        },
+        {
+          id: "pieces",
+          stage: "board",
+          inputs: ["motion"],
+          outputs: ["pieces"],
+          render: (c) => pieces.update(c),
+          dispose: () => pieces.dispose(),
+        },
+        {
+          id: "capture",
+          stage: "board",
+          inputs: ["pieces"],
+          render: (c) => capture.update(c),
+          dispose: () => capture.dispose(),
+        },
+        {
+          id: "atmosphere",
+          stage: "board",
+          inputs: ["camera"],
+          render: (c) => atmosphere.update(c),
+          dispose: () => atmosphere.dispose(),
+        },
+        {
+          id: "spotlight",
+          stage: "board",
+          inputs: ["board"],
+          render: (c) => spotlight.update(c),
+          dispose: () => spotlight.dispose(),
+        },
+        {
+          id: "lighting",
+          stage: "board",
+          render: (c) => lighting.update(c),
+          dispose: () => lighting.dispose(),
+        },
+        {
+          id: "badges",
+          stage: "board",
+          inputs: ["pieces"],
+          render: (c) => overlay.update(c),
+          dispose: () => overlay.dispose(),
+        },
+        {
+          id: "world",
+          stage: "board",
+          after: ["capture", "atmosphere", "spotlight", "lighting", "badges"],
+          outputs: ["scene-color"],
+          render: (c) => {
+            if (c.square || c.short) {
+              this.root.visible = false;
+              lighting.moveLight.visible = false;
+              r.clearDepth();
+              if (!c.short) r.render(this.world, camera);
+              this.root.visible = true;
+              lighting.moveLight.visible = c.e.light.strength > 0.0001;
+              r.setViewport(0, c.viewY, c.w, c.viewH);
+              r.setScissor(0, c.viewY, c.w, c.viewH);
+              r.setScissorTest(true);
+            }
+            r.clearDepth();
+            r.render(this.world, camera);
+            r.setScissorTest(false);
+          },
+        },
+        {
+          id: "spotlight-post",
+          stage: "post",
+          inputs: ["scene-color"],
+          active: (c) => !!c.e.jam && c.e.jam.envelope > 0.001,
+          render: (c) => spotlight.post(c),
+        },
+        {
+          id: "information-overlay",
+          stage: "overlay",
+          inputs: ["scene-color"],
+          active: (c) =>
+            c.p.evalBar || (c.p.introTitle.enabled && c.time < c.p.lead),
+          render: (c) => overlay.post(c),
+        },
+        ...extraPasses,
+      ]);
+    } catch (error) {
+      // Graph validation can fail before graph ownership begins.
+      for (const system of [
+        capture,
+        pieces,
+        atmosphere,
+        overlay,
+        motion,
+        this.board,
+        background,
+        spotlight,
+        lighting,
+      ])
+        system.dispose();
+      this.world.clear();
+      r.dispose();
+      r.forceContextLoss();
+      void this.ready.catch(() => {}); // The constructor error is the observable failure.
+      throw error;
+    }
   }
   private assertLive() {
     if (this.dead) throw Error("Scene is disposed");
@@ -189,12 +231,14 @@ export class Scene {
     }
     this.assets.get(id)?.dispose();
     this.assets.set(id, texture);
+    this.revision++;
   }
   removeAsset(id: string) {
     this.assertLive();
     this.requests.delete(id);
     this.assets.get(id)?.dispose();
     this.assets.delete(id);
+    this.revision++;
   }
   render(
     p: Project,
@@ -204,6 +248,19 @@ export class Scene {
     format: Format = p.format,
   ) {
     this.assertLive();
+    const previous = this.current;
+    if (
+      previous &&
+      previous.p === p &&
+      previous.time === time &&
+      previous.w === w &&
+      previous.h === h &&
+      previous.format === format &&
+      this.renderedRevision === this.revision
+    )
+      return previous.e;
+    // A failed frame must never be mistaken for a cached successful draw.
+    this.renderedRevision = -1;
     if (this.project !== p) {
       this.game = buildGame(p);
       this.project = p;
@@ -214,7 +271,6 @@ export class Scene {
     )
       throw RangeError("Render dimensions exceed GPU capabilities");
     const c = evaluateRenderFrame(p, time, w, h, format, this.game);
-    this.current = c;
     const r = this.renderer;
     if (w !== this.width || h !== this.height) {
       this.width = w;
@@ -232,6 +288,8 @@ export class Scene {
       r.setScissorTest(false);
       r.setViewport(0, 0, w, h);
     }
+    this.current = c;
+    this.renderedRevision = this.revision;
     return c.e;
   }
   pick(clientX: number, clientY: number) {

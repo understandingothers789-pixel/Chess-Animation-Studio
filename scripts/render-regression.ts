@@ -32,6 +32,8 @@ try {
     ],
   });
   const page = await browser.newPage();
+  // tsx preserves callback names using this helper; Playwright serializes the callback body.
+  await page.addInitScript("globalThis.__name = (fn) => fn;");
   await page.route("**/render-fixture.html", (route) =>
     route.fulfill({
       contentType: "text/html",
@@ -49,7 +51,21 @@ try {
     const { importPgn } = await import("/src/core/chess.ts" as string);
     const canvas = document.createElement("canvas");
     document.body.replaceChildren(canvas);
-    const scene = new Scene(canvas);
+    let frameCalls = 0;
+    let failNext = false;
+    const scene = new Scene(canvas, [
+      {
+        id: "test-counter",
+        stage: "overlay",
+        render: () => {
+          frameCalls++;
+          if (failNext) {
+            failNext = false;
+            throw Error("Expected test failure");
+          }
+        },
+      },
+    ]);
     await scene.ready;
     const sample = parseProject(
       await (await fetch("/samples/Opera.castudio")).json(),
@@ -111,14 +127,72 @@ try {
     if (!legacy) {
       // Both preview and export instantiate this same facade, at the same output size.
       const secondCanvas = document.createElement("canvas");
-      const second = new Scene(secondCanvas);
+      const second = new Scene(
+        secondCanvas,
+        ({
+          renderer,
+          camera,
+        }: {
+          renderer: { domElement: HTMLCanvasElement };
+          camera: { isOrthographicCamera: boolean };
+        }) => {
+          if (
+            renderer.domElement !== secondCanvas ||
+            !camera.isOrthographicCamera
+          )
+            throw Error("Invalid extension services");
+          return [];
+        },
+      );
       await second.ready;
       scene.render(visual, 5, 480, 270, "landscape");
       second.render(visual, 5, 480, 270, "landscape");
       if (canvas.toDataURL() !== secondCanvas.toDataURL())
         throw Error("Independent renderer parity failed");
+      const calls = frameCalls;
+      scene.render(visual, 5, 480, 270, "landscape");
+      if (frameCalls !== calls)
+        throw Error("An unchanged frame unnecessarily executed the graph");
+      const readback = scene.rgba(),
+        other = second.rgba();
+      if (
+        readback.length !== other.length ||
+        readback.some((value: number, index: number) => value !== other[index])
+      )
+        throw Error("Export readback differs between independent renderers");
+      failNext = true;
+      try {
+        scene.render(visual, 6, 480, 270, "landscape");
+      } catch {}
+      const failedCalls = frameCalls;
+      scene.render(visual, 6, 480, 270, "landscape");
+      if (frameCalls !== failedCalls + 1)
+        throw Error("Failed render was cached");
+
+      let failedDisposals = 0;
+      let constructorFailed = false;
+      try {
+        new Scene(document.createElement("canvas"), [
+          {
+            id: "failing-extension",
+            stage: "overlay",
+            initialize: () => {
+              throw Error("Expected initialize failure");
+            },
+            render: () => {},
+            dispose: () => {
+              failedDisposals++;
+            },
+          },
+        ]);
+      } catch {
+        constructorFailed = true;
+      }
+      if (!constructorFailed || failedDisposals !== 1)
+        throw Error("Failed initialization did not clean up");
       const reference = secondCanvas.toDataURL();
       scene.dispose();
+      second.render(visual, 6, 480, 270, "landscape");
       second.render(visual, 5, 480, 270, "landscape");
       if (reference !== secondCanvas.toDataURL())
         throw Error("Shared artwork was disposed while still in use");

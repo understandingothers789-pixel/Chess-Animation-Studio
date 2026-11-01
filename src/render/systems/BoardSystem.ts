@@ -127,6 +127,7 @@ export class BoardSystem {
       label.material.map?.dispose();
       label.material.dispose();
     }
+    this.labels = [];
     this.resources.dispose();
   }
 }

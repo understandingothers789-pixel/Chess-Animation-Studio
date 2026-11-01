@@ -329,6 +329,7 @@ export class OverlaySystem {
   }
   dispose() {
     this.generated?.dispose();
+    this.generated = null;
 
     this.resources.dispose();
   }

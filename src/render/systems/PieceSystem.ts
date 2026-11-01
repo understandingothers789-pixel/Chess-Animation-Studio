@@ -120,6 +120,7 @@ export class PieceSystem {
   }
 
   dispose() {
+    if (this.dead) return;
     this.dead = true;
     this.releaseArtwork();
     for (const m of this.meshes.values()) {

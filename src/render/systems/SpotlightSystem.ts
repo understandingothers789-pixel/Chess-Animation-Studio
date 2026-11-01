@@ -194,6 +194,7 @@ export class SpotlightSystem {
   }
   dispose() {
     this.jamFrame?.dispose();
+    this.jamFrame = null;
     this.resources.dispose();
   }
 }

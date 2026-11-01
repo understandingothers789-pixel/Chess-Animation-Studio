@@ -407,27 +407,28 @@ try {
   await page.getByRole("button", { name: "look", exact: true }).click();
   await page.getByLabel("Seek composition", { exact: true }).fill("3");
   await page.waitForTimeout(200);
-  const plainPixels = await page
-    .locator(".preview-host canvas")
-    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  const settledPreview = () =>
+    page
+      .locator(".preview-host canvas")
+      .evaluate(async (c: HTMLCanvasElement) => {
+        // Wait for React state and the preview's RAF draw, rather than elapsed wall time.
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        );
+        return c.toDataURL();
+      });
+  const plainPixels = await settledPreview();
   await page
     .getByRole("button", { name: "Apply red flicker", exact: true })
     .click();
   await page.waitForTimeout(200);
-  const lightPixels = await page
-    .locator(".preview-host canvas")
-    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  const lightPixels = await settledPreview();
   assert.notEqual(lightPixels, plainPixels);
   await page.getByLabel("Seek composition", { exact: true }).fill("8");
-  await page.waitForTimeout(100);
+  await settledPreview();
   await page.getByLabel("Seek composition", { exact: true }).fill("3");
   await page.waitForTimeout(200);
-  assert.equal(
-    await page
-      .locator(".preview-host canvas")
-      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
-    lightPixels,
-  );
+  assert.equal(await settledPreview(), lightPixels);
   await page
     .getByRole("button", { name: "Reset Move light & flicker", exact: true })
     .click();

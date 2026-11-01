@@ -1,10 +1,12 @@
-# Chess Animation Studio · 0.2.12
+# Chess Animation Studio · 0.2.13
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
 ![Version 0.2.11 editor with guided project workflow and selected-move controls](docs/images/editor-011.png)
 
 ## Windows downloads
+
+**[Download 0.2.13 for Windows](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.13/Chess-Animation-Studio-0.2.13-Windows-Portable.zip).** Adds local Stockfish game review, a curated starter opening book, move badges and review colors; game close-up framing, an optional evaluation bar, and animated title and board fly-in intros; optional knight horse sounds and side-specific move highlights. Windows build and packaged app/export checks run before publication.
 
 **[Download 0.2.12 for Windows](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.12/Chess-Animation-Studio-0.2.12-Windows-Portable.zip).** Adds click-and-drag numeric scrubbing, a fast–slow–fast 360° Capture flip preset applied automatically on captures, and a beat-driven Final move boom preset for the end of new/imported games. Adds individual slider resets and optional configurable dark rainbow cycles for snow and dark-square pulses. Move presets can be changed manually; existing edited moves retain their saved effects. Windows build, tests and packaged app/export checks passed. ZIP SHA-256: `aac840aa9b46bf2e86fa41c695bcffd3c1e3043c27a31902771cd144d9a33784`.
 

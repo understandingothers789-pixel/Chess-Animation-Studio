@@ -1,90 +1,36 @@
 import * as T from "three";
-import { executePasses } from "./effectCompositor";
-import {
-  createPiece,
-  preloadPieces,
-  enableCrumble,
-  type PieceSet,
-} from "./pieces";
-import {
-  evaluate,
-  badge,
-  particle,
-  clamp,
-  type Frame,
-  shortsFraming,
-  captureDustParticle,
-  moveHold,
-} from "../core/timeline";
+import { worldToSquare } from "./engine/coordinates";
+import type { Project, Format } from "../core/project";
 import { buildGame, type Game } from "../core/chess";
-import { type Project, type Format } from "../core/project";
-function cycleColor(
-  base: string,
-  rainbow: Project["pulse"]["rainbow"],
-  time: number,
-) {
-  const colors = rainbow.colors.filter((_, i) => rainbow.active[i]);
-  if (!rainbow.enabled || !colors.length) return new T.Color(base);
-  const pos = ((((time / rainbow.duration) % 1) + 1) % 1) * colors.length;
-  const i = Math.floor(pos),
-    t = pos - i,
-    smooth = t * t * (3 - 2 * t);
-  return new T.Color(colors[i]).lerp(
-    new T.Color(colors[(i + 1) % colors.length]),
-    smooth,
-  );
-}
-const symbols: Record<string, string> = {
-  book: "▤",
-  brilliant: "!!",
-  best: "★",
-  good: "✓",
-  inaccuracy: "?!",
-  mistake: "?",
-  blunder: "??",
-};
+import { evaluateRenderFrame, type RenderFrame } from "./engine/frame";
+import { RenderGraph } from "./engine/RenderGraph";
+import { BackgroundSystem } from "./systems/BackgroundSystem";
+import { CameraSystem } from "./systems/CameraSystem";
+import { BoardSystem } from "./systems/BoardSystem";
+import { PieceSystem } from "./systems/PieceSystem";
+import { MotionSystem } from "./systems/MotionSystem";
+import { CaptureSystem } from "./systems/CaptureSystem";
+import { LightingSystem } from "./systems/LightingSystem";
+import { AtmosphereSystem } from "./systems/AtmosphereSystem";
+import { SpotlightSystem } from "./systems/SpotlightSystem";
+import { OverlaySystem } from "./systems/OverlaySystem";
+/** Public preview/export facade. Every visual update belongs to a graph system. */
 export class Scene {
   readonly renderer: T.WebGLRenderer;
   readonly ready: Promise<void>;
-  private overlayScene = new T.Scene();
-  private overlayCanvas = document.createElement("canvas");
-  private overlayTexture = new T.CanvasTexture(this.overlayCanvas);
-  private scene = new T.Scene();
+  private world = new T.Scene();
   private root = new T.Group();
-  private camera = new T.OrthographicCamera();
-  private backgroundScene = new T.Scene();
-  private backgroundCamera = new T.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-  private background: T.Mesh;
-  private squares: T.Mesh[] = [];
-  private labels: T.Sprite[] = [];
-  private rim: T.Mesh;
-  private meshes = new Map<string, T.Mesh>();
-  private shadows = new Map<string, T.Mesh>();
-  private assetTextures = new Map<string, T.Texture>();
-  private paths: T.Mesh[] = [];
-  private trail: T.Mesh;
-  private badge: T.Sprite;
-  private badgeGlow: T.Sprite;
-  private badgeRing: T.Mesh;
-  private halo: T.Mesh;
-  private snow: T.Points;
-  private bursts: T.Points;
-  private captureDust: T.Points;
-  private moveLight: T.Mesh;
-  private jamGlow: T.Mesh;
-  private jamTile: T.Mesh;
-  private jamRing: T.Mesh;
-  private jamSparkles: T.Points;
-  private jamFrame: T.FramebufferTexture | null = null;
-  private jamFrameSize = "";
-  private jamPostScene = new T.Scene();
-  private jamPost: T.Mesh;
-  private game: Game | undefined;
-  private project: Project | undefined;
+  private assets = new Map<string, T.Texture>();
+  private requests = new Map<string, symbol>();
+  private graph: RenderGraph<RenderFrame>;
+  private cameras: CameraSystem;
+  private board: BoardSystem;
+  private project?: Project;
+  private game?: Game;
+  private current?: RenderFrame;
+  private dead = false;
   private width = 1;
   private height = 1;
-  private layout: { x: number; y: number; w: number; h: number } | null = null;
-  private badgeKey = "";
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new T.WebGLRenderer({
       canvas,
@@ -94,379 +40,156 @@ export class Scene {
       preserveDrawingBuffer: true,
       powerPreference: "high-performance",
     });
-    this.renderer.setPixelRatio(1);
-    this.renderer.outputColorSpace = T.SRGBColorSpace;
-    this.renderer.autoClear = false;
-    this.renderer.setClearColor("#111918");
-    this.scene.add(this.root);
-    this.overlayScene.add(new T.Mesh(new T.PlaneGeometry(2, 2), new T.MeshBasicMaterial({ map: this.overlayTexture, transparent: true, depthTest: false, depthWrite: false })));
-    this.moveLight = new T.Mesh(
-      new T.PlaneGeometry(2, 2),
-      new T.ShaderMaterial({
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        uniforms: {
-          tint: { value: new T.Color("#ff3030") },
-          strength: { value: 0 },
+    const r = this.renderer;
+    r.setPixelRatio(1);
+    r.outputColorSpace = T.SRGBColorSpace;
+    r.autoClear = false;
+    r.setClearColor("#111918");
+    this.world.add(this.root);
+    this.cameras = new CameraSystem(this.root);
+    const camera = this.cameras.camera;
+    const lighting = new LightingSystem(this.world);
+    const spotlight = new SpotlightSystem(this.root, r, camera);
+    const background = new BackgroundSystem(r, this.assets);
+    this.board = new BoardSystem(this.root);
+    const motion = new MotionSystem(this.root);
+    const overlay = new OverlaySystem(this.root, r, this.assets);
+    const atmosphere = new AtmosphereSystem(this.world, camera);
+    const pieces = new PieceSystem(this.root);
+    const capture = new CaptureSystem(this.root, camera, pieces.meshes);
+    this.ready = pieces.ready;
+    this.graph = new RenderGraph<RenderFrame>([
+      {
+        id: "background",
+        stage: "background",
+        outputs: ["background"],
+        render: (c) => background.update(c),
+        dispose: () => background.dispose(),
+      },
+      {
+        id: "camera",
+        stage: "board",
+        outputs: ["camera"],
+        render: (c) => this.cameras.update(c),
+      },
+      {
+        id: "board",
+        stage: "board",
+        inputs: ["camera"],
+        outputs: ["board"],
+        render: (c) => this.board.update(c),
+        dispose: () => this.board.dispose(),
+      },
+      {
+        id: "motion",
+        stage: "board",
+        inputs: ["board"],
+        outputs: ["motion"],
+        render: (c) => motion.update(c),
+        dispose: () => motion.dispose(),
+      },
+      {
+        id: "pieces",
+        stage: "board",
+        inputs: ["motion"],
+        outputs: ["pieces"],
+        render: (c) => pieces.update(c),
+        dispose: () => pieces.dispose(),
+      },
+      {
+        id: "capture",
+        stage: "board",
+        inputs: ["pieces"],
+        render: (c) => capture.update(c),
+        dispose: () => capture.dispose(),
+      },
+      {
+        id: "atmosphere",
+        stage: "board",
+        inputs: ["camera"],
+        render: (c) => atmosphere.update(c),
+        dispose: () => atmosphere.dispose(),
+      },
+      {
+        id: "spotlight",
+        stage: "board",
+        inputs: ["board"],
+        render: (c) => spotlight.update(c),
+        dispose: () => spotlight.dispose(),
+      },
+      {
+        id: "lighting",
+        stage: "board",
+        render: (c) => lighting.update(c),
+        dispose: () => lighting.dispose(),
+      },
+      {
+        id: "badges",
+        stage: "board",
+        inputs: ["pieces"],
+        render: (c) => overlay.update(c),
+        dispose: () => overlay.dispose(),
+      },
+      {
+        id: "world",
+        stage: "board",
+        after: ["capture", "atmosphere", "spotlight", "lighting", "badges"],
+        outputs: ["scene-color"],
+        render: (c) => {
+          if (c.square || c.short) {
+            this.root.visible = false;
+            lighting.moveLight.visible = false;
+            r.clearDepth();
+            if (!c.short) r.render(this.world, camera);
+            this.root.visible = true;
+            lighting.moveLight.visible = c.e.light.strength > 0.0001;
+            r.setViewport(0, c.viewY, c.w, c.viewH);
+            r.setScissor(0, c.viewY, c.w, c.viewH);
+            r.setScissorTest(true);
+          }
+          r.clearDepth();
+          r.render(this.world, camera);
+          r.setScissorTest(false);
         },
-        vertexShader:
-          "varying vec2 uvLight; void main(){uvLight=uv;gl_Position=vec4(position.xy,0.,1.);}",
-        fragmentShader:
-          "varying vec2 uvLight;uniform vec3 tint;uniform float strength;void main(){float edge=smoothstep(.1,.7,length(uvLight-.5));gl_FragColor=vec4(pow(tint,vec3(1./2.2)),strength*(.85+.15*edge));}",
-      }),
-    );
-    this.moveLight.frustumCulled = false;
-    this.moveLight.renderOrder = 27; // tint the board/pieces while badges remain readable
-    this.scene.add(this.moveLight);
-    this.jamTile = new T.Mesh(
-      new T.PlaneGeometry(1, 1),
-      new T.MeshBasicMaterial({
-        color: "#34f6e6",
-        transparent: true,
-        depthWrite: false,
-      }),
-    );
-    this.jamGlow = new T.Mesh(
-      new T.PlaneGeometry(2, 2),
-      new T.MeshBasicMaterial({
-        map: this.radial(),
-        color: "#34f6e6",
-        transparent: true,
-        depthWrite: false,
-        blending: T.AdditiveBlending,
-      }),
-    );
-    this.jamRing = new T.Mesh(
-      new T.RingGeometry(0.58, 0.605, 96),
-      new T.MeshBasicMaterial({
-        color: "#34f6e6",
-        transparent: true,
-        depthWrite: false,
-        side: T.DoubleSide,
-        blending: T.AdditiveBlending,
-      }),
-    );
-    this.root.add(this.jamTile, this.jamGlow, this.jamRing);
-    this.jamPost = new T.Mesh(
-      new T.PlaneGeometry(2, 2),
-      new T.ShaderMaterial({
-        depthTest: false,
-        depthWrite: false,
-        uniforms: {
-          frame: { value: null },
-          low: { value: new T.Vector2() },
-          high: { value: new T.Vector2(1, 1) },
-          focus: { value: new T.Vector2(0.5, 0.5) },
-          blur: { value: 0 },
-          flash: { value: 0 },
-          gray: { value: 0 },
-          accent: { value: new T.Color("#34f6e6") },
-          vignette: { value: 0 },
-        },
-        vertexShader:
-          "varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}",
-        fragmentShader: `varying vec2 v;uniform sampler2D frame;uniform vec2 low;uniform vec2 high;uniform vec2 focus;uniform float blur;uniform float flash;uniform float gray;uniform float vignette;uniform vec3 accent;
-        void main(){vec4 base=texture2D(frame,v);if(any(lessThan(v,low))||any(greaterThan(v,high))){gl_FragColor=base;return;}
-          vec3 c=vec3(0.); for(int i=0;i<5;i++){vec2 q=clamp(v+(v-focus)*blur*(float(i)/4.-.5),low,high);c+=texture2D(frame,q).rgb*.2;}
-          float sat=(max(c.r,max(c.g,c.b))-min(c.r,min(c.g,c.b)))/max(.001,max(c.r,max(c.g,c.b)));float matchHue=1.-smoothstep(.15,.5,length(normalize(c+vec3(.001))-normalize(accent+vec3(.001))));c=mix(c,vec3(dot(c,vec3(.299,.587,.114))),gray*(1.-matchHue*sat));vec2 local=(v-focus)/(high-low);c*=1.-vignette*smoothstep(.12,.7,length(local));c=mix(c,vec3(1.),flash);gl_FragColor=vec4(c,base.a);
-        }`,
-      }),
-    );
-    this.jamPost.frustumCulled = false;
-    this.jamPostScene.add(this.jamPost);
-    this.backgroundCamera.position.z = 2;
-    this.background = new T.Mesh(
-      new T.PlaneGeometry(2, 2),
-      new T.ShaderMaterial({
-        uniforms: {
-          top: { value: new T.Color("#223431") },
-          vignette: { value: 0 },
-          vignetteTint: { value: new T.Color("#080c0b") },
-          bottom: { value: new T.Color("#101615") },
-        },
-        vertexShader:
-          "varying vec2 v; void main(){v=uv;gl_Position=vec4(position,1.);}",
-        fragmentShader:
-          "varying vec2 v;uniform vec3 top;uniform vec3 bottom;uniform float vignette;uniform vec3 vignetteTint;void main(){vec3 c=mix(bottom,top,v.y*.7+.3);c*=1.-.22*length(v-.5);c=mix(c,vignetteTint,smoothstep(.15,.72,length(v-.5))*vignette);gl_FragColor=vec4(pow(c,vec3(1./2.2)),1.);}",
-      }),
-    );
-    this.backgroundScene.add(this.background);
-    const light = new T.DirectionalLight("#ffffff", 2.2);
-    light.position.set(-5, 8, 18);
-    this.scene.add(light, new T.AmbientLight("#ffffff", 1.4));
-    this.rim = new T.Mesh(
-      new T.BoxGeometry(8.22, 8.22, 0.11),
-      new T.MeshStandardMaterial({ color: "#414b44", roughness: 0.75 }),
-    );
-    this.rim.position.z = -0.08;
-    this.root.add(this.rim);
-    for (let rank = 0; rank < 8; rank++)
-      for (let file = 0; file < 8; file++) {
-        const square = new T.Mesh(
-          new T.PlaneGeometry(1, 1),
-          new T.MeshBasicMaterial({
-            stencilWrite: true,
-            stencilRef: 1,
-            stencilFunc: T.AlwaysStencilFunc,
-            stencilZPass: T.ReplaceStencilOp,
-          }),
-        );
-        square.position.set(file - 3.5, rank - 3.5, 0);
-        square.userData.dark = (file + rank) % 2 === 0;
-        this.root.add(square);
-        this.squares.push(square);
-      }
-    for (let i = 0; i < 64; i++) {
-      const m = new T.Mesh(
-        new T.PlaneGeometry(0.99, 0.99),
-        new T.MeshBasicMaterial({ transparent: true, depthWrite: false }),
-      );
-      m.position.z = 0.012;
-      m.visible = false;
-      this.paths.push(m);
-      this.root.add(m);
-    }
-    this.trail = new T.Mesh(
-      new T.BufferGeometry(),
-      new T.MeshBasicMaterial({
-        transparent: true,
-        depthWrite: false,
-        side: T.DoubleSide,
-      }),
-    );
-    this.root.add(this.trail);
-    this.halo = new T.Mesh(
-      new T.PlaneGeometry(2, 2),
-      new T.MeshBasicMaterial({
-        map: this.radial(),
-        transparent: true,
-        depthWrite: false,
-        blending: T.AdditiveBlending,
-      }),
-    );
-    this.root.add(this.halo);
-    this.badge = new T.Sprite(
-      new T.SpriteMaterial({
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-      }),
-    );
-    this.badge.renderOrder = 30;
-    this.root.add(this.badge);
-    this.badgeGlow = new T.Sprite(
-      new T.SpriteMaterial({
-        map: this.radial(),
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        blending: T.AdditiveBlending,
-        color: "#a6d797",
-      }),
-    );
-    this.badgeGlow.renderOrder = 28;
-    this.root.add(this.badgeGlow);
-    this.badgeRing = new T.Mesh(
-      new T.RingGeometry(0.4, 0.42, 64),
-      new T.MeshBasicMaterial({
-        transparent: true,
-        side: T.DoubleSide,
-        depthWrite: false,
-        depthTest: false,
-      }),
-    );
-    this.root.add(this.badgeRing);
-    const makePoints = (count: number) => {
-      const geo = new T.BufferGeometry();
-      geo.setAttribute(
-        "position",
-        new T.Float32BufferAttribute(new Float32Array(count * 3), 3),
-      );
-      geo.setAttribute(
-        "alpha",
-        new T.Float32BufferAttribute(new Float32Array(count), 1),
-      );
-      geo.setAttribute(
-        "size",
-        new T.Float32BufferAttribute(new Float32Array(count), 1),
-      );
-      return new T.Points(
-        geo,
-        new T.ShaderMaterial({
-          transparent: true,
-          depthWrite: false,
-          uniforms: {
-            color: { value: new T.Color("#ffffff") },
-            softness: { value: 0.5 },
-            pixels: { value: 70 },
-          },
-          vertexShader:
-            "attribute float alpha;attribute float size;varying float a;uniform float pixels;void main(){a=alpha;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_PointSize=max(1.,size*pixels);}",
-          fragmentShader:
-            "uniform vec3 color;uniform float softness;varying float a;void main(){float d=length(gl_PointCoord-.5)*2.;gl_FragColor=vec4(color,a*(1.-smoothstep(1.-softness,1.,d)));}",
-        }),
-      );
-    };
-    this.snow = makePoints(400);
-    this.snow.frustumCulled = false;
-    this.bursts = makePoints(36);
-    this.jamSparkles = makePoints(128);
-    this.jamSparkles.frustumCulled = false;
-    this.jamSparkles.renderOrder = 26;
-    this.root.add(this.jamSparkles);
-    this.captureDust = makePoints(2048);
-    this.captureDust.geometry.setAttribute(
-      "color",
-      new T.Float32BufferAttribute(new Float32Array(2048 * 3), 3),
-    );
-    const dustMat = this.captureDust.material as T.ShaderMaterial;
-    dustMat.vertexShader = dustMat.vertexShader
-      .replace(
-        "varying float a;",
-        "attribute vec3 color; varying vec3 dustColor; varying float a;",
-      )
-      .replace("a=alpha;", "a=alpha; dustColor=color;");
-    dustMat.fragmentShader = dustMat.fragmentShader
-      .replace("uniform vec3 color;", "varying vec3 dustColor;")
-      .replace("vec4(color,", "vec4(pow(dustColor,vec3(1.0/2.2)),");
-    dustMat.depthTest = true;
-    this.captureDust.renderOrder = 25;
-    this.captureDust.frustumCulled = false;
-    this.root.add(this.captureDust);
-    this.bursts.frustumCulled = false;
-    this.scene.add(this.snow);
-    this.root.add(this.bursts);
-    this.ready = this.prepare();
+      },
+      {
+        id: "spotlight-post",
+        stage: "post",
+        inputs: ["scene-color"],
+        active: (c) => !!c.e.jam && c.e.jam.envelope > 0.001,
+        render: (c) => spotlight.post(c),
+      },
+      {
+        id: "information-overlay",
+        stage: "overlay",
+        inputs: ["scene-color"],
+        active: (c) =>
+          c.p.evalBar || (c.p.introTitle.enabled && c.time < c.p.lead),
+        render: (c) => overlay.post(c),
+      },
+    ]);
   }
-  private async prepare() {
-    await preloadPieces();
-    for (const set of ["merida", "cburnett", "neo"] as PieceSet[])
-      for (const color of ["w", "b"])
-        for (const type of "kqrbnp") {
-          const m = await createPiece(set, color, type);
-          this.meshes.set(`template-${set}-${color}-${type}`, m);
-        }
-  }
-  private radial() {
-    const c = document.createElement("canvas");
-    c.width = c.height = 128;
-    const x = c.getContext("2d")!,
-      g = x.createRadialGradient(64, 64, 1, 64, 64, 64);
-    g.addColorStop(0, "rgba(255,255,255,.8)");
-    g.addColorStop(0.4, "rgba(255,255,255,.25)");
-    g.addColorStop(1, "rgba(255,255,255,0)");
-    x.fillStyle = g;
-    x.fillRect(0, 0, 128, 128);
-    return new T.CanvasTexture(c);
+  private assertLive() {
+    if (this.dead) throw Error("Scene is disposed");
   }
   async setAsset(id: string, url: string) {
-    const tex = await new T.TextureLoader().loadAsync(url);
-    tex.colorSpace = T.SRGBColorSpace;
-    this.assetTextures.get(id)?.dispose();
-    this.assetTextures.set(id, tex);
-    this.badgeKey = "";
+    this.assertLive();
+    const request = Symbol(id);
+    this.requests.set(id, request);
+    const texture = await new T.TextureLoader().loadAsync(url);
+    texture.colorSpace = T.SRGBColorSpace;
+    if (this.dead || this.requests.get(id) !== request) {
+      texture.dispose();
+      return;
+    }
+    this.assets.get(id)?.dispose();
+    this.assets.set(id, texture);
   }
   removeAsset(id: string) {
-    this.assetTextures.get(id)?.dispose();
-    this.assetTextures.delete(id);
-    this.badgeKey = "";
-  }
-  private badgeTexture(kind: string, text: string) {
-    const c = document.createElement("canvas");
-    c.width = c.height = 256;
-    const x = c.getContext("2d")!;
-    const colors: Record<string, string> = {
-      book: "#9d9772",
-      brilliant: "#54c8d8",
-      best: "#96b56d",
-      good: "#7aa180",
-      inaccuracy: "#e7c36a",
-      mistake: "#e79a5d",
-      blunder: "#dd6d70",
-    };
-    x.shadowColor = colors[kind] ?? "#aa9ee4";
-    x.shadowBlur = 20;
-    x.fillStyle = colors[kind] ?? "#aa9ee4";
-    x.beginPath();
-    x.arc(128, 128, 99, 0, Math.PI * 2);
-    x.fill();
-    x.shadowBlur = 0;
-    x.fillStyle = "#ffffff";
-    x.font = "bold 112px system-ui";
-    x.textAlign = "center";
-    x.textBaseline = "middle";
-    if (kind === "book") {
-      x.strokeStyle = "#fff";
-      x.lineWidth = 9;
-      x.lineJoin = "round";
-      x.beginPath();
-      x.moveTo(128, 88);
-      x.bezierCurveTo(108, 76, 84, 77, 65, 83);
-      x.lineTo(65, 161);
-      x.bezierCurveTo(88, 155, 109, 157, 128, 168);
-      x.bezierCurveTo(147, 157, 168, 155, 191, 161);
-      x.lineTo(191, 83);
-      x.bezierCurveTo(172, 77, 148, 76, 128, 88);
-      x.closePath();
-      x.fill();
-      x.stroke();
-      x.strokeStyle = colors.book;
-      x.lineWidth = 5;
-      x.beginPath();
-      x.moveTo(128, 88);
-      x.lineTo(128, 168);
-      x.stroke();
-    } else if (kind === "best" || kind === "good") {
-      x.beginPath();
-      x.moveTo(76, 116);
-      x.lineTo(102, 116);
-      x.lineTo(115, 92);
-      x.lineTo(123, 65);
-      x.quadraticCurveTo(129, 52, 140, 62);
-      x.quadraticCurveTo(148, 70, 142, 99);
-      x.lineTo(176, 99);
-      x.quadraticCurveTo(193, 99, 188, 116);
-      x.lineTo(175, 160);
-      x.quadraticCurveTo(171, 171, 158, 171);
-      x.lineTo(102, 166);
-      x.lineTo(76, 166);
-      x.closePath();
-      x.fill();
-    } else
-      x.fillText(kind === "custom" ? text : (symbols[kind] ?? kind), 128, 132);
-    const t = new T.CanvasTexture(c);
-    t.colorSpace = T.SRGBColorSpace;
-    return t;
-  }
-  private rebuildCoordinates(p: Project) {
-    for (const s of this.labels) {
-      this.root.remove(s);
-      (s.material as T.SpriteMaterial).map?.dispose();
-      s.material.dispose();
-    }
-    this.labels = [];
-    if (!p.style.coordinates) return;
-    for (let i = 0; i < 8; i++)
-      for (const file of [true, false]) {
-        const c = document.createElement("canvas");
-        c.width = c.height = 64;
-        const x = c.getContext("2d")!;
-        x.font = "38px system-ui";
-        x.fillStyle = "#d9dfd1";
-        x.textAlign = "center";
-        x.fillText(file ? String.fromCharCode(97 + i) : String(i + 1), 32, 45);
-        const s = new T.Sprite(
-          new T.SpriteMaterial({
-            map: new T.CanvasTexture(c),
-            depthTest: false,
-          }),
-        );
-        s.scale.set(0.23, 0.23, 1);
-        s.position.set(file ? i - 3.5 : -4.23, file ? -4.23 : i - 3.5, 0.15);
-        this.labels.push(s);
-        this.root.add(s);
-      }
+    this.assertLive();
+    this.requests.delete(id);
+    this.assets.get(id)?.dispose();
+    this.assets.delete(id);
   }
   render(
     p: Project,
@@ -474,712 +197,53 @@ export class Scene {
     w: number,
     h: number,
     format: Format = p.format,
-  ): Frame {
-    const changed = this.project !== p;
-    if (changed) {
-      if (this.project?.style.coordinates !== p.style.coordinates)
-        this.rebuildCoordinates(p);
-      this.project = p;
+  ) {
+    this.assertLive();
+    if (this.project !== p) {
       this.game = buildGame(p);
+      this.project = p;
     }
-    const e = evaluate(p, time, this.game, format);
-    const fx = p.boardFX;
-    const gameFraming = p.moves[e.index]?.effect.cameras[format]?.mode === "game" && time >= p.lead;
-    const short = format === "vertical" && (p.shorts.enabled || gameFraming);
-    let boardLevel = 0;
-    if (fx.intro && fx.introPreset !== "still" && time < p.lead) {
-      const u = Math.min(1, time / Math.min(p.lead, fx.introDuration)),
-        k = u * u * (3 - 2 * u);
-      if (fx.introPreset === "board-level") {
-        const rise = Math.min(1, Math.max(0, (u - 0.3) / 0.7));
-        boardLevel = 1 - rise * rise * (3 - 2 * rise);
-        e.camera.tilt += 82 * boardLevel;
-      }
-      if (fx.introPreset !== "turn")
-        e.camera.zoom = fx.introZoom + (e.camera.zoom - fx.introZoom) * k;
-      if (fx.introPreset !== "zoom" && fx.introPreset !== "board-level")
-        e.camera.rotation += fx.introTurn * (1 - k);
-    }
-    const shimmer = fx.enabled
-      ? 1 +
-        fx.shimmer *
-          (0.55 * Math.sin(time * fx.shimmerSpeed * 6.283) +
-            0.3 * Math.sin(time * fx.shimmerSpeed * 10.17) +
-            0.15 * Math.sin(time * fx.shimmerSpeed * 17.33))
-      : 1;
-
+    const c = evaluateRenderFrame(p, time, w, h, format, this.game);
+    this.current = c;
+    const r = this.renderer;
     if (w !== this.width || h !== this.height) {
       this.width = w;
       this.height = h;
-      this.renderer.setSize(w, h, false);
+      r.setSize(w, h, false);
     }
-    this.renderer.setScissorTest(false);
-    this.renderer.setViewport(0, 0, w, h);
-    this.renderer.setClearColor(short ? p.shorts.barColor : "#111918");
-    this.renderer.clear(true, true, true);
-    const bg = p.layouts[format],
-      bgMat = this.background.material as T.ShaderMaterial;
-    bgMat.uniforms.top.value
-      .set(p.style.background)
-      .multiplyScalar(bg.background === "solid" ? 1 : 1.5);
-    bgMat.uniforms.bottom.value
-      .set(p.style.background)
-      .multiplyScalar(
-        (bg.background === "solid" ? 1 : 0.7) *
-          (1 -
-            (fx.enabled
-              ? fx.vignette *
-                (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283))
-              : 0)),
-      );
-    if (fx.enabled)
-      bgMat.uniforms.bottom.value.lerp(
-        new T.Color(fx.vignetteColor ?? "#080c0b"),
-        fx.vignette * (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283)),
-      );
-    bgMat.uniforms.vignette.value = fx.enabled
-      ? fx.vignette * (0.5 + 0.5 * Math.sin(time * fx.vignetteSpeed * 6.283))
-      : 0;
-    bgMat.uniforms.vignetteTint.value.set(fx.vignetteColor ?? "#080c0b");
-    if (!short)
-      this.renderer.render(this.backgroundScene, this.backgroundCamera);
-    const image = bg.image ? this.assetTextures.get(bg.image) : null;
-    if (!short && image && bg.background === "image") {
-      const m = new T.Mesh(
-        new T.PlaneGeometry(2, 2),
-        new T.MeshBasicMaterial({ map: image }),
-      );
-      const aspect = image.image.width / image.image.height,
-        out = w / h;
-      if (aspect > out) m.scale.x = aspect / out;
-      else m.scale.y = out / aspect;
-      this.backgroundScene.add(m);
-      this.renderer.render(this.backgroundScene, this.backgroundCamera);
-      this.backgroundScene.remove(m);
-      m.geometry.dispose();
-      (m.material as T.Material).dispose();
-    }
-    const square = format === "square-in-vertical",
-      crop = short
-        ? shortsFraming(
-            p,
-            e.camera,
-            w,
-            h,
-            (e.jam?.envelope ?? 0) * (e.jam?.settings.focus ?? 0),
-          )
-        : null,
-      viewH = crop ? (gameFraming ? Math.min(h, Math.round(w * 7 / 8)) : crop.viewH) : square ? w : h,
-      viewY = crop
-        ? (gameFraming ? Math.round((h - viewH) * (1 - p.shorts.position)) : crop.viewY)
-        : square
-          ? Math.round((h - w) / 2 + (bg.y * w) / 8)
-          : 0;
-    if (gameFraming && crop) {
-      crop.halfX = p.gameViewWidth / 2 * 1.45 / Math.max(0.1, e.camera.zoom);
-      crop.halfY = crop.halfX * viewH / w;
-      crop.x = e.camera.x;
-      crop.y = e.camera.y;
-    }
-    this.layout = { x: 0, y: viewY, w, h: viewH };
-    this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
-    const sign = p.style.orientation === "white" ? 1 : -1,
-      aspect = w / viewH,
-      half =
-        (format === "vertical" && !short ? 4.11 : 4.65) /
-        Math.max(0.1, e.camera.zoom * bg.zoom);
-    const gameHalfX = p.gameViewWidth / 2 * 1.45 / Math.max(0.1, e.camera.zoom);
-    const gameHalfY = gameHalfX / aspect;
-    this.camera.left = -(crop?.halfX ?? (gameFraming ? gameHalfX : half * Math.max(1, aspect)));
-    this.camera.right = crop?.halfX ?? (gameFraming ? gameHalfX : half * Math.max(1, aspect));
-    this.camera.top = crop?.halfY ?? (gameFraming ? gameHalfY : half * Math.max(1, 1 / aspect));
-    this.camera.bottom = -(crop?.halfY ?? (gameFraming ? gameHalfY : half * Math.max(1, 1 / aspect)));
-    this.camera.near = 0.1;
-    this.camera.far = 100;
-    const x = (crop ? crop.x : e.camera.x + bg.x) * sign,
-      y = (crop ? crop.y : e.camera.y + (square ? 0 : bg.y)) * sign,
-      tilt = (e.camera.tilt * Math.PI) / 180;
-    this.camera.position.set(x, y + Math.sin(tilt) * 25, Math.cos(tilt) * 25);
-    this.camera.up.set(0, 1, 0);
-    this.camera.lookAt(x, y, 0);
-    this.camera.rotateZ((e.camera.rotation * Math.PI) / 180);
-    this.camera.updateProjectionMatrix();
-    if (boardLevel > 0) {
-      // Match the perspective projection to the orthographic camera at the board center.
-      const near = this.camera.near, distance = 25;
-      const perspective = new T.Matrix4().makePerspective(
-        this.camera.left * near / distance, this.camera.right * near / distance,
-        this.camera.top * near / distance, this.camera.bottom * near / distance,
-        near, this.camera.far,
-      ).multiplyScalar(distance);
-      const current = this.camera.projectionMatrix.elements, target = perspective.elements;
-      for (let i = 0; i < 16; i++) current[i] += (target[i] - current[i]) * boardLevel;
-      this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
-    }
-    (this.rim.material as T.MeshStandardMaterial).color.set(p.style.rim);
-    (this.rim.material as T.MeshStandardMaterial).emissive
-      .set(fx.rimColor ?? p.style.accent)
-      .multiplyScalar(
-        fx.enabled
-          ? fx.rim * (0.5 + 0.5 * Math.sin(time * fx.rimSpeed * 6.283))
-          : 0,
-      );
-    for (const s of this.squares) {
-      const m = s.material as T.MeshBasicMaterial;
-      m.color.set(s.userData.dark ? p.style.dark : p.style.light);
-      m.color.multiplyScalar(shimmer);
-      if (e.jam && s.userData.dark)
-        m.color.lerp(
-          new T.Color(e.jam.color),
-          e.jam.settings.colorStrength *
-            e.jam.envelope *
-            (0.2 + 0.8 * e.jam.pulse),
-        );
-      if (fx.enabled)
-        m.color.lerp(
-          new T.Color(fx.lightingColor ?? "#ffffff"),
-          fx.shimmer * 0.12,
-        );
-      if (fx.enabled && fx.sweep) {
-        const wave = Math.exp(
-          -Math.pow(
-            (s.position.x +
-              s.position.y * 0.4 -
-              (((time * fx.sweepSpeed * 12) % 20) - 10)) /
-              1.8,
-            2,
-          ),
-        );
-        m.color.lerp(new T.Color(fx.sweepColor ?? "#ffffff"), wave * fx.sweep);
-      }
-      if (s.userData.dark && fx.enabled && fx.beatClock) {
-        const beat = ((time * fx.bpm) / 60) % 1,
-          level = Math.exp(((-beat * (60 / fx.bpm)) / fx.beatDecay) * 4);
-        m.color.lerp(new T.Color(fx.beatColor), level * fx.beatStrength);
-      }
-
-      if (s.userData.dark)
-        m.color.lerp(cycleColor(p.pulse.color, p.pulse.rainbow, time), e.pulse);
-    }
-    for (const m of this.paths) m.visible = false;
-    if (e.effect) {
-      const hl = e.effect.highlight;
-      const step = this.game?.steps[e.index];
-      const mover = step?.before.find((v) => v.id === step.pieceId);
-      const rating = step ? badge(step.move) : null;
-      const ratingColor =
-        p.reviewColors.enabled &&
-        rating &&
-        rating !== "custom" &&
-        rating in p.reviewColors
-          ? p.reviewColors[
-              rating as keyof Omit<Project["reviewColors"], "enabled">
-            ]
-          : null;
-      const sideColor = hl.byMover
-        ? mover?.color === "w"
-          ? hl.whiteColor
-          : hl.blackColor
-        : null;
-      const fade = hl.persist
-        ? 1
-        : clamp(1 - (time - segmentsFinish(p, e.index)) / hl.fade);
-      const reveal = clamp((e.u - hl.reveal) / 0.12);
-      for (const s of e.path) {
-        const isFrom = s === e.source,
-          isTo = s === e.destination;
-        if (
-          !(
-            (isFrom && hl.showSource) ||
-            (isTo && hl.showDestination) ||
-            (!isFrom && !isTo && hl.showPath)
-          )
-        )
-          continue;
-        const i = (Number(s[1]) - 1) * 8 + s.charCodeAt(0) - 97,
-          m = this.paths[i];
-        m.visible = true;
-        m.scale.set(1, 1, 1);
-        m.position.x = s.charCodeAt(0) - 97 - 3.5;
-        m.position.y = Number(s[1]) - 1 - 3.5;
-        const mat = m.material as T.MeshBasicMaterial;
-        mat.color.set(
-          e.jam && e.jam.envelope > 0.001
-            ? e.jam.color
-            : e.effect.light.enabled &&
-                e.effect.light.highlights &&
-                e.light.strength > 0
-              ? e.effect.light.color
-              : !isFrom && ratingColor
-                ? ratingColor
-                : sideColor
-                  ? sideColor
-                  : isFrom
-                    ? hl.source
-                    : isTo
-                      ? hl.destination
-                      : hl.path,
-        );
-        mat.opacity = hl.opacity * fade * reveal;
-        mat.color.multiplyScalar(1 + hl.glow * 0.3);
-      }
-      // Knights jump rather than pass through squares. Show two soft, inset
-      // accents along the long side of the L without implying captures there.
-      const piece = step?.before.find((v) => v.id === step.pieceId);
-      if (hl.showPath && piece?.type === "n" && e.source && e.destination) {
-        const fx = e.source.charCodeAt(0) - 97,
-          fy = Number(e.source[1]) - 1;
-        const tx = e.destination.charCodeAt(0) - 97,
-          ty = Number(e.destination[1]) - 1;
-        const dx = tx - fx,
-          dy = ty - fy;
-        const accents =
-          Math.abs(dx) === 2
-            ? [
-                [fx + Math.sign(dx), fy],
-                [fx + Math.sign(dx), ty],
-              ]
-            : [
-                [fx, fy + Math.sign(dy)],
-                [tx, fy + Math.sign(dy)],
-              ];
-        for (const [x, y] of accents) {
-          const m = this.paths[y * 8 + x];
-          m.visible = true;
-          m.position.set(x - 3.5, y - 3.5, m.position.z);
-          m.scale.set(0.58, 0.58, 1);
-          const mat = m.material as T.MeshBasicMaterial;
-          mat.color
-            .set(ratingColor ?? sideColor ?? hl.path)
-            .multiplyScalar(1 + hl.glow * 0.3);
-          mat.opacity = hl.opacity * fade * reveal * 0.35;
-        }
-      }
-    }
-    for (const [k, m] of this.meshes)
-      if (!k.startsWith("template-")) m.visible = false;
-    for (const m of this.shadows.values()) m.visible = false;
-    for (const v of e.pieces) {
-      const key = `${p.style.pieceSet}-${v.id}-${v.type}`;
-      let m = this.meshes.get(key);
-      if (!m) {
-        const template = this.meshes.get(
-          `template-${p.style.pieceSet}-${v.color}-${v.type}`,
-        );
-        if (!template) continue;
-        m = template.clone();
-        m.material = (template.material as T.Material[]).map((x) => {
-          const mat = x.clone();
-          enableCrumble(mat);
-          return mat;
-        });
-        this.meshes.set(key, m);
-        this.root.add(m);
-      }
-      m.visible = v.opacity > 0.001 && (v.crumble ?? 0) < 1;
-      for (const mat of m.material as T.Material[])
-        mat.userData.crumble.value = v.crumble ?? 0;
-      m.position.set(v.x, v.y, 0.08 + v.z);
-      m.rotation.set(v.rx, v.ry, v.rz + (sign < 0 ? Math.PI : 0));
-      m.scale.setScalar(v.scale);
-      for (const mat of m.material as T.Material[]) {
-        mat.opacity = v.opacity;
-        mat.transparent = true;
-      }
-      let shadow = this.shadows.get(v.id);
-      if (!shadow) {
-        shadow = new T.Mesh(
-          new T.PlaneGeometry(1.05, 0.75),
-          new T.MeshBasicMaterial({
-            map: this.radial(),
-            color: "#111916",
-            transparent: true,
-            depthWrite: false,
-          }),
-        );
-        this.shadows.set(v.id, shadow);
-        this.root.add(shadow);
-      }
-      shadow.visible = m.visible;
-      shadow.position.set(v.x + 0.035, v.y - 0.04, 0.021);
-      shadow.scale.setScalar(v.scale * (1 + v.z * 0.12));
-      (shadow.material as T.MeshBasicMaterial).opacity =
-        (0.2 * v.opacity) / (1 + v.z);
-    }
-    this.trail.visible = e.trail.length > 1;
-    this.trail.geometry.dispose();
-    const ribbon: number[] = [],
-      indices: number[] = [];
-    e.trail.forEach(([x, y], i) => {
-      const prev = e.trail[Math.max(0, i - 1)],
-        next = e.trail[Math.min(e.trail.length - 1, i + 1)],
-        dx = next[0] - prev[0],
-        dy = next[1] - prev[1],
-        len = Math.hypot(dx, dy) || 1,
-        width =
-          (e.effect?.highlight.width ?? 0.13) *
-          (0.2 + (0.8 * i) / Math.max(1, e.trail.length - 1));
-      ribbon.push(
-        x - (dy / len) * width,
-        y + (dx / len) * width,
-        0.025,
-        x + (dy / len) * width,
-        y - (dx / len) * width,
-        0.025,
-      );
-      if (i) {
-        const j = i * 2;
-        indices.push(j - 2, j - 1, j, j - 1, j + 1, j);
-      }
-    });
-    this.trail.geometry = new T.BufferGeometry();
-    this.trail.geometry.setAttribute(
-      "position",
-      new T.Float32BufferAttribute(ribbon, 3),
-    );
-    this.trail.geometry.setIndex(indices);
-    const tm = this.trail.material as T.MeshBasicMaterial;
-    tm.color.set(e.effect?.highlight.path ?? "#b1a6ef");
-    tm.opacity = e.effect?.highlight.opacity ?? 0;
-    const active =
-      e.pieces.find((v) => v.moving) ??
-      e.pieces.find((v) => v.square === e.destination);
-    this.halo.visible = e.glow > 0.001 && !!active;
-    if (active) {
-      this.halo.position.set(active.x, active.y, 0.04);
-      this.halo.scale.setScalar(e.effect?.capture.radius ?? 1);
-      const m = this.halo.material as T.MeshBasicMaterial;
-      m.color.set(e.effect?.capture.color ?? "#72dce0");
-      m.opacity = e.glow * 0.6;
-    }
-    this.badge.visible = !!e.badge && !!e.badgePosition;
-    this.badgeRing.visible = false;
-    this.badgeGlow.visible = this.badge.visible;
-    if (e.badge && e.badgePosition && e.effect) {
-      const b = e.effect.badge,
-        key = e.badge + b.text + (p.badgeAssets[e.badge] ?? "");
-      if (key !== this.badgeKey) {
-        const mat = this.badge.material as T.SpriteMaterial;
-        mat.map =
-          this.assetTextures.get(p.badgeAssets[e.badge]) ??
-          this.badgeTexture(e.badge, b.text);
-        mat.needsUpdate = true;
-        this.badgeKey = key;
-      }
-      const entry = clamp((e.u - b.start) / 0.12),
-        entryScale = b.entry === "pop" ? 0.6 + 0.4 * easeLocal(entry) : 1;
-      this.badge.position.set(
-        e.badgePosition[0],
-        e.badgePosition[1] + (b.entry === "rise" ? (1 - entry) * -0.25 : 0),
-        0.45,
-      );
-      this.badge.scale.setScalar(b.size * entryScale);
-      this.badgeGlow.position.copy(this.badge.position);
-      this.badgeGlow.scale.setScalar(b.size * 2.5);
-      (this.badgeGlow.material as T.SpriteMaterial).opacity =
-        b.glow * b.opacity * 0.5;
-      (this.badge.material as T.SpriteMaterial).opacity =
-        b.opacity * (b.entry === "fade" ? entry : 1);
-      if (b.ring) {
-        this.badgeRing.visible = true;
-        this.badgeRing.position.copy(this.badge.position);
-        this.badgeRing.scale.setScalar(b.size * (1 + entry * 0.9));
-        const m = this.badgeRing.material as T.MeshBasicMaterial;
-        m.color.set(p.style.accent);
-        m.opacity = (1 - entry) * b.opacity * 0.65;
-      }
-    }
-    const positions = this.snow.geometry.attributes.position,
-      alphas = this.snow.geometry.attributes.alpha,
-      pointSizes = this.snow.geometry.attributes.size;
-    for (let i = 0; i < 400; i++) {
-      const a = particle(i, time, p.ambient);
-      positions.setXYZ(
-        i,
-        a.x * (p.ambient.insideBoard ? 2 / 3 : 1),
-        a.y * (p.ambient.insideBoard ? 2 / 3 : 1),
-        p.ambient.layer === "behind"
-          ? -1 - a.z
-          : p.ambient.layer === "over"
-            ? 0.3 + a.z
-            : i % 2
-              ? -0.8 - a.z
-              : 0.3 + a.z,
-      );
-      alphas.setX(i, p.ambient.enabled && i < p.ambient.count ? a.alpha : 0);
-      pointSizes.setX(i, a.size);
-    }
-    positions.needsUpdate = alphas.needsUpdate = pointSizes.needsUpdate = true;
-    const sm = this.snow.material as T.ShaderMaterial;
-    sm.stencilWrite = p.ambient.insideBoard;
-    sm.stencilRef = 1;
-    sm.stencilFunc = T.EqualStencilFunc;
-    sm.stencilFail = sm.stencilZFail = sm.stencilZPass = T.KeepStencilOp;
-    // Stencil clips every fragment, including the flake edges, to visible squares.
-    this.snow.renderOrder = p.ambient.insideBoard ? 10 : 0;
-    sm.uniforms.color.value.copy(
-      cycleColor(p.ambient.color, p.ambient.rainbow, time),
-    );
-    sm.uniforms.softness.value = p.ambient.softness;
-    sm.uniforms.pixels.value = viewH / (this.camera.top - this.camera.bottom);
-    const bp = this.bursts.geometry.attributes.position,
-      ba = this.bursts.geometry.attributes.alpha,
-      bs = this.bursts.geometry.attributes.size;
-    for (let i = 0; i < 36; i++) {
-      const t = Math.max(0, e.u - (e.effect?.capture.impact ?? 1)),
-        angle = i * 2.39996,
-        r = t * (1 + (i % 5)) * 3;
-      bp.setXYZ(
-        i,
-        (active?.x ?? 0) + Math.cos(angle) * r,
-        (active?.y ?? 0) + Math.sin(angle) * r,
-        0.4,
-      );
-      ba.setX(i, e.effect?.capture.particles ? e.impact * 0.4 : 0);
-      bs.setX(i, 0.035);
-    }
-    bp.needsUpdate = ba.needsUpdate = bs.needsUpdate = true;
-    (this.bursts.material as T.ShaderMaterial).uniforms.color.value.set(
-      e.effect?.capture.color ?? "#ffffff",
-    );
-    (this.bursts.material as T.ShaderMaterial).uniforms.pixels.value =
-      viewH / 9;
-    const dg = this.captureDust.geometry,
-      dp = dg.attributes.position,
-      da = dg.attributes.alpha,
-      ds = dg.attributes.size,
-      dc = dg.attributes.color;
-    let dustIndex = 0;
-    for (const event of e.dust) {
-      const template = this.meshes.get(
-        `template-${p.style.pieceSet}-${event.color}-${event.type}`,
-      );
-      const samples = template?.userData.dustSamples as
-        | { x: number; y: number; color: number[] }[]
-        | undefined;
-      if (!samples?.length) continue;
-      for (let i = 0; i < event.amount && dustIndex < 2048; i++, dustIndex++) {
-        const sample =
-          samples[
-            (Math.floor((i * samples.length) / event.amount) + event.seed) %
-              samples.length
-          ];
-        const a = captureDustParticle(i, event, {
-          x: sample.x * sign,
-          y: sample.y * sign,
-        });
-        dp.setXYZ(dustIndex, a.x, a.y, a.z);
-        da.setX(dustIndex, a.alpha);
-        ds.setX(dustIndex, a.size);
-        dc.setXYZ(dustIndex, sample.color[0], sample.color[1], sample.color[2]);
-      }
-    }
-    this.captureDust.geometry.setDrawRange(0, dustIndex);
-    dp.needsUpdate = da.needsUpdate = ds.needsUpdate = dc.needsUpdate = true;
-    (this.captureDust.material as T.ShaderMaterial).uniforms.softness.value =
-      0.35;
-    (this.captureDust.material as T.ShaderMaterial).uniforms.pixels.value =
-      viewH / (this.camera.top - this.camera.bottom);
-    const j = e.jam;
-    this.jamTile.visible =
-      !!j && j.envelope > 0.001 && j.settings.colorStrength > 0;
-    this.jamGlow.visible = this.jamRing.visible =
-      !!j && j.envelope > 0.001 && j.settings.glow > 0;
-    this.jamSparkles.visible =
-      !!j && j.envelope > 0.001 && j.settings.particles > 0;
-    if (j) {
-      const amount = j.envelope * j.settings.glow;
-      this.jamTile.position.set(j.x, j.y, 0.014);
-      const tile = this.jamTile.material as T.MeshBasicMaterial;
-      tile.color.set(j.color);
-      tile.opacity = Math.min(
-        0.85,
-        j.envelope * j.settings.colorStrength * (0.9 + 1.3 * j.pulse),
-      );
-      this.jamGlow.position.set(j.x, j.y, 0.031);
-      this.jamGlow.scale.setScalar(1.1 + 0.45 * j.pulse);
-      const gm = this.jamGlow.material as T.MeshBasicMaterial;
-      gm.color.set(j.color).multiplyScalar(amount);
-      gm.opacity = 0.15 + 0.65 * j.pulse;
-      this.jamRing.position.set(j.x, j.y, 0.035);
-      this.jamRing.scale.setScalar(1 + 0.65 * (1 - j.pulse));
-      const rm = this.jamRing.material as T.MeshBasicMaterial;
-      rm.color.set(j.color);
-      rm.opacity = Math.min(1, amount * (0.2 + 0.8 * j.pulse));
-      const geo = this.jamSparkles.geometry,
-        pos = geo.attributes.position,
-        alpha = geo.attributes.alpha,
-        size = geo.attributes.size;
-      const age = Number.isFinite(j.since) ? j.since : 0,
-        life = Math.max(0.05, Math.min(0.5, j.interval * 0.8)),
-        progress = Math.min(1, age / life);
-      for (let i = 0; i < j.settings.particles; i++) {
-        const seed = i * 2.39996 + j.beat * 1.73,
-          radius = 0.3 + progress * (0.7 + (i % 7) * 0.08);
-        pos.setXYZ(
-          i,
-          j.x + Math.cos(seed) * radius,
-          j.y + Math.sin(seed) * radius,
-          0.04,
-        );
-        alpha.setX(
-          i,
-          Number.isFinite(j.since)
-            ? j.envelope * (1 - progress) * (0.3 + (i % 5) * 0.12)
-            : 0,
-        );
-        size.setX(i, 0.022 + (i % 5) * 0.01);
-      }
-      geo.setDrawRange(0, j.settings.particles);
-      pos.needsUpdate = alpha.needsUpdate = size.needsUpdate = true;
-      const sm = this.jamSparkles.material as T.ShaderMaterial;
-      sm.uniforms.color.value.set("#e9fff9");
-      sm.uniforms.pixels.value = viewH / (this.camera.top - this.camera.bottom);
-      sm.uniforms.softness.value = 0.5;
-    }
-    const lm = this.moveLight.material as T.ShaderMaterial;
-    lm.uniforms.tint.value.set(e.light.color);
-    lm.uniforms.strength.value = e.light.strength;
-    this.moveLight.visible = e.light.strength > 0.0001;
-    if (square || short) {
-      this.root.visible = false;
-      this.moveLight.visible = false;
-      this.renderer.clearDepth();
-      if (!short) this.renderer.render(this.scene, this.camera);
+    r.setScissorTest(false);
+    r.setViewport(0, 0, w, h);
+    r.setClearColor(c.short ? p.shorts.barColor : "#111918");
+    r.clear(true, true, true);
+    try {
+      this.graph.render(time, c, w, h);
+    } finally {
       this.root.visible = true;
-      this.moveLight.visible = e.light.strength > 0.0001;
-      this.renderer.setViewport(0, viewY, w, viewH);
-      this.renderer.setScissor(0, viewY, w, viewH);
-      this.renderer.setScissorTest(true);
+      r.setScissorTest(false);
+      r.setViewport(0, 0, w, h);
     }
-    this.renderer.clearDepth();
-    this.renderer.render(this.scene, this.camera);
-    this.renderer.setScissorTest(false);
-    // Post-processing and 2D overlays share a deterministic pass plan.
-    // The existing Three.js draw code remains unchanged inside each stage.
-    executePasses(time, [
-      { id: "spotlight-post", stage: "post" },
-      { id: "information-overlay", stage: "overlay" },
-    ], (pass) => {
-      if (pass.id === "spotlight-post") {
-    if (
-      j &&
-      j.envelope > 0.001 &&
-      (j.settings.blur ||
-        j.settings.flash ||
-        j.settings.desaturate ||
-        j.settings.vignette)
-    ) {
-      if (this.jamFrameSize !== `${w}x${h}`) {
-        this.jamFrame?.dispose();
-        this.jamFrame = new T.FramebufferTexture(w, h);
-        this.jamFrame.minFilter = this.jamFrame.magFilter = T.LinearFilter;
-        this.jamFrameSize = `${w}x${h}`;
-      }
-      this.renderer.setViewport(0, 0, w, h);
-      // Copy display RGB after the normal render; this avoids changing the existing color pipeline.
-      this.renderer.copyFramebufferToTexture(this.jamFrame!);
-      const pm = this.jamPost.material as T.ShaderMaterial;
-      pm.uniforms.frame.value = this.jamFrame;
-      pm.uniforms.low.value.set(0, viewY / h);
-      pm.uniforms.high.value.set(1, (viewY + viewH) / h);
-      const focus = new T.Vector3(j.x * sign, j.y * sign, 0.08).project(
-        this.camera,
-      );
-      pm.uniforms.focus.value.set(
-        focus.x * 0.5 + 0.5,
-        viewY / h + ((focus.y * 0.5 + 0.5) * viewH) / h,
-      );
-      pm.uniforms.blur.value = j.settings.blur * j.pulse * j.envelope * 0.045;
-      pm.uniforms.flash.value =
-        j.settings.flash * j.pulse * j.pulse * j.envelope;
-      pm.uniforms.gray.value = j.settings.desaturate * j.envelope;
-      pm.uniforms.accent.value.set(j.color).convertLinearToSRGB();
-      pm.uniforms.vignette.value = j.settings.vignette * j.envelope;
-      this.renderer.clearDepth();
-      this.renderer.render(this.jamPostScene, this.backgroundCamera);
-    }
-      } else if (pass.id === "information-overlay") {
-    if (p.evalBar || (p.introTitle.enabled && time < p.lead)) {
-      const canvas = this.overlayCanvas;
-      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
-      const ctx = canvas.getContext("2d")!;
-      ctx.clearRect(0, 0, w, h);
-      if (p.evalBar) {
-        let score = 0;
-        for (let i = Math.min(e.index, p.moves.length - 1); i >= 0; i--) {
-          const engine = p.moves[i].analysis?.engine;
-          if (engine?.state === "done") { score = engine.score * (this.game?.steps[i].fen.split(" ")[1] === "w" ? 1 : -1); break; }
-        }
-        const x = w * .018, y = h * .17, bw = Math.max(6, w * .045), bh = h * .66;
-        const white = 1 / (1 + Math.exp(-score / 400));
-        ctx.save(); ctx.shadowColor = "#000"; ctx.shadowBlur = w * .02;
-        ctx.fillStyle = "#333333"; ctx.fillRect(x, y, bw, bh);
-        ctx.fillStyle = "#eeeeee"; ctx.fillRect(x, y + bh * (1 - white), bw, bh * white); ctx.restore();
-      }
-      if (p.introTitle.enabled && time < p.lead) {
-        const u = Math.min(1, time / Math.max(0.2, Math.min(p.lead * 0.82, 1.5)));
-        const flight = clamp((u - 0.16) / 0.42);
-        const impact = clamp((u - 0.58) / 0.32);
-        const kingX = w * .68, kingY = h * .39, size = w * .12;
-        ctx.save(); ctx.globalAlpha = Math.min(1, time * 5, (p.lead - time) * 4);
-        ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.shadowColor = "black"; ctx.shadowBlur = 12;
-        ctx.fillStyle = "white"; ctx.font = `bold ${Math.round(size)}px sans-serif`;
-        const attacker = { pawn: "♙", knight: "♘", bishop: "♗", rook: "♖", queen: "♕", king: "♔" }[p.introTitle.piece];
-        ctx.fillText(attacker, w * .32, h * .39);
-        // Clip the same king into two halves, then separate them after impact.
-        for (const upper of [true, false]) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(kingX - size, upper ? kingY - size : kingY, size * 2, size);
-          ctx.clip();
-          ctx.translate((upper ? 1 : -1) * impact * size * .17, (upper ? -1 : 1) * impact * size * .10);
-          ctx.fillStyle = "#999";
-          ctx.fillText("♚", kingX, kingY);
-          ctx.restore();
-        }
-        if (flight > 0 && impact < 1) {
-          const tip = w * (.38 + .31 * flight), sy = kingY;
-          ctx.save(); ctx.globalAlpha *= 1 - impact;
-          ctx.strokeStyle = "#f4f7fa"; ctx.lineWidth = Math.max(2, w * .004);
-          ctx.shadowColor = "#fff"; ctx.shadowBlur = w * .018;
-          ctx.beginPath(); ctx.moveTo(tip - w * .10, sy); ctx.lineTo(tip, sy); ctx.stroke();
-          ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(tip + w * .02, sy); ctx.lineTo(tip - w * .015, sy - w * .012); ctx.lineTo(tip - w * .015, sy + w * .012); ctx.closePath(); ctx.fill();
-          ctx.restore();
-        }
-        ctx.fillStyle = "#fff176"; ctx.font = `bold ${Math.round(w * .065)}px sans-serif`;
-        ctx.fillText(p.introTitle.text.toUpperCase(), w / 2, h * .49, w * .9); ctx.restore();
-      }
-      this.overlayTexture.needsUpdate = true;
-      this.renderer.setViewport(0, 0, w, h); this.renderer.clearDepth();
-      this.renderer.render(this.overlayScene, this.backgroundCamera);
-    }
-      }
-    });
-    return e;
+    return c.e;
   }
   pick(clientX: number, clientY: number) {
-    const rect = this.renderer.domElement.getBoundingClientRect(),
-      l = this.layout;
-    if (!l) return null;
-    const px = ((clientX - rect.left) / rect.width) * this.width,
-      py = (1 - (clientY - rect.top) / rect.height) * this.height;
-    if (py < l.y || py > l.y + l.h) return null;
+    this.assertLive();
+    const c = this.current;
+    if (!c) return null;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const px = ((clientX - rect.left) / rect.width) * c.w,
+      py = (1 - (clientY - rect.top) / rect.height) * c.h;
+    if (py < c.viewY || py > c.viewY + c.viewH) return null;
     const ray = new T.Raycaster();
     ray.setFromCamera(
-      new T.Vector2(((px - l.x) / l.w) * 2 - 1, ((py - l.y) / l.h) * 2 - 1),
-      this.camera,
+      new T.Vector2((px / c.w) * 2 - 1, ((py - c.viewY) / c.viewH) * 2 - 1),
+      this.cameras.camera,
     );
-    const hit = ray.intersectObjects(this.squares)[0];
+    const hit = ray.intersectObjects(this.board.squares)[0];
     if (!hit) return null;
-    const point = this.root.worldToLocal(hit.point.clone()),
-      f = Math.floor(point.x + 4),
-      r = Math.floor(point.y + 4);
-    return f >= 0 && f < 8 && r >= 0 && r < 8
-      ? String.fromCharCode(97 + f) + (r + 1)
-      : null;
+    const point = this.root.worldToLocal(hit.point.clone());
+    return worldToSquare(point.x, point.y);
   }
   rgba() {
+    this.assertLive();
     const gl = this.renderer.getContext(),
       raw = new Uint8Array(this.width * this.height * 4),
       out = new Uint8Array(raw.length);
@@ -1200,21 +264,17 @@ export class Scene {
     return out;
   }
   dispose() {
-    this.jamFrame?.dispose();
-    this.renderer.dispose();
-    this.renderer.forceContextLoss();
-    for (const t of this.assetTextures.values()) t.dispose();
+    if (this.dead) return;
+    this.dead = true;
+    this.requests.clear();
+    try {
+      this.graph.dispose();
+    } finally {
+      for (const texture of this.assets.values()) texture.dispose();
+      this.assets.clear();
+      this.world.clear();
+      this.renderer.dispose();
+      this.renderer.forceContextLoss();
+    }
   }
-}
-function easeLocal(t: number) {
-  return t * t * (3 - 2 * t);
-}
-function segmentsFinish(p: Project, i: number) {
-  let t = p.lead;
-  for (let j = 0; j <= i; j++)
-    t +=
-      p.moves[j].effect.delay +
-      p.moves[j].effect.duration +
-      (j < i ? moveHold(p.moves[j].effect) : 0);
-  return t;
 }

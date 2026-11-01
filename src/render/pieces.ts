@@ -211,3 +211,25 @@ export function enableCrumble(material: T.Material) {
   };
   material.customProgramCacheKey = () => "piece-crumble-v1";
 }
+
+/** Active renderers lease immutable shared artwork; the last owner releases GPU data. */
+let artworkUsers = 0;
+export function retainPieceAssets() {
+  artworkUsers++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (--artworkUsers !== 0) return;
+    const pending = [...assets.values()];
+    assets.clear();
+    for (const value of pending)
+      void value.then(
+        (a) => {
+          a.geometry.dispose();
+          a.texture.dispose();
+        },
+        () => {},
+      );
+  };
+}

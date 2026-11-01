@@ -1,3 +1,4 @@
+import type { Game } from "../../core/chess";
 import {
   createPiece,
   preloadPieces,
@@ -8,13 +9,13 @@ import {
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources, radialTexture } from "../engine/resources";
-import type { Project } from "../../core/project";
 export class PieceSystem {
   private resources = new Resources();
   readonly meshes = new Map<string, T.Mesh>();
   private shadows = new Map<string, T.Mesh>();
   readonly ready: Promise<void>;
   private dead = false;
+  private lastGame?: Game;
   private releaseArtwork = retainPieceAssets();
   private radial = radialTexture();
   constructor(private root: T.Group) {
@@ -22,7 +23,11 @@ export class PieceSystem {
     this.ready = this.prepare();
   }
   update(c: RenderFrame) {
-    const { p, e, w, sign } = c;
+    const { p, e, sign, game } = c;
+    if (this.lastGame !== game) {
+      this.prune(game, p.style.pieceSet);
+      this.lastGame = game;
+    }
     for (const [k, m] of this.meshes)
       if (!k.startsWith("template-")) m.visible = false;
     for (const m of this.shadows.values()) m.visible = false;
@@ -74,6 +79,32 @@ export class PieceSystem {
         (0.2 * v.opacity) / (1 + v.z);
     }
   }
+  private prune(game: Game, set: string) {
+    const keys = new Set<string>(),
+      ids = new Set<string>();
+    for (const pieces of [
+      game.initial,
+      ...game.steps.map((step) => step.after),
+    ])
+      for (const piece of pieces) {
+        keys.add(`${set}-${piece.id}-${piece.type}`);
+        ids.add(piece.id);
+      }
+    for (const [key, mesh] of this.meshes)
+      if (!key.startsWith("template-") && !keys.has(key)) {
+        this.root.remove(mesh);
+        for (const material of mesh.material as T.Material[])
+          material.dispose();
+        this.meshes.delete(key);
+      }
+    for (const [id, shadow] of this.shadows)
+      if (!ids.has(id)) {
+        this.root.remove(shadow);
+        shadow.geometry.dispose();
+        (shadow.material as T.Material).dispose();
+        this.shadows.delete(id);
+      }
+  }
   private async prepare() {
     await preloadPieces();
     for (const set of ["merida", "cburnett", "neo"] as PieceSet[])
@@ -91,7 +122,7 @@ export class PieceSystem {
   dispose() {
     this.dead = true;
     this.releaseArtwork();
-    for (const [key, m] of this.meshes) {
+    for (const m of this.meshes.values()) {
       for (const mat of m.material as T.Material[]) mat.dispose();
     }
     for (const shadow of this.shadows.values()) {

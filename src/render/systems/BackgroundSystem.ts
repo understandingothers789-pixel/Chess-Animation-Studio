@@ -1,7 +1,6 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources } from "../engine/resources";
-import type { Project } from "../../core/project";
 export class BackgroundSystem {
   private resources = new Resources();
   private backgroundScene = new T.Scene();

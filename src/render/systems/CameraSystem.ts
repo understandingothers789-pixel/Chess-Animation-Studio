@@ -1,25 +1,12 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources } from "../engine/resources";
-import type { Project } from "../../core/project";
 export class CameraSystem {
   private resources = new Resources();
   readonly camera = new T.OrthographicCamera();
   constructor(private root: T.Group) {}
   update(c: RenderFrame) {
-    const {
-      p,
-      e,
-      time,
-      w,
-      format,
-      short,
-      square,
-      viewH,
-      sign,
-      boardLevel,
-      game,
-    } = c;
+    const { p, e, time, w, format, short, square, viewH, sign, boardLevel } = c;
     this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
     const bg = p.layouts[format],
       crop = c.crop,

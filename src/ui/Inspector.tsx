@@ -301,6 +301,8 @@ export function Inspector({
             >
               {(
                 [
+                  "cameraShake",
+                  "impactLight",
                   "grow",
                   "expansion",
                   "returnTime",
@@ -314,6 +316,8 @@ export function Inspector({
                   key={k}
                   label={
                     {
+                      cameraShake: "Capture camera shake",
+                      impactLight: "Capture light pulse",
                       grow: "Capture size",
                       expansion: "Expansion window",
                       returnTime: "Return window",
@@ -486,9 +490,37 @@ export function Inspector({
                   ]}
                   onChange={(v) => changeCamera("mode", v)}
                 />
-                <Range label="Game close-up width (all moves)" value={project.gameViewWidth} resetValue={8} min={3} max={16} step={0.1} onChange={(v) => edit("Game close-up width", p => { p.gameViewWidth = v; })} />
-                <p className="hint">Width in board squares. Shorts close-ups use an 8-by-7 window with background above and below. Square videos show equal width and height.</p>
-                <button onClick={() => edit("Use game close-up for all moves", p => { for (const move of p.moves) move.effect.cameras[p.format] = { ...(move.effect.cameras[p.format] ?? camera()), mode: "game" }; })}>Use game close-up for all moves</button>
+                <Range
+                  label="Game close-up width (all moves)"
+                  value={project.gameViewWidth}
+                  resetValue={8}
+                  min={3}
+                  max={16}
+                  step={0.1}
+                  onChange={(v) =>
+                    edit("Game close-up width", (p) => {
+                      p.gameViewWidth = v;
+                    })
+                  }
+                />
+                <p className="hint">
+                  Width in board squares. Shorts close-ups use an 8-by-7 window
+                  with background above and below. Square videos show equal
+                  width and height.
+                </p>
+                <button
+                  onClick={() =>
+                    edit("Use game close-up for all moves", (p) => {
+                      for (const move of p.moves)
+                        move.effect.cameras[p.format] = {
+                          ...(move.effect.cameras[p.format] ?? camera()),
+                          mode: "game",
+                        };
+                    })
+                  }
+                >
+                  Use game close-up for all moves
+                </button>
                 {(
                   [
                     "x",

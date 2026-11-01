@@ -1,7 +1,6 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources } from "../engine/resources";
-import type { Project } from "../../core/project";
 export class LightingSystem {
   private resources = new Resources();
   readonly moveLight: T.Mesh;

@@ -40,7 +40,7 @@ export class BoardSystem {
     }
   }
   update(c: RenderFrame) {
-    const { p, e, time, square, shimmer } = c;
+    const { p, e, time, shimmer } = c;
     if (this.coordinates !== p.style.coordinates) {
       this.rebuildCoordinates(p);
       this.coordinates = p.style.coordinates;

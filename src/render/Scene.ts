@@ -3,7 +3,7 @@ import { worldToSquare } from "./engine/coordinates";
 import type { Project, Format } from "../core/project";
 import { buildGame, type Game } from "../core/chess";
 import { evaluateRenderFrame, type RenderFrame } from "./engine/frame";
-import { RenderGraph } from "./engine/RenderGraph";
+import { RenderGraph, type Pass } from "./engine/RenderGraph";
 import { BackgroundSystem } from "./systems/BackgroundSystem";
 import { CameraSystem } from "./systems/CameraSystem";
 import { BoardSystem } from "./systems/BoardSystem";
@@ -31,7 +31,11 @@ export class Scene {
   private dead = false;
   private width = 1;
   private height = 1;
-  constructor(canvas: HTMLCanvasElement) {
+  private readback = new Uint8Array(0);
+  constructor(
+    canvas: HTMLCanvasElement,
+    extensions: readonly Pass<RenderFrame>[] = [],
+  ) {
     this.renderer = new T.WebGLRenderer({
       canvas,
       antialias: true,
@@ -167,6 +171,7 @@ export class Scene {
           c.p.evalBar || (c.p.introTitle.enabled && c.time < c.p.lead),
         render: (c) => overlay.post(c),
       },
+      ...extensions,
     ]);
   }
   private assertLive() {
@@ -203,6 +208,11 @@ export class Scene {
       this.game = buildGame(p);
       this.project = p;
     }
+    if (
+      w > this.renderer.capabilities.maxTextureSize ||
+      h > this.renderer.capabilities.maxTextureSize
+    )
+      throw RangeError("Render dimensions exceed GPU capabilities");
     const c = evaluateRenderFrame(p, time, w, h, format, this.game);
     this.current = c;
     const r = this.renderer;
@@ -244,9 +254,11 @@ export class Scene {
   }
   rgba() {
     this.assertLive();
-    const gl = this.renderer.getContext(),
-      raw = new Uint8Array(this.width * this.height * 4),
-      out = new Uint8Array(raw.length);
+    const gl = this.renderer.getContext();
+    const bytes = this.width * this.height * 4;
+    if (this.readback.length !== bytes) this.readback = new Uint8Array(bytes);
+    const raw = this.readback,
+      out = new Uint8Array(bytes);
     gl.readPixels(
       0,
       0,
@@ -267,6 +279,7 @@ export class Scene {
     if (this.dead) return;
     this.dead = true;
     this.requests.clear();
+    this.readback = new Uint8Array(0);
     try {
       this.graph.dispose();
     } finally {

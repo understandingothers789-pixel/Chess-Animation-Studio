@@ -1,7 +1,6 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources, radialTexture, makePoints } from "../engine/resources";
-import type { Project } from "../../core/project";
 import { captureDustParticle } from "../../core/timeline";
 export class CaptureSystem {
   private resources = new Resources();
@@ -53,7 +52,7 @@ export class CaptureSystem {
     this.resources.own(this.radial);
   }
   update(c: RenderFrame) {
-    const { p, e, square, viewH, sign } = c;
+    const { p, e, viewH, sign } = c;
     const active =
       e.pieces.find((v) => v.moving) ??
       e.pieces.find((v) => v.square === e.destination);

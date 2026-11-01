@@ -1,7 +1,6 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources, makePoints } from "../engine/resources";
-import type { Project } from "../../core/project";
 import { particle } from "../../core/timeline";
 import { cycleColor } from "../engine/colors";
 export class AtmosphereSystem {

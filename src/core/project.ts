@@ -194,6 +194,8 @@ export const effectSchema = z.object({
     })
     .default(() => ({ ...moveLightDefaults })),
   capture: z.object({
+    cameraShake: n(0, 1).default(0),
+    impactLight: n(0, 1).default(0),
     grow: n(1, 3),
     expansion: n(0.02, 0.5),
     returnTime: n(0.05, 0.8),
@@ -268,6 +270,8 @@ export function effect(preset: Preset = "slide"): Effect {
     jam: { ...beatSpotlightDefaults },
     light: { ...moveLightDefaults },
     capture: {
+      cameraShake: 0,
+      impactLight: 0,
       grow: 1.45,
       expansion: 0.12,
       returnTime: 0.28,
@@ -561,7 +565,15 @@ export const projectSchema = z.object({
     fadeOut: n(0, 30),
   }),
   evalBar: z.boolean().default(false),
-  introTitle: z.object({ enabled: z.boolean(), text: z.string().max(120), piece: z.enum(["pawn", "knight", "bishop", "rook", "queen", "king"]).default("knight") }).default({ enabled: false, text: "CHESS STORY", piece: "knight" }),
+  introTitle: z
+    .object({
+      enabled: z.boolean(),
+      text: z.string().max(120),
+      piece: z
+        .enum(["pawn", "knight", "bishop", "rook", "queen", "king"])
+        .default("knight"),
+    })
+    .default({ enabled: false, text: "CHESS STORY", piece: "knight" }),
   reviewColors: z
     .object({
       enabled: z.boolean(),
@@ -609,7 +621,12 @@ export const projectSchema = z.object({
       }),
     )
     .max(6000),
-  audio: z.object({ chess: n(0, 2), effects: n(0, 2), automatic: z.boolean(), knightHorse: z.boolean().default(false) }),
+  audio: z.object({
+    chess: n(0, 2),
+    effects: n(0, 2),
+    automatic: z.boolean(),
+    knightHorse: z.boolean().default(false),
+  }),
   presets: z
     .array(z.object({ name: z.string().max(100), effect: effectSchema }))
     .max(100),

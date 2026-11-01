@@ -1,8 +1,6 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources, radialTexture, makePoints } from "../engine/resources";
-import type { Project } from "../../core/project";
-import { clamp } from "../../core/timeline";
 export class SpotlightSystem {
   private resources = new Resources();
   private jamTile: T.Mesh;
@@ -94,22 +92,7 @@ export class SpotlightSystem {
     this.resources.own(this.radial);
   }
   update(c: RenderFrame) {
-    const {
-      p,
-      e,
-      time,
-      w,
-      h,
-      format,
-      short,
-      square,
-      viewH,
-      viewY,
-      sign,
-      boardLevel,
-      shimmer,
-      game,
-    } = c;
+    const { e, viewH } = c;
     const j = e.jam;
     this.jamTile.visible =
       !!j && j.envelope > 0.001 && j.settings.colorStrength > 0;
@@ -169,22 +152,7 @@ export class SpotlightSystem {
     }
   }
   post(c: RenderFrame) {
-    const {
-      p,
-      e,
-      time,
-      w,
-      h,
-      format,
-      short,
-      square,
-      viewH,
-      viewY,
-      sign,
-      boardLevel,
-      shimmer,
-      game,
-    } = c;
+    const { e, w, h, viewH, viewY, sign } = c;
     const j = e.jam;
     if (
       j &&

@@ -33,7 +33,7 @@ export class MotionSystem {
     }
   }
   update(c: RenderFrame) {
-    const { p, e, time, w, sign, game } = c;
+    const { p, e, time, game } = c;
     for (const m of this.paths) m.visible = false;
     if (e.effect) {
       const hl = e.effect.highlight;
@@ -140,6 +140,7 @@ export class MotionSystem {
         32,
         2 ** Math.ceil(Math.log2(Math.max(1, count))),
       );
+      if (positions) this.trail.geometry.dispose();
       positions = new T.BufferAttribute(new Float32Array(capacity * 6), 3);
       positions.setUsage(T.DynamicDrawUsage);
       this.trail.geometry.setAttribute("position", positions);

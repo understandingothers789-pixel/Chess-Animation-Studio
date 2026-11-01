@@ -1,8 +1,8 @@
+import type { Project } from "../../core/project";
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources, radialTexture } from "../engine/resources";
-import type { Project } from "../../core/project";
-import { badge, clamp } from "../../core/timeline";
+import { clamp } from "../../core/timeline";
 const symbols: Record<string, string> = {
   book: "▤",
   brilliant: "!!",
@@ -14,6 +14,9 @@ const symbols: Record<string, string> = {
 };
 export class OverlaySystem {
   private resources = new Resources();
+  private overlayProject?: Project;
+  private overlayIndex = -2;
+  private overlayIntro = false;
   private badge: T.Sprite;
   private badgeGlow: T.Sprite;
   private badgeRing: T.Mesh;
@@ -82,22 +85,7 @@ export class OverlaySystem {
     this.resources.own(this.badgeRing.material as T.Material);
   }
   update(c: RenderFrame) {
-    const {
-      p,
-      e,
-      time,
-      w,
-      h,
-      format,
-      short,
-      square,
-      viewH,
-      viewY,
-      sign,
-      boardLevel,
-      shimmer,
-      game,
-    } = c;
+    const { p, e } = c;
     this.badge.visible = !!e.badge && !!e.badgePosition;
     this.badgeRing.visible = false;
     this.badgeGlow.visible = this.badge.visible;
@@ -208,22 +196,136 @@ export class OverlaySystem {
   }
 
   post(c: RenderFrame) {
-    const {
-      p,
-      e,
-      time,
-      w,
-      h,
-      format,
-      short,
-      square,
-      viewH,
-      viewY,
-      sign,
-      boardLevel,
-      shimmer,
-      game,
-    } = c;
+    const { p, e, time, w, h, game } = c;
+    if (p.evalBar || (p.introTitle.enabled && time < p.lead)) {
+      const canvas = this.overlayCanvas;
+      const intro = p.introTitle.enabled && time < p.lead;
+      const dirty =
+        this.overlayProject !== p ||
+        this.overlayIndex !== e.index ||
+        canvas.width !== w ||
+        canvas.height !== h ||
+        intro ||
+        this.overlayIntro;
+      if (dirty) {
+        this.overlayProject = p;
+        this.overlayIndex = e.index;
+        this.overlayIntro = intro;
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        const ctx = canvas.getContext("2d")!;
+        ctx.clearRect(0, 0, w, h);
+        if (p.evalBar) {
+          let score = 0;
+          for (let i = Math.min(e.index, p.moves.length - 1); i >= 0; i--) {
+            const engine = p.moves[i].analysis?.engine;
+            if (engine?.state === "done") {
+              score =
+                engine.score *
+                (game?.steps[i].fen.split(" ")[1] === "w" ? 1 : -1);
+              break;
+            }
+          }
+          const x = w * 0.018,
+            y = h * 0.17,
+            bw = Math.max(6, w * 0.045),
+            bh = h * 0.66;
+          const white = 1 / (1 + Math.exp(-score / 400));
+          ctx.save();
+          ctx.shadowColor = "#000";
+          ctx.shadowBlur = w * 0.02;
+          ctx.fillStyle = "#333333";
+          ctx.fillRect(x, y, bw, bh);
+          ctx.fillStyle = "#eeeeee";
+          ctx.fillRect(x, y + bh * (1 - white), bw, bh * white);
+          ctx.restore();
+        }
+        if (p.introTitle.enabled && time < p.lead) {
+          const u = Math.min(
+            1,
+            time / Math.max(0.2, Math.min(p.lead * 0.82, 1.5)),
+          );
+          const flight = clamp((u - 0.16) / 0.42);
+          const impact = clamp((u - 0.58) / 0.32);
+          const kingX = w * 0.68,
+            kingY = h * 0.39,
+            size = w * 0.12;
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, time * 5, (p.lead - time) * 4);
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.shadowColor = "black";
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = "white";
+          ctx.font = `bold ${Math.round(size)}px sans-serif`;
+          const attacker = {
+            pawn: "♙",
+            knight: "♘",
+            bishop: "♗",
+            rook: "♖",
+            queen: "♕",
+            king: "♔",
+          }[p.introTitle.piece];
+          ctx.fillText(attacker, w * 0.32, h * 0.39);
+          // Clip the same king into two halves, then separate them after impact.
+          for (const upper of [true, false]) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              kingX - size,
+              upper ? kingY - size : kingY,
+              size * 2,
+              size,
+            );
+            ctx.clip();
+            ctx.translate(
+              (upper ? 1 : -1) * impact * size * 0.17,
+              (upper ? -1 : 1) * impact * size * 0.1,
+            );
+            ctx.fillStyle = "#999";
+            ctx.fillText("♚", kingX, kingY);
+            ctx.restore();
+          }
+          if (flight > 0 && impact < 1) {
+            const tip = w * (0.38 + 0.31 * flight),
+              sy = kingY;
+            ctx.save();
+            ctx.globalAlpha *= 1 - impact;
+            ctx.strokeStyle = "#f4f7fa";
+            ctx.lineWidth = Math.max(2, w * 0.004);
+            ctx.shadowColor = "#fff";
+            ctx.shadowBlur = w * 0.018;
+            ctx.beginPath();
+            ctx.moveTo(tip - w * 0.1, sy);
+            ctx.lineTo(tip, sy);
+            ctx.stroke();
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.moveTo(tip + w * 0.02, sy);
+            ctx.lineTo(tip - w * 0.015, sy - w * 0.012);
+            ctx.lineTo(tip - w * 0.015, sy + w * 0.012);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+          ctx.fillStyle = "#fff176";
+          ctx.font = `bold ${Math.round(w * 0.065)}px sans-serif`;
+          ctx.fillText(
+            p.introTitle.text.toUpperCase(),
+            w / 2,
+            h * 0.49,
+            w * 0.9,
+          );
+          ctx.restore();
+        }
+        this.overlayTexture.needsUpdate = true;
+      }
+      this.renderer.setViewport(0, 0, w, h);
+      this.renderer.clearDepth();
+      this.renderer.render(this.overlayScene, this.backgroundCamera);
+    }
   }
   dispose() {
     this.generated?.dispose();

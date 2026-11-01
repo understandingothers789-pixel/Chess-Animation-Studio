@@ -14,6 +14,7 @@
     "start": "electron .",
     "test": "vitest run",
     "test:desktop": "node --import tsx scripts/desktop-smoke.ts",
+    "test:render": "node --import tsx scripts/render-regression.ts",
     "portable": "npm run build && node scripts/portable.mjs",
     "sample": "node --import tsx scripts/sample.ts",
     "format": "prettier --write src desktop scripts tests vite.config.ts"

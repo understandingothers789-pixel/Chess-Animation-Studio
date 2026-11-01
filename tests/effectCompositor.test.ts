@@ -23,3 +23,35 @@ describe("render pass compositor", () => {
     expect(() => composePasses(0, [{ id: "x", stage: "board" }, { id: "x", stage: "post" }])).toThrow();
   });
 });
+
+describe("effect dependency graph", () => {
+  it("respects explicit dependencies within a stage", () => {
+    const passes = [
+      { id: "glow", stage: "post" as const, after: ["blur"] },
+      { id: "blur", stage: "post" as const, priority: 100 },
+    ];
+    expect(composePasses(0, passes).map(pass => pass.id)).toEqual(["blur", "glow"]);
+  });
+  it("allows dependencies on inactive effects", () => {
+    const passes = [
+      { id: "dust", stage: "board" as const, start: 2, after: ["motion"] },
+      { id: "motion", stage: "board" as const, end: 1 },
+    ];
+    expect(composePasses(2, passes).map(pass => pass.id)).toEqual(["dust"]);
+  });
+  it("rejects cycles, missing dependencies, and conflicting stage order", () => {
+    expect(() => composePasses(0, [
+      { id: "a", stage: "post", after: ["b"] },
+      { id: "b", stage: "post", after: ["a"] },
+    ])).toThrow(/Cycle/);
+    expect(() => composePasses(0, [{ id: "a", stage: "post", after: ["missing"] }])).toThrow(/Unknown/);
+    expect(() => composePasses(0, [
+      { id: "background", stage: "background", after: ["overlay"] },
+      { id: "overlay", stage: "overlay" },
+    ])).toThrow(/Cycle/);
+  });
+  it("rejects invalid descriptors even when effects are disabled", () => {
+    expect(() => composePasses(0, [{ id: "bad", stage: "post", enabled: false, priority: NaN }])).toThrow();
+    expect(() => composePasses(0, [{ id: "bad", stage: "post", enabled: false, start: Infinity }])).toThrow();
+  });
+});

@@ -6,7 +6,7 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 ## Windows downloads
 
-**[Download 0.2.19 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41396735796).** Adds selective cinematic bloom and safer presentation graphics recovery. Built from `architecture/effect-compositor`; Windows packaging and app/export checks are running.
+**[Download 0.2.19 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41396735796/artifacts/13119639192).** Adds selective cinematic bloom and safer presentation graphics recovery. The Linux visual gate, Windows build, packaged app, and export checks passed. The app displays version 0.2.19. This Actions artifact is retained for 90 days.
 
 **[Download validated 0.2.18 Windows build (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41388851812/artifacts/13116826421).** Hardens project-scoped rendering resources, asset retry and graphics recovery, and export cancellation. Windows packaged-app and export checks passed; the app's displayed version matches the package version. This Actions artifact is retained for 90 days.
 

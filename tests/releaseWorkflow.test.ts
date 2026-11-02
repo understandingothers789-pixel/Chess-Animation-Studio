@@ -8,6 +8,11 @@ it("permits publication only after successful explicitly opted-in dispatch", () 
   expect(release).toContain(
     "if: success() && github.event_name == 'workflow_dispatch' && inputs.publish_release",
   );
+  expect(workflow).toContain("needs: visual");
+  expect(workflow).toContain("uses: ./.github/workflows/visual.yml");
+  const visual = readFileSync(".github/workflows/visual.yml", "utf8");
+  expect(visual).toContain("npm run test:render -- final");
+  expect(visual).toContain("compare-render-hashes.mjs");
   expect(release).not.toContain("head_commit");
   expect(release).not.toContain("continue-on-error");
   expect(release).toContain("git ls-remote --exit-code --tags");

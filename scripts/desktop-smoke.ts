@@ -316,6 +316,16 @@ try {
   });
   await page.evaluate(async () => {
     const p = await window.studio.sample();
+    p.bloom = {
+      enabled: true,
+      intensity: 0.35,
+      threshold: 0.55,
+      radius: 2,
+      softness: 0.2,
+      pieces: true,
+      captures: true,
+      highlights: true,
+    };
     await window.studio.export(p, {
       format: "landscape",
       start: 1,
@@ -347,7 +357,7 @@ try {
     probe.streams.find((s: any) => s.codec_type === "audio").codec_name,
     "aac",
   );
-  console.log("PASS: exact-time H.264/AAC MP4 exported at 60 FPS.");
+  console.log("PASS: exact-time H.264/AAC MP4 with bloom exported at 60 FPS.");
   for (const format of ["vertical", "square", "square-in-vertical"] as const) {
     const f = path.join(dir, format + ".mp4");
     await launch.evaluate((_, file) => {
@@ -556,6 +566,26 @@ try {
   await page.waitForTimeout(500);
   assert.equal(await win.locator("button").count(), 0);
   console.log("PASS: clean presentation window has no editor controls.");
+  win.on("pageerror", (e) => errors.push(e.message));
+  const presentationFrame = await win
+    .locator("canvas")
+    .evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+  await win.locator("canvas").evaluate((canvas: HTMLCanvasElement) => {
+    canvas
+      .getContext("webgl2")!
+      .getExtension("WEBGL_lose_context")!
+      .loseContext();
+  });
+  await win.getByRole("button", { name: "Reload graphics" }).click();
+  await win.waitForFunction(
+    (expected) => document.querySelector("canvas")?.toDataURL() === expected,
+    presentationFrame,
+    { timeout: 60000 },
+  );
+  assert.equal(await win.getByRole("alert").count(), 0);
+  console.log(
+    "PASS: presentation recovers from simulated context loss with identical paused pixels and no uncaught exceptions.",
+  );
   assert.deepEqual(errors, []);
   await fs.writeFile(
     path.join(dir, "desktop-validation.txt"),

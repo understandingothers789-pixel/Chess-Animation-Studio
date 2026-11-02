@@ -33,7 +33,7 @@ try {
   });
   const page = await browser.newPage();
   page.on("console", (message) => {
-    if (message.text().startsWith("PHASE2_METRICS"))
+    if (/^(PHASE2_METRICS|PHASE3_METRICS)/.test(message.text()))
       console.log(message.text());
   });
   // tsx preserves callback names using this helper; Playwright serializes the callback body.
@@ -222,8 +222,22 @@ try {
       if (!rejected) throw Error("Rendering after disposal was accepted");
     }
     scene.dispose();
+    if (!legacy) {
+      const cinematic = await (
+        await import("/scripts/browser-cinematic.ts" as string)
+      ).verifyCinematic();
+      console.log("PHASE3_METRICS " + JSON.stringify(cinematic));
+    }
     return frames;
   }, process.env.RENDER_LEGACY === "1");
+  const cinematicImage = await page.evaluate(
+    () => (globalThis as any).__cinematicImage as string | undefined,
+  );
+  if (cinematicImage)
+    await fs.writeFile(
+      `${root}/bloom-example.png`,
+      Buffer.from(cinematicImage.split(",")[1], "base64"),
+    );
   const hashes: Record<string, string> = {};
   for (const frame of output) {
     const bytes = Buffer.from(frame.png, "base64");

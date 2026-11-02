@@ -137,7 +137,12 @@ export async function artwork(
         ).href;
       }),
     );
-  return assets.get(key)!;
+  const pending = assets.get(key)!;
+  // A rejected preparation must not poison retries by another live renderer.
+  void pending.catch(() => {
+    if (assets.get(key) === pending) assets.delete(key);
+  });
+  return pending;
 }
 export async function preloadPieces() {
   await Promise.all(

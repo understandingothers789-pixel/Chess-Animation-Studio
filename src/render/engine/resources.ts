@@ -26,8 +26,17 @@ export class Resources {
     });
   }
   dispose() {
-    for (const resource of this.items) resource.dispose();
+    const items = [...this.items];
     this.items.clear();
+    const errors: unknown[] = [];
+    for (const resource of items.reverse())
+      try {
+        resource.dispose();
+      } catch (error) {
+        errors.push(error);
+      }
+    if (errors.length)
+      throw new AggregateError(errors, "Owned resource cleanup failed");
   }
 }
 export function radialTexture() {

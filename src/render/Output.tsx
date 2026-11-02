@@ -20,8 +20,7 @@ export function Output() {
       const off = window.studio.onTask(async ({ project, options, assets }) => {
         try {
           await scene.ready;
-          for (const [id, url] of Object.entries(assets))
-            await scene.setAsset(id, url);
+          await scene.prepareAssets(assets);
           const [dw, dh] = sizes[options.format],
             w = options.width ?? dw,
             h = options.height ?? dh,
@@ -51,10 +50,12 @@ export function Output() {
       };
     }
     let ready = false;
-    scene.ready.then(() => {
-      ready = true;
-    });
-    const loaded = new Map<string, string>();
+    scene.ready
+      .then(() => {
+        ready = true;
+      })
+      .catch(console.error);
+    const requested = new Set<string>();
     const off = window.studio.onPresentation((s) => {
       state = {
         project: s.project,
@@ -62,15 +63,18 @@ export function Output() {
         playing: s.playing,
         at: performance.now(),
       };
-      for (const id of loaded.keys())
+      for (const id of requested)
         if (!s.assets[id]) {
           scene.removeAsset(id);
-          loaded.delete(id);
+          requested.delete(id);
         }
       for (const [id, url] of Object.entries(s.assets))
-        if (loaded.get(id) !== url) {
-          loaded.set(id, url);
-          void scene.setAsset(id, url);
+        if (
+          scene.assetState(id)?.url !== url ||
+          scene.assetState(id)?.state === "failed"
+        ) {
+          requested.add(id);
+          void scene.setAsset(id, url).catch(console.error);
         }
     });
     const draw = () => {

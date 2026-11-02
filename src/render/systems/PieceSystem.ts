@@ -107,13 +107,15 @@ export class PieceSystem {
   }
   private async prepare() {
     await preloadPieces();
+    if (this.dead) return;
     for (const set of ["merida", "cburnett", "neo"] as PieceSet[])
       for (const color of ["w", "b"])
         for (const type of "kqrbnp") {
+          if (this.dead) return;
           const m = await createPiece(set, color, type);
           if (this.dead) {
             for (const mat of m.material as T.Material[]) mat.dispose();
-            continue;
+            return;
           }
           this.meshes.set(`template-${set}-${color}-${type}`, m);
         }

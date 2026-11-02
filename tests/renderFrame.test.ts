@@ -70,3 +70,22 @@ it("round trips board coordinates and disposes each owned resource once", () => 
   resources.dispose();
   expect(count).toBe(1);
 });
+
+it("continues releasing owned resources after a disposer fails", () => {
+  const r = new Resources(),
+    calls: number[] = [];
+  r.own({
+    dispose() {
+      calls.push(1);
+    },
+  });
+  r.own({
+    dispose() {
+      calls.push(2);
+      throw Error("release");
+    },
+  });
+  expect(() => r.dispose()).toThrow(/cleanup/);
+  r.dispose();
+  expect(calls).toEqual([2, 1]);
+});

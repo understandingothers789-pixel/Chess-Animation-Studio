@@ -27,7 +27,8 @@ export function Preview({
     scene.current = s;
     let alive = true,
       frame = 0,
-      available = false;
+      available = false,
+      renderError = "";
     void s.ready
       .then(() => {
         available = true;
@@ -46,12 +47,19 @@ export function Preview({
           height = Math.max(2, Math.floor(h * scale));
         canvas.current!.style.width = width + "px";
         canvas.current!.style.height = height + "px";
-        s.render(
-          project,
-          time,
-          Math.round(width * devicePixelRatio),
-          Math.round(height * devicePixelRatio),
-        );
+        try {
+          s.render(
+            project,
+            time,
+            Math.round(width * devicePixelRatio),
+            Math.round(height * devicePixelRatio),
+          );
+          renderError = "";
+        } catch (error) {
+          const message = (error as Error).message;
+          if (message !== renderError) onError(message);
+          renderError = message;
+        }
       }
       frame = requestAnimationFrame(draw);
     };
@@ -60,22 +68,22 @@ export function Preview({
       alive = false;
       cancelAnimationFrame(frame);
       scene.current = null;
+      requested.current.clear();
       s.dispose();
     };
   }, []);
-  const loaded = useRef(new Map<string, string>());
+  const requested = useRef(new Set<string>());
   useEffect(() => {
     if (!scene.current) return;
-    for (const id of loaded.current.keys())
+    for (const id of requested.current)
       if (!assets[id]) {
         scene.current.removeAsset(id);
-        loaded.current.delete(id);
+        requested.current.delete(id);
       }
-    for (const [id, url] of Object.entries(assets))
-      if (loaded.current.get(id) !== url) {
-        loaded.current.set(id, url);
-        void scene.current.setAsset(id, url).catch((e) => onError(e.message));
-      }
+    for (const [id, url] of Object.entries(assets)) {
+      requested.current.add(id);
+      void scene.current.setAsset(id, url).catch((e) => onError(e.message));
+    }
   }, [assets, ready]);
   return (
     <div className="preview-host" ref={host}>

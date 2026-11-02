@@ -14,7 +14,9 @@ import { LightingSystem } from "./systems/LightingSystem";
 import { AtmosphereSystem } from "./systems/AtmosphereSystem";
 import { SpotlightSystem } from "./systems/SpotlightSystem";
 import { OverlaySystem } from "./systems/OverlaySystem";
+import { Assets } from "./engine/Assets";
 export interface RenderServices {
+  invalidate: () => void;
   renderer: T.WebGLRenderer;
   camera: T.OrthographicCamera;
   world: T.Scene;
@@ -31,7 +33,15 @@ export class Scene {
   private world = new T.Scene();
   private root = new T.Group();
   private assets = new Map<string, T.Texture>();
-  private requests = new Map<string, symbol>();
+  private assetStore = new Assets(
+    this.assets,
+    async (url) => {
+      const texture = await new T.TextureLoader().loadAsync(url);
+      texture.colorSpace = T.SRGBColorSpace;
+      return texture;
+    },
+    () => this.invalidate(),
+  );
   private graph: RenderGraph<RenderFrame>;
   private cameras: CameraSystem;
   private board: BoardSystem;
@@ -70,6 +80,28 @@ export class Scene {
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
     const capture = new CaptureSystem(this.root, camera, pieces.meshes);
+    const systems = [
+      capture,
+      pieces,
+      atmosphere,
+      overlay,
+      motion,
+      this.board,
+      background,
+      spotlight,
+      lighting,
+    ];
+    // Constructor rollback and graph ownership share these once-only callbacks.
+    for (const system of systems) {
+      const dispose = system.dispose.bind(system);
+      let released = false;
+      system.dispose = () => {
+        if (!released) {
+          released = true;
+          dispose();
+        }
+      };
+    }
     this.ready = pieces.ready.then(() => {
       this.revision++;
     });
@@ -77,6 +109,7 @@ export class Scene {
       const extraPasses =
         typeof extensions === "function"
           ? extensions({
+              invalidate: () => this.invalidate(),
               renderer: r,
               camera,
               world: this.world,
@@ -84,6 +117,10 @@ export class Scene {
               assets: this.assets,
             })
           : extensions;
+      if (extraPasses.some((pass) => pass.stage === "world"))
+        throw Error(
+          "The world stage is reserved for the scene draw; use board for world effects or post for screen effects",
+        );
       this.graph = new RenderGraph<RenderFrame>([
         {
           id: "background",
@@ -158,7 +195,7 @@ export class Scene {
         },
         {
           id: "world",
-          stage: "board",
+          stage: "world",
           after: ["capture", "atmosphere", "spotlight", "lighting", "badges"],
           outputs: ["scene-color"],
           render: (c) => {
@@ -196,49 +233,55 @@ export class Scene {
         ...extraPasses,
       ]);
     } catch (error) {
-      // Graph validation can fail before graph ownership begins.
-      for (const system of [
-        capture,
-        pieces,
-        atmosphere,
-        overlay,
-        motion,
-        this.board,
-        background,
-        spotlight,
-        lighting,
+      const errors: unknown[] = [];
+      for (const system of systems)
+        try {
+          system.dispose();
+        } catch (e) {
+          errors.push(e);
+        }
+      for (const cleanup of [
+        () => this.world.clear(),
+        () => r.dispose(),
+        () => r.forceContextLoss(),
       ])
-        system.dispose();
-      this.world.clear();
-      r.dispose();
-      r.forceContextLoss();
-      void this.ready.catch(() => {}); // The constructor error is the observable failure.
+        try {
+          cleanup();
+        } catch (e) {
+          errors.push(e);
+        }
+      void this.ready.catch(() => {});
+      if (errors.length)
+        throw new AggregateError(
+          [error, ...errors],
+          "Scene initialization and cleanup failed",
+          { cause: error },
+        );
       throw error;
     }
   }
   private assertLive() {
     if (this.dead) throw Error("Scene is disposed");
   }
-  async setAsset(id: string, url: string) {
+  /** Call after changing extension state outside the immutable project. */
+  invalidate() {
     this.assertLive();
-    const request = Symbol(id);
-    this.requests.set(id, request);
-    const texture = await new T.TextureLoader().loadAsync(url);
-    texture.colorSpace = T.SRGBColorSpace;
-    if (this.dead || this.requests.get(id) !== request) {
-      texture.dispose();
-      return;
-    }
-    this.assets.get(id)?.dispose();
-    this.assets.set(id, texture);
     this.revision++;
+  }
+  assetState(id: string) {
+    return this.assetStore.state(id);
+  }
+  setAsset(id: string, url: string) {
+    this.assertLive();
+    return this.assetStore.set(id, url);
+  }
+  prepareAssets(urls: Record<string, string>) {
+    this.assertLive();
+    return this.assetStore.prepare(urls);
   }
   removeAsset(id: string) {
     this.assertLive();
-    this.requests.delete(id);
-    this.assets.get(id)?.dispose();
-    this.assets.delete(id);
-    this.revision++;
+    this.assetStore.remove(id);
   }
   render(
     p: Project,
@@ -259,6 +302,7 @@ export class Scene {
       this.renderedRevision === this.revision
     )
       return previous.e;
+    const frameRevision = this.revision;
     // A failed frame must never be mistaken for a cached successful draw.
     this.renderedRevision = -1;
     if (this.project !== p) {
@@ -277,19 +321,41 @@ export class Scene {
       this.height = h;
       r.setSize(w, h, false);
     }
-    r.setScissorTest(false);
-    r.setViewport(0, 0, w, h);
-    r.setClearColor(c.short ? p.shorts.barColor : "#111918");
-    r.clear(true, true, true);
+    const viewport = r.getViewport(new T.Vector4()),
+      scissor = r.getScissor(new T.Vector4());
+    const scissorTest = r.getScissorTest(),
+      target = r.getRenderTarget();
+    const face = r.getActiveCubeFace(),
+      mip = r.getActiveMipmapLevel();
+    const color = r.getClearColor(new T.Color()),
+      alpha = r.getClearAlpha();
+    const autoClear = r.autoClear,
+      visible = this.root.visible;
+    const toneMapping = r.toneMapping,
+      exposure = r.toneMappingExposure,
+      colorSpace = r.outputColorSpace;
     try {
-      this.graph.render(time, c, w, h);
-    } finally {
-      this.root.visible = true;
+      r.setRenderTarget(null);
       r.setScissorTest(false);
       r.setViewport(0, 0, w, h);
+      r.setClearColor(c.short ? p.shorts.barColor : "#111918");
+      r.clear(true, true, true);
+      this.graph.render(time, c, w, h);
+    } finally {
+      this.root.visible = visible;
+      r.resetState();
+      r.setRenderTarget(target, face, mip);
+      r.setViewport(viewport);
+      r.setScissor(scissor);
+      r.setScissorTest(scissorTest);
+      r.setClearColor(color, alpha);
+      r.autoClear = autoClear;
+      r.toneMapping = toneMapping;
+      r.toneMappingExposure = exposure;
+      r.outputColorSpace = colorSpace;
     }
     this.current = c;
-    this.renderedRevision = this.revision;
+    this.renderedRevision = frameRevision;
     return c.e;
   }
   pick(clientX: number, clientY: number) {
@@ -317,15 +383,24 @@ export class Scene {
     if (this.readback.length !== bytes) this.readback = new Uint8Array(bytes);
     const raw = this.readback,
       out = new Uint8Array(bytes);
-    gl.readPixels(
-      0,
-      0,
-      this.width,
-      this.height,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      raw,
-    );
+    const target = this.renderer.getRenderTarget(),
+      face = this.renderer.getActiveCubeFace(),
+      mip = this.renderer.getActiveMipmapLevel();
+    try {
+      this.renderer.setRenderTarget(null);
+      gl.readPixels(
+        0,
+        0,
+        this.width,
+        this.height,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        raw,
+      );
+    } finally {
+      this.renderer.setRenderTarget(target, face, mip);
+    }
+
     for (let y = 0; y < this.height; y++)
       out.set(
         raw.subarray(y * this.width * 4, (y + 1) * this.width * 4),
@@ -336,16 +411,20 @@ export class Scene {
   dispose() {
     if (this.dead) return;
     this.dead = true;
-    this.requests.clear();
     this.readback = new Uint8Array(0);
-    try {
-      this.graph.dispose();
-    } finally {
-      for (const texture of this.assets.values()) texture.dispose();
-      this.assets.clear();
-      this.world.clear();
-      this.renderer.dispose();
-      this.renderer.forceContextLoss();
-    }
+    const errors: unknown[] = [];
+    for (const cleanup of [
+      () => this.graph.dispose(),
+      () => this.assetStore.dispose(),
+      () => this.world.clear(),
+      () => this.renderer.dispose(),
+      () => this.renderer.forceContextLoss(),
+    ])
+      try {
+        cleanup();
+      } catch (error) {
+        errors.push(error);
+      }
+    if (errors.length) throw new AggregateError(errors, "Scene cleanup failed");
   }
 }

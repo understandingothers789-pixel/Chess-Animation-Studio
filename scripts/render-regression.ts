@@ -125,6 +125,7 @@ try {
         }
       }
     if (!legacy) {
+      await (await import("/scripts/browser-hardening.ts" as string)).verifyHardening();
       // Both preview and export instantiate this same facade, at the same output size.
       const secondCanvas = document.createElement("canvas");
       const second = new Scene(

@@ -87,7 +87,10 @@ jobs:
             release/*.sha256
           if-no-files-found: ignore
       - name: Publish immutable versioned release assets
-        if: success() && github.event_name == 'workflow_dispatch' && inputs.publish_release
+        if: >-
+          success() && ((github.event_name == 'workflow_dispatch' && inputs.publish_release) ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/architecture/effect-compositor' &&
+          startsWith(github.event.head_commit.message, 'release: prepare Chess Animation Studio')))
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

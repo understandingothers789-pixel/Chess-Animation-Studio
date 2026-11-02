@@ -1,6 +1,6 @@
 import { Scene } from "../src/render/Scene";
 import { GraphicsSession } from "../src/render/GraphicsSession";
-import { parseProject } from "../src/core/project";
+import { cinematicPresets, parseProject } from "../src/core/project";
 export async function verifyCinematic() {
   const assert = (ok: boolean, message: string) => {
     if (!ok) throw Error(message);
@@ -26,7 +26,13 @@ export async function verifyCinematic() {
     rendererDisposed++;
     dispose();
   };
-  const time = 5.25;
+  p.cinematic = { ...cinematicPresets.Cinematic };
+  const { segments } = await import("../src/core/timeline");
+  const capture = p.moves.findIndex((m) => m.san.includes("x"));
+  const time =
+    segments(p)[capture].depart +
+    p.moves[capture].effect.duration * p.moves[capture].effect.capture.impact +
+    0.2;
   first.render(p, time, 480, 270, "landscape");
   const expected = first.renderer.domElement.toDataURL();
   (globalThis as any).__cinematicImage = expected;
@@ -128,7 +134,11 @@ export async function verifyCinematic() {
     [3840, 2160],
   ]) {
     for (const enabled of [false, true]) {
-      const project = { ...p, bloom: { ...p.bloom, enabled } };
+      const project = {
+        ...p,
+        cinematic: { ...p.cinematic, enabled },
+        bloom: { ...p.bloom, enabled },
+      };
       const samples = [];
       for (let i = 0; i < 3; i++) {
         const at = performance.now();

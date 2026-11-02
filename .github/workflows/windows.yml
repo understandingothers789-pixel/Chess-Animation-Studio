@@ -28,6 +28,8 @@ jobs:
         shell: pwsh
         run: |
           $v = (Get-Content package.json | ConvertFrom-Json).version
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
+          if (-not (Test-Path "docs/releases/$v.md")) { throw 'Missing release notes' }
           "value=$v" >> $env:GITHUB_OUTPUT
       - name: Install pinned dependencies
         run: npm ci
@@ -87,15 +89,15 @@ jobs:
             release/*.sha256
           if-no-files-found: ignore
       - name: Publish immutable versioned release assets
-        if: >-
-          success() && ((github.event_name == 'workflow_dispatch' && inputs.publish_release) ||
-          (github.event_name == 'push' && github.ref == 'refs/heads/architecture/effect-compositor' &&
-          startsWith(github.event.head_commit.message, 'release: prepare Chess Animation Studio')))
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.publish_release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.version.outputs.value }}'
+          git ls-remote --exit-code --tags origin "refs/tags/studio-v$v"
+          if ($LASTEXITCODE -eq 0) { throw 'Version tag already exists; choose a new version explicitly.' }
+          if ($LASTEXITCODE -ne 2) { throw 'Unable to verify release tag availability.' }
           gh release create "studio-v$v" "release/Chess-Animation-Studio-$v-Windows-Portable.zip" "release/Chess-Animation-Studio-$v-Windows-Portable.zip.sha256" "release/runtime-signature-$v.json" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Chess Animation Studio $v" --notes-file "docs/releases/$v.md"
           if ($LASTEXITCODE -ne 0) {
             "## Release publication failed`nThe validated portable artifact remains available in this run." >> $env:GITHUB_STEP_SUMMARY

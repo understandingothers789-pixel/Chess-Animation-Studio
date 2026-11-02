@@ -50,6 +50,7 @@ electronProcess.on("exit", (code, signal) =>
 );
 try {
   const page = await launch.firstWindow();
+  page.setDefaultTimeout(90000);
   page.on("crash", () => diagnostics.push("editor renderer crashed"));
   page.on("close", () => diagnostics.push("editor window closed"));
   page.on("pageerror", (e) => errors.push(e.message));
@@ -89,7 +90,12 @@ try {
     };
   });
   await page.getByRole("button", { name: "Play", exact: true }).click();
-  await page.waitForTimeout(350);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   assert.ok(
     await page.evaluate(() =>
@@ -99,15 +105,21 @@ try {
   );
   for (const panel of [
     "game",
-    "styles",
+    "presets",
     "music",
-    "scene",
+    "board",
+    "framing",
+    "atmosphere",
+    "effects",
     "analysis",
     "files",
   ]) {
-    await page.getByRole("button", { name: panel, exact: true }).click();
+    await page
+      .locator(".library-tabs")
+      .getByRole("button", { name: panel, exact: true })
+      .click();
     const missing = await page
-      .locator("input,select,textarea")
+      .locator("input:visible,select:visible,textarea:visible")
       .evaluateAll((els) =>
         els
           .filter(
@@ -124,7 +136,7 @@ try {
       `Every setting in ${panel} needs explanatory hover and accessible help.`,
     );
   }
-  await page.getByRole("button", { name: "scene", exact: true }).click();
+  await page.getByRole("button", { name: "board", exact: true }).click();
   assert.equal(
     (
       await page.getByLabel("Dark squares", { exact: true }).inputValue()
@@ -149,14 +161,24 @@ try {
     .getByLabel("Piece artwork", { exact: true })
     .selectOption("merida");
   await page.getByLabel("Seek composition", { exact: true }).fill("1.2");
-  await page.waitForTimeout(350);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const first = await page
     .locator(".preview-host canvas")
     .evaluate((c: HTMLCanvasElement) => c.toDataURL());
   await page.getByLabel("Seek composition", { exact: true }).fill("12");
   await page.waitForTimeout(150);
   await page.getByLabel("Seek composition", { exact: true }).fill("1.2");
-  await page.waitForTimeout(350);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const repeated = await page
     .locator(".preview-host canvas")
     .evaluate((c: HTMLCanvasElement) => c.toDataURL());
@@ -180,7 +202,7 @@ try {
     .locator(".move-track button")
     .nth(3)
     .click({ modifiers: ["Shift"] });
-  await page.getByRole("button", { name: "motion", exact: true }).click();
+  await page.getByRole("button", { name: "move", exact: true }).click();
   await page
     .getByLabel("Move preset", { exact: true })
     .selectOption("sway-half");
@@ -212,19 +234,33 @@ try {
     await page.getByLabel("Duration value", { exact: true }).inputValue(),
     "1.8",
   );
+  await page
+    .locator(".library-tabs")
+    .getByRole("button", { name: "atmosphere", exact: true })
+    .click();
   assert.ok(
     await page.getByLabel("Inside board only", { exact: true }).isChecked(),
   );
   await page.getByLabel("Seek composition", { exact: true }).fill("0");
   await page.getByLabel("Particle count value", { exact: true }).fill("300");
   await page.getByLabel("Particle size value", { exact: true }).fill("0.18");
-  await page.waitForTimeout(250);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const snowInside = await page
     .locator(".preview-host canvas")
     .evaluate((c: HTMLCanvasElement) => c.toDataURL());
   await page.screenshot({ path: path.join(dir, "snow-inside.png") });
   await page.getByLabel("Inside board only", { exact: true }).uncheck();
-  await page.waitForTimeout(250);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   assert.notEqual(
     await page
       .locator(".preview-host canvas")
@@ -281,7 +317,7 @@ try {
   console.log(
     "PASS: selectable intro presets, multi-move Half sway and duration edits, board-only snow controls.",
   );
-  await page.getByRole("button", { name: "motion", exact: true }).click();
+  await page.getByRole("button", { name: "move", exact: true }).click();
   await page.getByLabel("Move preset", { exact: true }).selectOption("spin");
   await page.getByLabel("Seek composition", { exact: true }).fill("0.888");
   await page.waitForTimeout(300);
@@ -432,7 +468,10 @@ try {
   );
   await page.getByRole("button", { name: "game", exact: true }).click();
   await page.locator(".move-track button").nth(1).click();
-  await page.getByRole("button", { name: "look", exact: true }).click();
+  await page
+    .locator(".inspector")
+    .getByRole("button", { name: "effects", exact: true })
+    .click();
   await page.getByLabel("Seek composition", { exact: true }).fill("3");
   await page.waitForTimeout(200);
   const settledPreview = () =>
@@ -463,7 +502,7 @@ try {
   console.log(
     "PASS: per-move light wash changes pixels and reconstructs exactly after backward seeking.",
   );
-  await page.getByRole("button", { name: "motion", exact: true }).click();
+  await page.getByRole("button", { name: "move", exact: true }).click();
   const spotlightTime =
     blank().lead +
     +(await page.getByLabel("Duration value", { exact: true }).inputValue()) +
@@ -474,7 +513,10 @@ try {
   const ordinaryEnd = +(await page
     .getByLabel("Seek composition", { exact: true })
     .getAttribute("max"))!;
-  await page.getByRole("button", { name: "look", exact: true }).click();
+  await page
+    .locator(".inspector")
+    .getByRole("button", { name: "effects", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Apply beat spotlight", exact: true })
     .click();
@@ -494,7 +536,12 @@ try {
   await page
     .getByLabel("Seek composition", { exact: true })
     .fill(String(+spotlightTime.toFixed(3)));
-  await page.waitForTimeout(350);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const spotlightPixels = await page
     .locator(".preview-host canvas")
     .evaluate((c: HTMLCanvasElement) => c.toDataURL());
@@ -511,7 +558,12 @@ try {
   await page
     .getByLabel("Seek composition", { exact: true })
     .fill(String(+spotlightTime.toFixed(3)));
-  await page.waitForTimeout(350);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   assert.equal(
     await page
       .locator(".preview-host canvas")

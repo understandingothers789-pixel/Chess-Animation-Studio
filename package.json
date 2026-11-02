@@ -17,7 +17,8 @@
     "test:render": "node --import tsx scripts/render-regression.ts",
     "portable": "npm run build && node scripts/portable.mjs",
     "sample": "node --import tsx scripts/sample.ts",
-    "format": "prettier --write src desktop scripts tests vite.config.ts"
+    "format": "prettier --write src desktop scripts tests vite.config.ts",
+    "test:ui": "node --import tsx scripts/ui-smoke.ts"
   },
   "dependencies": {
     "chess.js": "1.4.0",

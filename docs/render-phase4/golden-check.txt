@@ -1,0 +1,1 @@
+PASS: 40 cinematic/bloom goldens, all formats, resize and backward seeks, independent export equality

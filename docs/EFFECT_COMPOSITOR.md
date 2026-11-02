@@ -173,3 +173,5 @@ Scene detects actual `webglcontextlost` events and synchronous `isContextLost()`
 ## Phase III cinematic bloom
 
 `cinematic-bloom` is a built-in post pass after spotlight processing. It lazily owns its mask/blur targets and uses a display framebuffer copy for composition; it has no temporal history. See [Phase III contracts and evidence](RENDER_PHASE3_VALIDATION.md) for selective object categories, schema defaults, cleanup, presentation recovery and the Linux visual release gate.
+
+Phase IV preserves multi-material piece occlusion in selective bloom and adds a lazy, bounded `cinematic-captures` world-space pass. See [capture controls, resource contracts, golden approval and validation](RENDER_PHASE4_VALIDATION.md).

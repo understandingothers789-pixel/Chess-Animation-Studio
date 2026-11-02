@@ -1,0 +1,2 @@
+Created explicit golden proposal; review and commit the PNG diff before accepting.
+PASS: 40 cinematic/bloom goldens, all formats, resize and backward seeks, independent export equality

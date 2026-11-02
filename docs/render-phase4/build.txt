@@ -1,0 +1,15 @@
+
+> chess-animation-studio@0.2.19 build
+> tsc --noEmit && vite build && node scripts/build.mjs
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 1763 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.71 kB │ gzip:   0.41 kB
+dist/assets/audio-CnlFueK9.js      64.86 kB
+dist/assets/import-vJ_3Itlk.js    102.39 kB
+dist/assets/index-CcB02FXC.css     15.84 kB │ gzip:   4.37 kB
+dist/assets/index-DLw5Bclx.js   1,000.72 kB │ gzip: 285.76 kB
+✓ built in 3.82s

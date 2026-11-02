@@ -1,0 +1,69 @@
+{
+  "recovery": "WEBGL_lose_context plus full Scene/canvas reconstruction",
+  "measurements": [
+    {
+      "w": 1920,
+      "h": 1080,
+      "enabled": false,
+      "samplesMs": [
+        508,
+        472,
+        507.70000000298023
+      ],
+      "medianMs": 507.70000000298023,
+      "memory": {
+        "geometries": 120,
+        "textures": 17
+      },
+      "bloomTargetBytes": 0
+    },
+    {
+      "w": 1920,
+      "h": 1080,
+      "enabled": true,
+      "samplesMs": [
+        741.2000000029802,
+        536.3999999985099,
+        512.6000000014901
+      ],
+      "medianMs": 536.3999999985099,
+      "memory": {
+        "geometries": 124,
+        "textures": 21
+      },
+      "bloomTargetBytes": 16588800
+    },
+    {
+      "w": 3840,
+      "h": 2160,
+      "enabled": false,
+      "samplesMs": [
+        1140.6000000014901,
+        1084.2999999970198,
+        1123.7000000029802
+      ],
+      "medianMs": 1123.7000000029802,
+      "memory": {
+        "geometries": 124,
+        "textures": 17
+      },
+      "bloomTargetBytes": 0
+    },
+    {
+      "w": 3840,
+      "h": 2160,
+      "enabled": true,
+      "samplesMs": [
+        1223.3999999985099,
+        1421,
+        1283.3999999985099
+      ],
+      "medianMs": 1283.3999999985099,
+      "memory": {
+        "geometries": 124,
+        "textures": 21
+      },
+      "bloomTargetBytes": 66355200
+    }
+  ]
+}

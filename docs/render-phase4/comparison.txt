@@ -1,0 +1,1 @@
+PASS: 168 byte-identical PNG fixtures

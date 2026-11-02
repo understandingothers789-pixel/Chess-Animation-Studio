@@ -27,3 +27,5 @@ See [the architectural hardening report](RENDER_HARDENING_VALIDATION.md) for the
 Phase II adds project-scoped resource validity alongside reusable graph resources, bounded asset retries and explicit graphics-context-loss handling. Preview can rebuild its Scene while retaining editor project/time state; export fails on a lost context. Final output rename is the export commit boundary: cancellation before it prevents completion, while cancellation after it begins waits for its irreversible outcome. Progress notifications are scoped to the current export generation. See [Phase II validation](RENDER_PHASE2_VALIDATION.md).
 
 Phase III adds selective bloom within the existing post stage, presentation Scene reconstruction, and an exact Linux/Chromium visual gate before Windows packaging/publication. See [Phase III validation and contracts](RENDER_PHASE3_VALIDATION.md).
+
+Phase IV adds optional cinematic capture batches and correct multi-material bloom occlusion, with reviewed cinematic goldens. See [Phase IV validation](RENDER_PHASE4_VALIDATION.md).

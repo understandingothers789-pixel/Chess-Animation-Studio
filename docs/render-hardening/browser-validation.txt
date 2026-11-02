@@ -1,0 +1,5 @@
+
+> chess-animation-studio@0.2.16 test:render
+> node --import tsx scripts/render-regression.ts final
+
+PASS: 216 render requests, 168 unique fixtures (final)

@@ -1,5 +1,7 @@
 # Rendering overhaul — execution and validation report
 
+This is the historical first-overhaul report. See [the architectural hardening follow-up](RENDER_HARDENING_VALIDATION.md) for current graph, assets, cache, lifecycle and CI contracts.
+
 ## Result and scope
 
 The experimental engine replaces the 1,220-line monolithic renderer with a small public facade and ten owned rendering systems. A compiled render graph orchestrates the full frame, not just the final two effects. Pure frame evaluation reuses the existing chess/timeline engine. Preview, scrubbing, presentation and exact-time export use the same `Scene` API.

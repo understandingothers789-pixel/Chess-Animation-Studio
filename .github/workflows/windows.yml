@@ -5,6 +5,12 @@ on:
     branches: [fresh-start, architecture/effect-compositor]
     paths-ignore: ['**.md', '**.txt', 'docs/**']
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish a new immutable release after validation
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: write
 jobs:
@@ -23,7 +29,8 @@ jobs:
         run: |
           $v = (Get-Content package.json | ConvertFrom-Json).version
           "value=$v" >> $env:GITHUB_OUTPUT
-      - run: npm ci
+      - name: Install pinned dependencies
+        run: npm ci
       - name: Install export validation tool
         shell: pwsh
         run: choco install ffmpeg -y --no-progress
@@ -36,8 +43,10 @@ jobs:
           Expand-Archive "$env:RUNNER_TEMP/stockfish.zip" "$env:RUNNER_TEMP/stockfish-check"
           $exe = (Get-ChildItem "$env:RUNNER_TEMP/stockfish-check" -Recurse -Filter '*.exe' | Select-Object -First 1).FullName
           "STOCKFISH_PATH=$exe" >> $env:GITHUB_ENV
-      - run: npm run build
-      - run: npm test
+      - name: Build application
+        run: npm run build
+      - name: Run unit and service tests
+        run: npm test
       - name: Build standard portable layout
         run: node scripts/portable.mjs
       - name: Record official runtime signature
@@ -78,12 +87,15 @@ jobs:
             release/*.sha256
           if-no-files-found: ignore
       - name: Publish immutable versioned release assets
-        if: success()
-        continue-on-error: true
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.publish_release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.version.outputs.value }}'
           gh release create "studio-v$v" "release/Chess-Animation-Studio-$v-Windows-Portable.zip" "release/Chess-Animation-Studio-$v-Windows-Portable.zip.sha256" "release/runtime-signature-$v.json" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Chess Animation Studio $v" --notes-file "docs/releases/$v.md"
-          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed; the workflow artifact remains available.' }
+          if ($LASTEXITCODE -ne 0) {
+            "## Release publication failed`nThe validated portable artifact remains available in this run." >> $env:GITHUB_STEP_SUMMARY
+            throw 'Release upload failed; the validated workflow artifact remains available.'
+          }
+          "## Release published`nVersion $v was published successfully." >> $env:GITHUB_STEP_SUMMARY

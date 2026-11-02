@@ -1,0 +1,24 @@
+
+> chess-animation-studio@0.2.16 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/chess-architecture
+
+ ✓ tests/compiledTimeline.test.ts (4 tests) 210ms
+ ✓ tests/renderFrame.test.ts (5 tests) 32ms
+ ✓ tests/core.test.ts (22 tests) 868ms
+   ✓ deterministic evaluation > reconstructs backward seeks, normalized keys, particles and per-format cameras  520ms
+ ✓ tests/runtimeResources.test.ts (5 tests) 6ms
+ ✓ tests/renderGraph.test.ts (6 tests) 13ms
+ ✓ tests/services.test.ts (7 tests) 1253ms
+   ✓ runs local Stockfish and preserves manual badge preference  332ms
+   ✓ exports measured audio offset and trim, and cleans up cancelled jobs  703ms
+ ✓ tests/effectCompositor.test.ts (7 tests) 9ms
+ ✓ tests/assets.test.ts (4 tests) 8ms
+
+ Test Files  8 passed (8)
+      Tests  60 passed (60)
+   Start at  02:13:32
+   Duration  2.03s (transform 430ms, setup 0ms, collect 1.24s, tests 2.40s, environment 1ms, prepare 752ms)
+

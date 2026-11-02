@@ -8,6 +8,8 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 **[Download 0.2.17 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.17/Chess-Animation-Studio-0.2.17-Windows-Portable.zip).** Hardens rendering order, asset loading, effect invalidation and export cleanup. The ZIP is published after the Windows build and packaged-app/export checks pass.
 
+The 0.2.17 release displays **0.2.15** in the app because of a version-label error. Its `BUILD.json` records the correct release version and source commit; the label is corrected in the source for the next build.
+
 **[Download 0.2.16 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.16/Chess-Animation-Studio-0.2.16-Windows-Portable.zip).** Adds the modular rendering engine with shared preview/export rendering and optional capture impact effects. Windows build and packaged app/export checks passed. ZIP SHA-256: `f3d3588b828733294bc9c4ec2a9c46be80f3d7844dd5dd4a42a816c29e6a9ac1`.
 
 **[Download 0.2.15 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.15/Chess-Animation-Studio-0.2.15-Windows-Portable.zip).** Adds a keyboard-accessible playhead slider to the timeline. The Windows workflow builds and validates the package before publishing.

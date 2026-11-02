@@ -1,5 +1,6 @@
 import { z } from "zod";
-export const VERSION = "0.2.15";
+import packageInfo from "../../package.json";
+export const VERSION = packageInfo.version;
 export const formats = [
   "landscape",
   "vertical",

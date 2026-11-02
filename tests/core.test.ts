@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { blank, effect, parseProject } from "../src/core/project";
+import { blank, effect, parseProject, VERSION } from "../src/core/project";
+import packageInfo from "../package.json";
 import {
   importPgn,
   importFen,
@@ -19,6 +20,10 @@ import {
   evaluateMoveLight,
   evaluateBeatSpotlight,
 } from "../src/core/timeline";
+it("uses the package version for the application and saved projects", () => {
+  expect(VERSION).toBe(packageInfo.version);
+  expect(blank().appVersion).toBe(packageInfo.version);
+});
 import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
 describe("legal state and stable identities", () => {
   it("assigns capture flips and a final impact while retaining manual move effects", () => {

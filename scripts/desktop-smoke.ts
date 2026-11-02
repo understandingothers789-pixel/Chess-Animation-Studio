@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
-import { blank } from "../src/core/project";
+import { blank, VERSION } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
 import { duration, segments } from "../src/core/timeline";
 const dir = path.resolve("test-results");
@@ -41,6 +41,8 @@ try {
     if (m.type() === "error") errors.push(m.text());
   });
   await page.waitForSelector(".app-shell");
+  assert.equal(await page.title(), `Chess Animation Studio ${VERSION}`);
+  assert.equal(await page.getByText(`LOCAL STUDIO · v${VERSION}`).count(), 1);
   await page.waitForFunction(
     () => !document.querySelector(".loading"),
     {},

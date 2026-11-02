@@ -116,6 +116,8 @@ function windowOf(role: string) {
   else void w.loadFile(path.join(root, "dist/index.html"), { query: { role } });
   w.webContents.on("render-process-gone", (_e, d) => {
     void log("Renderer stopped: " + d.reason);
+    if (role === "export" && worker === w && job)
+      void failExport(Error("Export renderer stopped: " + d.reason));
   });
   return w;
 }
@@ -195,10 +197,11 @@ async function readToken() {
 }
 async function failExport(error: unknown) {
   const message = (error as Error).message;
-  worker?.destroy();
+  const target = worker,
+    active = job;
   worker = null;
-  const active = job;
   job = null;
+  target?.destroy();
   await active?.clean();
   editor?.webContents.send("export-progress", {
     phase: "Failed",
@@ -491,11 +494,16 @@ app.whenReady().then(async () => {
       preferences.encoder === "auto",
       progress,
     );
+    const active = job;
     try {
-      await job.start();
+      await active.start();
       const assets: Record<string, string> = {};
       for (const a of p.assets)
         if (a.kind === "image") assets[a.id] = await dataUrl(a);
+      if (job !== active) {
+        await active.clean();
+        return false;
+      }
       worker = windowOf("export");
       const target = worker;
       const timer = setTimeout(() => {
@@ -509,9 +517,16 @@ app.whenReady().then(async () => {
         target.webContents.send("export-task", { project: p, options, assets });
       };
       ipcMain.on("worker-ready", ready);
+      target.once("closed", () => {
+        clearTimeout(timer);
+        ipcMain.removeListener("worker-ready", ready);
+        if (worker === target && job === active)
+          void failExport(Error("Export renderer closed unexpectedly."));
+      });
       return true;
     } catch (e) {
-      await failExport(e);
+      if (job === active) await failExport(e);
+      else await active.clean();
       throw e;
     }
   });
@@ -532,7 +547,7 @@ app.whenReady().then(async () => {
       try {
         await active.finish(error);
       } catch (e) {
-        await failExport(e);
+        if (job === active) await failExport(e);
       } finally {
         if (job === active) job = null;
         setTimeout(() => {
@@ -544,10 +559,11 @@ app.whenReady().then(async () => {
     "worker",
   );
   handle("cancelExport", async () => {
-    worker?.destroy();
+    const target = worker,
+      active = job;
     worker = null;
-    const active = job;
     job = null;
+    target?.destroy();
     await active?.cancel();
   });
   handle("presentation", async () => {

@@ -243,3 +243,57 @@ it("exports measured audio offset and trim, and cleans up cancelled jobs", async
     (await fs.readdir(dir)).some((f) => f.startsWith(".chess-studio-export")),
   ).toBe(false);
 }, 20000);
+
+it("preserves an existing output and removes temporary files after renderer/encoder failures", async () => {
+  const dir = await temp(),
+    out = path.join(dir, "existing.mp4");
+  await fs.writeFile(out, "existing output");
+  const options = {
+    format: "landscape" as const,
+    start: 0,
+    end: 1,
+    width: 160,
+    height: 90,
+    fps: 10,
+  };
+  for (const encoder of [
+    process.env.FFMPEG_PATH ?? "ffmpeg",
+    path.join(dir, "missing-encoder"),
+  ]) {
+    const phases: string[] = [];
+    const job = new VideoJob(blank(), options, out, encoder, false, (p) =>
+      phases.push(p.phase),
+    );
+    try {
+      await job.start();
+      if (encoder.includes("missing"))
+        await new Promise((r) => setTimeout(r, 50));
+      await expect(job.finish("Asset preparation failed")).rejects.toThrow();
+      expect(await fs.readFile(out, "utf8")).toBe("existing output");
+      expect(phases).not.toContain("Complete");
+    } finally {
+      await job.clean();
+    }
+    expect(
+      (await fs.readdir(dir)).some((f) => f.startsWith(".chess-studio-export")),
+    ).toBe(false);
+  }
+});
+
+it("cancels during asynchronous encoder startup without leaving late temporary files", async () => {
+  const dir = await temp();
+  const job = new VideoJob(
+    blank(),
+    { format: "landscape", start: 0, end: 1, width: 160, height: 90, fps: 10 },
+    path.join(dir, "cancel.mp4"),
+    process.env.FFMPEG_PATH ?? "ffmpeg",
+    false,
+    () => {},
+  );
+  const started = job.start(),
+    rejected = expect(started).rejects.toThrow(/cancelled/);
+  await job.cancel();
+  await rejected;
+  await job.clean();
+  expect(await fs.readdir(dir)).toEqual([]);
+});

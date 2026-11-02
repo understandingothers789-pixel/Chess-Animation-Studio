@@ -65,6 +65,7 @@ export class VideoJob {
     });
   }
   async start() {
+    this.check();
     if (!this.ffmpeg)
       throw Error("Choose FFmpeg in Settings before exporting.");
     if (
@@ -87,76 +88,90 @@ export class VideoJob {
       50e6 + this.frames * this.width * this.height * 0.006
     )
       throw Error("Insufficient disk space for export.");
-    this.temp = await fs.mkdtemp(
-      path.join(path.dirname(this.destination), ".chess-studio-export-"),
-    );
-    if (this.hardware) {
-      for (const name of ["h264_amf", "h264_nvenc", "h264_qsv"]) {
-        try {
-          await this.run([
-            "-v",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "color=size=64x64:rate=60",
-            "-frames:v",
-            "1",
-            "-c:v",
-            name,
-            "-f",
-            "null",
-            "-",
-          ]);
-          this.encoder = name;
-          break;
-        } catch {
-          this.check();
+    try {
+      this.temp = await fs.mkdtemp(
+        path.join(path.dirname(this.destination), ".chess-studio-export-"),
+      );
+      this.check();
+      if (this.hardware) {
+        for (const name of ["h264_amf", "h264_nvenc", "h264_qsv"]) {
+          try {
+            await this.run([
+              "-v",
+              "error",
+              "-f",
+              "lavfi",
+              "-i",
+              "color=size=64x64:rate=60",
+              "-frames:v",
+              "1",
+              "-c:v",
+              name,
+              "-f",
+              "null",
+              "-",
+            ]);
+            this.encoder = name;
+            break;
+          } catch {
+            this.check();
+          }
         }
       }
+      this.check();
+      this.errors = "";
+      const c = this.launch([
+        "-v",
+        "error",
+        "-y",
+        "-f",
+        "rawvideo",
+        "-pixel_format",
+        "rgba",
+        "-video_size",
+        `${this.width}x${this.height}`,
+        "-framerate",
+        String(this.options.fps ?? 60),
+        "-i",
+        "pipe:0",
+        "-an",
+        "-c:v",
+        this.encoder,
+        ...(this.encoder === "libx264"
+          ? ["-preset", "medium", "-crf", "19"]
+          : ["-b:v", "14M"]),
+        "-pix_fmt",
+        "yuv420p",
+        path.join(this.temp, "video.mp4"),
+      ]);
+      this.completion = new Promise<void>((resolve, reject) => {
+        c.once("error", reject);
+        c.once("exit", (code) =>
+          code === 0
+            ? resolve()
+            : reject(Error(this.errors || "Video encoding failed.")),
+        );
+      });
+      this.completion.catch((e) => {
+        this.renderError = e;
+      });
+      this.progress({
+        phase: `Rendering · ${this.encoder}`,
+        done: 0,
+        total: this.frames,
+      });
+    } catch (error) {
+      try {
+        await this.clean();
+      } catch (cleanup) {
+        throw new AggregateError(
+          [error, cleanup],
+          "Export startup and cleanup failed",
+          { cause: error },
+        );
+      }
+      throw error;
     }
-    this.check();
-    this.errors = "";
-    const c = this.launch([
-      "-v",
-      "error",
-      "-y",
-      "-f",
-      "rawvideo",
-      "-pixel_format",
-      "rgba",
-      "-video_size",
-      `${this.width}x${this.height}`,
-      "-framerate",
-      String(this.options.fps ?? 60),
-      "-i",
-      "pipe:0",
-      "-an",
-      "-c:v",
-      this.encoder,
-      ...(this.encoder === "libx264"
-        ? ["-preset", "medium", "-crf", "19"]
-        : ["-b:v", "14M"]),
-      "-pix_fmt",
-      "yuv420p",
-      path.join(this.temp, "video.mp4"),
-    ]);
-    this.completion = new Promise<void>((resolve, reject) => {
-      c.once("error", reject);
-      c.once("exit", (code) =>
-        code === 0
-          ? resolve()
-          : reject(Error(this.errors || "Video encoding failed.")),
-      );
-    });
-    this.completion.catch((e) => {
-      this.renderError = e;
-    });
-    this.progress({
-      phase: `Rendering · ${this.encoder}`,
-      done: 0,
-      total: this.frames,
-    });
   }
   private check() {
     if (this.cancelled) throw Error("Export cancelled.");
@@ -302,8 +317,21 @@ export class VideoJob {
         });
     if (p.audio.knightHorse)
       for (let i = 0; i < seq.length; i++)
-        if (game.steps[i].before.find(piece => piece.id === game.steps[i].pieceId)?.type === "n")
-          cues.push({ id: "horse" + i, asset: "__knightHorse", move: null, time: 0, volume: 0.7, kind: "custom", bus: "chess", absolute: seq[i].land });
+        if (
+          game.steps[i].before.find(
+            (piece) => piece.id === game.steps[i].pieceId,
+          )?.type === "n"
+        )
+          cues.push({
+            id: "horse" + i,
+            asset: "__knightHorse",
+            move: null,
+            time: 0,
+            volume: 0.7,
+            kind: "custom",
+            bus: "chess",
+            absolute: seq[i].land,
+          });
     for (const c of cues) {
       if (
         c.absolute < this.options.start - 0.3 ||
@@ -312,7 +340,9 @@ export class VideoJob {
         continue;
       const asset = c.asset ? map.get(c.asset) : null;
       add(
-        c.asset === "__knightHorse" ? path.resolve(__dirname, "../dist/sounds/horse.oga") : asset?.path ?? (c.kind === "capture" ? captureSound : moveSound),
+        c.asset === "__knightHorse"
+          ? path.resolve(__dirname, "../dist/sounds/horse.oga")
+          : (asset?.path ?? (c.kind === "capture" ? captureSound : moveSound)),
         Math.max(0, this.options.start - c.absolute),
         0,
         c.absolute - this.options.start,

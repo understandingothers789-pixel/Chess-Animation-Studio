@@ -1,5 +1,5 @@
 import { captureImpact } from "./impact";
-import { evaluate, shortsFraming } from "../../core/timeline";
+import { evaluate, shortsFraming, compileTimeline } from "../../core/timeline";
 import { buildGame, type Game } from "../../core/chess";
 import type { Project, Format } from "../../core/project";
 export function evaluateRenderFrame(
@@ -15,8 +15,9 @@ export function evaluateRenderFrame(
   if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1)
     throw RangeError("Invalid render dimensions");
   const bg = p.layouts[format];
-  const e = evaluate(p, time, game, format);
-  const impact = captureImpact(p, game, time);
+  const timeline = compileTimeline(p);
+  const e = evaluate(p, time, game, format, timeline);
+  const impact = captureImpact(p, game, time, timeline.segments);
   e.camera.x += impact.x;
   e.camera.y += impact.y;
   if (impact.light > e.light.strength)
@@ -87,6 +88,7 @@ export function evaluateRenderFrame(
     h,
     format,
     game,
+    timeline,
     short,
     square,
     crop,

@@ -58,6 +58,24 @@ export function segments(p: Project) {
     return { i, start, depart, land, finish, end: at };
   });
 }
+export interface CompiledTimeline {
+  readonly segments: readonly Readonly<ReturnType<typeof segments>[number]>[];
+  readonly duration: number;
+}
+const timelineCache = new WeakMap<Project, CompiledTimeline>();
+/** Rendering projects are immutable. Mutable authoring tools may use segments(). */
+export function compileTimeline(p: Project): CompiledTimeline {
+  let result = timelineCache.get(p);
+  if (!result) {
+    const sequence = segments(p);
+    result = Object.freeze({
+      segments: Object.freeze(sequence.map((s) => Object.freeze(s))),
+      duration: (sequence.at(-1)?.end ?? p.lead) + p.tail,
+    });
+    timelineCache.set(p, result);
+  }
+  return result;
+}
 export function duration(p: Project) {
   return (segments(p).at(-1)?.end ?? p.lead) + p.tail;
 }
@@ -160,7 +178,13 @@ function cameraTarget(p: Project, g: Game, i: number, f: Format, end = false) {
     b = xy(s.to),
     d = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (c.mode === "game")
-    return { x: b[0] * 0.65 + c.x, y: b[1] * 0.65 + c.y, zoom: 1.45, tilt: c.tilt, rotation: c.rotation };
+    return {
+      x: b[0] * 0.65 + c.x,
+      y: b[1] * 0.65 + c.y,
+      zoom: 1.45,
+      tilt: c.tilt,
+      rotation: c.rotation,
+    };
   return {
     x:
       c.mode === "manual"
@@ -192,9 +216,10 @@ export function evaluate(
   time: number,
   g = buildGame(p),
   format = p.format,
+  compiled?: CompiledTimeline,
 ): Frame {
-  time = clamp(time, 0, duration(p));
-  const seq = segments(p);
+  time = clamp(time, 0, compiled?.duration ?? duration(p));
+  const seq = compiled?.segments ?? segments(p);
   let index = seq.findIndex((s) => time < s.end);
   if (index < 0) index = p.moves.length - 1;
   const seg = seq[index],
@@ -376,7 +401,20 @@ export function evaluate(
         (time - seg.start) /
           (e?.cameras[format]?.transition ?? camera().transition),
       );
-  const cameraBlend = e?.cameras[format]?.mode === "game" ? 1 - Math.pow(1 - clamp((time - seg.start) / (e.cameras[format]?.transition ?? camera().transition), 0, 1), 3) : blend;
+  const cameraBlend =
+    e?.cameras[format]?.mode === "game"
+      ? 1 -
+        Math.pow(
+          1 -
+            clamp(
+              (time - seg.start) /
+                (e.cameras[format]?.transition ?? camera().transition),
+              0,
+              1,
+            ),
+          3,
+        )
+      : blend;
   const cam = {
     x: mix(previous.x, target.x, cameraBlend),
     y: mix(previous.y, target.y, cameraBlend),
@@ -580,7 +618,7 @@ export function evaluateMoveLight(
   p: Project,
   time: number,
   index?: number,
-  seq = segments(p),
+  seq: CompiledTimeline["segments"] = segments(p),
 ) {
   let chosen = { color: "#ff3030", strength: 0 };
   if (!seq.length) return chosen;

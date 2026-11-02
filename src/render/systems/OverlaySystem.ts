@@ -17,6 +17,7 @@ export class OverlaySystem {
   private overlayProject?: Project;
   private overlayIndex = -2;
   private overlayIntro = false;
+  private titlePhase = "";
   private badge: T.Sprite;
   private badgeGlow: T.Sprite;
   private badgeRing: T.Mesh;
@@ -200,17 +201,22 @@ export class OverlaySystem {
     if (p.evalBar || (p.introTitle.enabled && time < p.lead)) {
       const canvas = this.overlayCanvas;
       const intro = p.introTitle.enabled && time < p.lead;
+      // Once flight/impact/opacity settle the title pixels are constant.
+      const phase = intro
+        ? `${Math.min(1, time / Math.max(0.2, Math.min(p.lead * 0.82, 1.5)))}:${Math.min(1, time * 5, (p.lead - time) * 4)}`
+        : "";
       const dirty =
         this.overlayProject !== p ||
         this.overlayIndex !== e.index ||
         canvas.width !== w ||
         canvas.height !== h ||
-        intro ||
-        this.overlayIntro;
+        phase !== this.titlePhase ||
+        intro !== this.overlayIntro;
       if (dirty) {
         this.overlayProject = p;
         this.overlayIndex = e.index;
         this.overlayIntro = intro;
+        this.titlePhase = phase;
         if (canvas.width !== w || canvas.height !== h) {
           canvas.width = w;
           canvas.height = h;

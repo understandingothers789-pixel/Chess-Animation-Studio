@@ -1,0 +1,19 @@
+{
+  "renderer": "Chromium SwiftShader",
+  "width": 1920,
+  "height": 1080,
+  "results": [
+    {
+      "name": "OverlayBenchmarkBaseline",
+      "frames": 40,
+      "repaintRequests": 40,
+      "wallMs": 60.599999997764826
+    },
+    {
+      "name": "OverlaySystem",
+      "frames": 40,
+      "repaintRequests": 18,
+      "wallMs": 24.800000000745058
+    }
+  ]
+}

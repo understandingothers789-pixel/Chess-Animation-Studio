@@ -56,7 +56,7 @@ export class MotionSystem {
         : null;
       const fade = hl.persist
         ? 1
-        : clamp(1 - (time - segmentsFinish(p, e.index)) / hl.fade);
+        : clamp(1 - (time - c.timeline.segments[e.index].finish) / hl.fade);
       const reveal = clamp((e.u - hl.reveal) / 0.12);
       for (const s of e.path) {
         const isFrom = s === e.source,
@@ -184,14 +184,4 @@ export class MotionSystem {
   dispose() {
     this.resources.dispose();
   }
-}
-
-function segmentsFinish(p: Project, i: number) {
-  let t = p.lead;
-  for (let j = 0; j <= i; j++)
-    t +=
-      p.moves[j].effect.delay +
-      p.moves[j].effect.duration +
-      (j < i ? moveHold(p.moves[j].effect) : 0);
-  return t;
 }

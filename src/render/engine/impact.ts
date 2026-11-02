@@ -1,13 +1,17 @@
 import type { Project } from "../../core/project";
 import type { Game } from "../../core/chess";
-import { segments } from "../../core/timeline";
+import { segments, type CompiledTimeline } from "../../core/timeline";
 /** Capture contact drives every accent from one absolute-time event. */
-export function captureImpact(p: Project, game: Game, time: number) {
+export function captureImpact(
+  p: Project,
+  game: Game,
+  time: number,
+  sequence: CompiledTimeline["segments"] = segments(p),
+) {
   let x = 0,
     y = 0,
     light = 0,
     color = "#ffffff";
-  const sequence = segments(p);
   for (let i = 0; i < game.steps.length; i++) {
     if (!game.steps[i].capturedId) continue;
     const effect = p.moves[i].effect,

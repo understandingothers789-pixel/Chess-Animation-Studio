@@ -158,3 +158,124 @@ it("rejects missing production and undeclared reads/writes with resource context
   }
   graph.dispose();
 });
+
+it("isolates project resources through A-B-A while graph resources survive and invalidation is explicit", () => {
+  const local = resource<number>("local", "project"),
+    shared = resource<number>("shared", "graph");
+  const A = {},
+    B = {},
+    released: string[] = [],
+    reads: unknown[] = [];
+  const graph = new RenderGraph<boolean>([
+    {
+      id: "produce",
+      stage: "board",
+      active: (enabled) => enabled,
+      provides: [local, shared],
+      render(_, r) {
+        r.publish(local, 1, () => released.push("local"));
+        r.publish(shared, 2, () => released.push("shared"));
+      },
+    },
+    {
+      id: "read",
+      stage: "post",
+      requires: [
+        { key: local, optional: true },
+        { key: shared, optional: true },
+      ],
+      render(_, r) {
+        reads.push([r.read(local), r.read(shared)]);
+      },
+    },
+  ]);
+  graph.render(2, true, 1, 1, A);
+  graph.render(2, false, 1, 1, A);
+  graph.render(0, false, 1, 1, A);
+  graph.render(0, false, 1, 1, B);
+  graph.render(0, false, 1, 1, A);
+  expect(reads).toEqual([
+    [1, 2],
+    [1, 2],
+    [1, 2],
+    [undefined, 2],
+    [undefined, 2],
+  ]);
+  graph.invalidateResource(shared);
+  graph.render(0, false, 1, 1, A);
+  expect(reads.at(-1)).toEqual([undefined, undefined]);
+  graph.dispose();
+  expect(released).toEqual(["local", "shared"]);
+});
+it("commits replacements before irreversible cleanup and never retries a throwing release", () => {
+  const key = resource<object>("owned", "graph");
+  const old = {},
+    next = {};
+  let releases = 0,
+    publish = true,
+    value = old;
+  const reads: unknown[] = [];
+  const graph = new RenderGraph([
+    {
+      id: "p",
+      stage: "board",
+      provides: [key],
+      active: () => publish,
+      render(_, r) {
+        r.publish(key, value, () => {
+          releases++;
+          if (value === next && releases === 1) throw Error("old release");
+        });
+      },
+    },
+    {
+      id: "c",
+      stage: "post",
+      requires: [{ key }],
+      render(_, r) {
+        reads.push(r.read(key));
+      },
+    },
+  ]);
+  graph.render(0, null, 1, 1);
+  value = next;
+  let failure: unknown;
+  try {
+    graph.render(1, null, 1, 1);
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toMatchObject({ committed: true });
+  publish = false;
+  graph.render(0, null, 1, 1);
+  expect(reads.at(-1)).toBe(next);
+  graph.dispose();
+  graph.dispose();
+  expect(releases).toBe(2);
+});
+it("prevents double ownership and safely republishes the same owned object", () => {
+  const a = resource<object>("a", "graph"),
+    b = resource<object>("b", "graph"),
+    object = {};
+  let count = 0,
+    duplicate = false;
+  const graph = new RenderGraph([
+    {
+      id: "p",
+      stage: "board",
+      provides: [a, b],
+      render(_, r) {
+        r.publish(a, object, () => count++);
+        if (duplicate) r.publish(b, object, () => count++);
+      },
+    },
+  ]);
+  graph.render(0, null, 1, 1);
+  graph.render(1, null, 1, 1);
+  expect(count).toBe(0);
+  duplicate = true;
+  expect(() => graph.render(2, null, 1, 1)).toThrow(/already owned/);
+  expect(count).toBe(0);
+  graph.dispose();
+  expect(count).toBe(1);
+});

@@ -93,7 +93,13 @@ export class RenderGraph<C> {
       throw error;
     }
   }
-  render(time: number, context: C, width: number, height: number) {
+  render(
+    time: number,
+    context: C,
+    width: number,
+    height: number,
+    scope?: unknown,
+  ) {
     if (this.dead) throw Error("Render graph is disposed");
     if (!Number.isFinite(time) || time < 0)
       throw RangeError("Invalid render time");
@@ -117,7 +123,7 @@ export class RenderGraph<C> {
       this.width = width;
       this.height = height;
     }
-    this.resources.begin();
+    this.resources.begin(scope);
     let failure: unknown;
     let failed = false;
     try {
@@ -155,6 +161,10 @@ export class RenderGraph<C> {
       throw error;
     }
     if (failed) throw failure;
+  }
+  invalidateResource(key?: ResourceKey<unknown>) {
+    if (this.dead) throw Error("Render graph is disposed");
+    this.resources.invalidate(key);
   }
   dispose() {
     if (this.dead) return;

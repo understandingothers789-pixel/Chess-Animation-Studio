@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Scene } from "../render/Scene";
+import { Scene, ContextLostError } from "../render/Scene";
 import { sizes, type Project } from "../core/project";
 export function Preview({
   project,
@@ -18,12 +18,25 @@ export function Preview({
     host = useRef<HTMLDivElement>(null),
     scene = useRef<Scene | null>(null),
     latest = useRef({ project, time }),
-    [ready, setReady] = useState(false);
+    [ready, setReady] = useState(false),
+    [assetFailed, setAssetFailed] = useState(false),
+    [retry, setRetry] = useState(0),
+    [generation, setGeneration] = useState(0),
+    [graphicsFailed, setGraphicsFailed] = useState(false);
   latest.current = { project, time };
   const click = useRef(onSquare);
   click.current = onSquare;
   useEffect(() => {
-    const s = new Scene(canvas.current!);
+    setReady(false);
+    let s: Scene;
+    try {
+      s = new Scene(canvas.current!);
+    } catch (error) {
+      onError((error as Error).message);
+      setGraphicsFailed(true);
+      return;
+    }
+    setGraphicsFailed(false);
     scene.current = s;
     let alive = true,
       frame = 0,
@@ -31,10 +44,14 @@ export function Preview({
       renderError = "";
     void s.ready
       .then(() => {
-        available = true;
-        setReady(true);
+        if (alive) {
+          available = true;
+          setReady(true);
+        }
       })
-      .catch((e) => onError(e.message));
+      .catch((e) => {
+        if (alive) onError(e.message);
+      });
     const draw = () => {
       if (alive && available && host.current) {
         const { project, time } = latest.current,
@@ -56,6 +73,10 @@ export function Preview({
           );
           renderError = "";
         } catch (error) {
+          if (error instanceof ContextLostError) {
+            available = false;
+            setGraphicsFailed(true);
+          }
           const message = (error as Error).message;
           if (message !== renderError) onError(message);
           renderError = message;
@@ -71,7 +92,7 @@ export function Preview({
       requested.current.clear();
       s.dispose();
     };
-  }, []);
+  }, [generation]);
   const requested = useRef(new Set<string>());
   useEffect(() => {
     if (!scene.current) return;
@@ -80,11 +101,21 @@ export function Preview({
         scene.current.removeAsset(id);
         requested.current.delete(id);
       }
+    setAssetFailed(false);
+    let active = true;
     for (const [id, url] of Object.entries(assets)) {
       requested.current.add(id);
-      void scene.current.setAsset(id, url).catch((e) => onError(e.message));
+      void scene.current.setAsset(id, url, { retries: 2 }).catch((e) => {
+        if (active) {
+          setAssetFailed(true);
+          onError(e.message);
+        }
+      });
     }
-  }, [assets, ready]);
+    return () => {
+      active = false;
+    };
+  }, [assets, ready, retry]);
   return (
     <div className="preview-host" ref={host}>
       <canvas
@@ -95,7 +126,19 @@ export function Preview({
           if (square) click.current(square);
         }}
       />
-      {!ready && <div className="loading">Preparing vector pieces…</div>}
+      {graphicsFailed && (
+        <button onClick={() => setGeneration((value) => value + 1)}>
+          Reload graphics
+        </button>
+      )}
+      {assetFailed && (
+        <button onClick={() => setRetry((value) => value + 1)}>
+          Retry images
+        </button>
+      )}
+      {!ready && !graphicsFailed && (
+        <div className="loading">Preparing vector pieces…</div>
+      )}
     </div>
   );
 }

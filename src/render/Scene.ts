@@ -14,8 +14,17 @@ import { LightingSystem } from "./systems/LightingSystem";
 import { AtmosphereSystem } from "./systems/AtmosphereSystem";
 import { SpotlightSystem } from "./systems/SpotlightSystem";
 import { OverlaySystem } from "./systems/OverlaySystem";
-import { Assets } from "./engine/Assets";
+import { Assets, type AssetRetry } from "./engine/Assets";
+import type { ResourceKey } from "./engine/RuntimeResources";
+export class ContextLostError extends Error {
+  constructor() {
+    super(
+      "Graphics context was lost. Reload graphics to continue; your project is preserved.",
+    );
+  }
+}
 export interface RenderServices {
+  invalidateResource: (key?: ResourceKey<unknown>) => void;
   invalidate: () => void;
   renderer: T.WebGLRenderer;
   camera: T.OrthographicCamera;
@@ -49,6 +58,12 @@ export class Scene {
   private game?: Game;
   private current?: RenderFrame;
   private dead = false;
+  private contextLost = false;
+  private lost = (event: Event) => {
+    event.preventDefault();
+    this.contextLost = true;
+    this.renderedRevision = -1;
+  };
   private revision = 0;
   private renderedRevision = -1;
   private width = 1;
@@ -63,6 +78,7 @@ export class Scene {
       preserveDrawingBuffer: true,
       powerPreference: "high-performance",
     });
+    canvas.addEventListener("webglcontextlost", this.lost);
     const r = this.renderer;
     r.setPixelRatio(1);
     r.outputColorSpace = T.SRGBColorSpace;
@@ -109,6 +125,7 @@ export class Scene {
       const extraPasses =
         typeof extensions === "function"
           ? extensions({
+              invalidateResource: (key) => this.invalidateResource(key),
               invalidate: () => this.invalidate(),
               renderer: r,
               camera,
@@ -250,6 +267,7 @@ export class Scene {
         } catch (e) {
           errors.push(e);
         }
+      canvas.removeEventListener("webglcontextlost", this.lost);
       void this.ready.catch(() => {});
       if (errors.length)
         throw new AggregateError(
@@ -268,12 +286,20 @@ export class Scene {
     this.assertLive();
     this.revision++;
   }
+  invalidateResource(key?: ResourceKey<unknown>) {
+    this.assertLive();
+    try {
+      this.graph.invalidateResource(key);
+    } finally {
+      this.invalidate();
+    }
+  }
   assetState(id: string) {
     return this.assetStore.state(id);
   }
-  setAsset(id: string, url: string) {
+  setAsset(id: string, url: string, retry?: AssetRetry) {
     this.assertLive();
-    return this.assetStore.set(id, url);
+    return this.assetStore.set(id, url, retry);
   }
   prepareAssets(urls: Record<string, string>) {
     this.assertLive();
@@ -283,6 +309,11 @@ export class Scene {
     this.assertLive();
     this.assetStore.remove(id);
   }
+  private assertGraphics() {
+    this.assertLive();
+    if (this.contextLost || this.renderer.getContext().isContextLost())
+      throw new ContextLostError();
+  }
   render(
     p: Project,
     time: number,
@@ -290,7 +321,7 @@ export class Scene {
     h: number,
     format: Format = p.format,
   ) {
-    this.assertLive();
+    this.assertGraphics();
     const previous = this.current;
     if (
       previous &&
@@ -340,7 +371,7 @@ export class Scene {
       r.setViewport(0, 0, w, h);
       r.setClearColor(c.short ? p.shorts.barColor : "#111918");
       r.clear(true, true, true);
-      this.graph.render(time, c, w, h);
+      this.graph.render(time, c, w, h, p);
     } finally {
       this.root.visible = visible;
       r.resetState();
@@ -354,6 +385,7 @@ export class Scene {
       r.toneMappingExposure = exposure;
       r.outputColorSpace = colorSpace;
     }
+    this.assertGraphics();
     this.current = c;
     this.renderedRevision = frameRevision;
     return c.e;
@@ -377,7 +409,7 @@ export class Scene {
     return worldToSquare(point.x, point.y);
   }
   rgba() {
-    this.assertLive();
+    this.assertGraphics();
     const gl = this.renderer.getContext();
     const bytes = this.width * this.height * 4;
     if (this.readback.length !== bytes) this.readback = new Uint8Array(bytes);
@@ -411,6 +443,7 @@ export class Scene {
   dispose() {
     if (this.dead) return;
     this.dead = true;
+    this.renderer.domElement.removeEventListener("webglcontextlost", this.lost);
     this.readback = new Uint8Array(0);
     const errors: unknown[] = [];
     for (const cleanup of [

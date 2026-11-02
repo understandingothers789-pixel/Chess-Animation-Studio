@@ -74,7 +74,7 @@ export function Output() {
           scene.assetState(id)?.state === "failed"
         ) {
           requested.add(id);
-          void scene.setAsset(id, url).catch(console.error);
+          void scene.setAsset(id, url, { retries: 2 }).catch(console.error);
         }
     });
     const draw = () => {

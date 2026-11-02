@@ -1,11 +1,18 @@
-export type AssetState = "loading" | "ready" | "failed";
+export type AssetState = "loading" | "retrying" | "ready" | "failed";
+export interface AssetRetry {
+  retries?: number;
+  delayMs?: number;
+  retryable?: (error: unknown) => boolean;
+}
 type Entry = {
   url: string;
   state: AssetState;
   promise: Promise<void>;
   error?: unknown;
+  cleanupError?: unknown;
+  cancel?: () => void;
 };
-/** Owns successful values; superseded requests may finish but cannot commit. */
+/** Owns successful values. Requests and bounded backoff share one deduplicated promise. */
 export class Assets<T extends { dispose(): void }> {
   private entries = new Map<string, Entry>();
   private dead = false;
@@ -16,40 +23,82 @@ export class Assets<T extends { dispose(): void }> {
   ) {}
   state(id: string) {
     const e = this.entries.get(id);
-    return e && { url: e.url, state: e.state, error: e.error };
+    return (
+      e && {
+        url: e.url,
+        state: e.state,
+        error: e.error,
+        cleanupError: e.cleanupError,
+      }
+    );
   }
-  set(id: string, url: string): Promise<void> {
+  set(id: string, url: string, retry: AssetRetry = {}): Promise<void> {
     if (this.dead) return Promise.reject(Error("Assets are disposed"));
     const previous = this.entries.get(id);
     if (previous?.url === url && previous.state !== "failed")
       return previous.promise;
+    previous?.cancel?.();
     const entry: Entry = { url, state: "loading", promise: Promise.resolve() };
     this.entries.set(id, entry);
-    entry.promise = Promise.resolve()
-      .then(() => this.load(url))
-      .then(
-        (value) => {
-          if (this.dead || this.entries.get(id) !== entry) {
-            value.dispose();
-            return;
-          }
-          const old = this.values.get(id);
-          this.values.set(id, value);
-          entry.state = "ready";
-          this.invalidate();
-          old?.dispose();
-        },
-        (error) => {
-          if (this.entries.get(id) === entry && !this.dead) {
+    const current = () => !this.dead && this.entries.get(id) === entry;
+    const attempts = Number.isFinite(retry.retries ?? 0)
+      ? Math.max(0, Math.min(5, Math.floor(retry.retries ?? 0)))
+      : 0;
+    entry.promise = Promise.resolve().then(async () => {
+      for (let attempt = 0; current(); attempt++) {
+        entry.state = "loading";
+        let value: T;
+        try {
+          value = await this.load(url);
+        } catch (error) {
+          if (!current()) return;
+          entry.error = error;
+          if (
+            attempt >= attempts ||
+            url.startsWith("data:") ||
+            retry.retryable?.(error) === false
+          ) {
             entry.state = "failed";
-            entry.error = error;
             throw error;
           }
-        },
-      );
+          entry.state = "retrying";
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(
+              resolve,
+              Math.max(1, retry.delayMs ?? 250) * 2 ** attempt,
+            );
+            entry.cancel = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+          });
+          entry.cancel = undefined;
+          continue;
+        }
+        if (!current()) {
+          value.dispose();
+          return;
+        }
+        const old = this.values.get(id);
+        this.values.set(id, value);
+        entry.state = "ready";
+        entry.error = undefined;
+        this.invalidate();
+        // Assignment is committed. Irreversible cleanup failure must not turn a
+        // ready texture into a rejected load or schedule a duplicate download.
+        if (old !== value)
+          try {
+            old?.dispose();
+          } catch (error) {
+            entry.cleanupError = error;
+          }
+        return;
+      }
+    });
     return entry.promise;
   }
   remove(id: string) {
+    this.entries.get(id)?.cancel?.();
     this.entries.delete(id);
     const old = this.values.get(id);
     this.values.delete(id);
@@ -71,8 +120,9 @@ export class Assets<T extends { dispose(): void }> {
   dispose() {
     if (this.dead) return;
     this.dead = true;
+    for (const entry of this.entries.values()) entry.cancel?.();
     this.entries.clear();
-    const values = [...this.values.values()];
+    const values = [...new Set(this.values.values())];
     this.values.clear();
     const errors: unknown[] = [];
     for (const value of values)

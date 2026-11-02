@@ -32,6 +32,10 @@ try {
     ],
   });
   const page = await browser.newPage();
+  page.on("console", (message) => {
+    if (message.text().startsWith("PHASE2_METRICS"))
+      console.log(message.text());
+  });
   // tsx preserves callback names using this helper; Playwright serializes the callback body.
   await page.addInitScript("globalThis.__name = (fn) => fn;");
   await page.route("**/render-fixture.html", (route) =>
@@ -125,7 +129,10 @@ try {
         }
       }
     if (!legacy) {
-      await (await import("/scripts/browser-hardening.ts" as string)).verifyHardening();
+      const metrics = await (
+        await import("/scripts/browser-hardening.ts" as string)
+      ).verifyHardening();
+      console.log("PHASE2_METRICS " + JSON.stringify(metrics));
       // Both preview and export instantiate this same facade, at the same output size.
       const secondCanvas = document.createElement("canvas");
       const second = new Scene(

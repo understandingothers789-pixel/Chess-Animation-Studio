@@ -109,6 +109,42 @@ export async function verifyHardening() {
     calls === beforeAsset + 1,
     "Asset preparation did not invalidate the frame",
   );
+  let resetMs = 0,
+    resets = 0;
+  const reset = scene.renderer.resetState.bind(scene.renderer);
+  scene.renderer.resetState = () => {
+    const at = performance.now();
+    reset();
+    resetMs += performance.now() - at;
+    resets++;
+  };
+  const playbackAt = performance.now();
+  for (let i = 0; i < 60; i++) scene.render(p, i / 60, 270, 480);
+  const playbackMs = performance.now() - playbackAt;
+  const gl = scene.renderer.getContext(),
+    lose = gl.getExtension("WEBGL_lose_context");
+  if (!lose) throw Error("Context-loss simulation unavailable");
+  const lost = new Promise<void>((resolve) =>
+    canvas.addEventListener("webglcontextlost", () => resolve(), {
+      once: true,
+    }),
+  );
+  lose.loseContext();
+  await lost;
+  let rejectedLoss = false;
+  try {
+    scene.render(p, 0, 270, 480);
+  } catch (error) {
+    rejectedLoss = (error as Error).message.includes("Graphics context");
+  }
+  assert(rejectedLoss, "Lost context incorrectly returned a cached frame");
+  let rejectedReadback = false;
+  try {
+    scene.rgba();
+  } catch {
+    rejectedReadback = true;
+  }
+  assert(rejectedReadback, "Lost context permitted export readback");
   scene.dispose();
   // Repeated leases, changing projects, and closing one renderer while another lives.
   const abandoned = new Scene(document.createElement("canvas"));
@@ -132,4 +168,13 @@ export async function verifyHardening() {
     );
     b.dispose();
   }
+  return {
+    frames: 60,
+    resets,
+    resetMs,
+    playbackMs,
+    renderer: "SwiftShader",
+    width: 270,
+    height: 480,
+  };
 }

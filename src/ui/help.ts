@@ -1,5 +1,7 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Background color":
+    "Base background color for the composition; image and gradient treatments are configured below.",
   "Enable cinematic captures":
     "Add optional sparks, fragments, shockwaves and drifting dust at capture impact. Historical capture effects remain active.",
   "Capture cinema preset":

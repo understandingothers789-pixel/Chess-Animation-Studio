@@ -57,6 +57,7 @@ import {
   type PanelProps,
 } from "./Panels";
 import { Timeline } from "./Timeline";
+import { movePreviewWindow } from "./movePreview";
 import { SettingsSearch } from "./SettingsSearch";
 import { clock, Select, Range, SettingsScope } from "./controls";
 import type { Settings, ExportProgress } from "../bridge";
@@ -583,18 +584,9 @@ export function App() {
       setAudition(null);
       return;
     }
-    const segment = segments(p)[selected];
+    const segment = movePreviewWindow(p, selected);
     if (!segment) return;
-    const impact =
-      segment.depart +
-      p.moves[selected].effect.duration *
-        p.moves[selected].effect.capture.impact;
-    const effectEnd = Math.max(
-      segment.end,
-      impact + p.moves[selected].effect.capture.dustDuration,
-      p.cinematic.enabled ? impact + p.cinematic.duration : 0,
-    );
-    setAudition({ time, playing, end: Math.min(duration(p), effectEnd) });
+    setAudition({ time, playing, end: segment.end });
     setTime(segment.start);
     timeRef.current = segment.start;
     setPlaying(true);

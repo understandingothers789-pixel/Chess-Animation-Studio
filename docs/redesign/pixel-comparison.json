@@ -1,0 +1,16 @@
+{
+  "historical": {
+    "render_requests_per_run": 216,
+    "unique_fixtures": 168,
+    "candidate_equals_fetched_baseline": true,
+    "candidate_equals_preserved_phase3": true,
+    "bloom_example_byte_identical": true
+  },
+  "cinematic": {
+    "goldens": 40,
+    "candidate_equals_committed_approved_goldens": true
+  },
+  "tolerance": 0,
+  "browser": "Chromium 154.0.8037.57 / SwiftShader",
+  "starting_commit": "ead2febb2599fcd6e2fc62ac0b5bdbeed15bd4b7"
+}

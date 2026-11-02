@@ -78,7 +78,10 @@ export function Inspector({
           (e as any)[key] = structuredClone(defaults[key]);
       }),
     );
-  const e = move.effect,
+  const e =
+      validChecked.size && !validChecked.has(move.id)
+        ? targets(project)[0].effect
+        : move.effect,
     change = <K extends keyof Effect>(key: K, value: Effect[K]) =>
       edit(String(key), (p) => {
         each(p, (e) => {
@@ -164,7 +167,7 @@ export function Inspector({
         <span className="eyebrow">SELECTED MOVE · {index + 1}</span>
         <h2>
           {move.san}
-          <small>{presetLabels[e.preset]}</small>
+          <small>{presetLabels[move.effect.preset]}</small>
         </h2>
         <p className="hint">
           {selectionCount} move{selectionCount > 1 ? "s" : ""} selected · Move,
@@ -1266,7 +1269,7 @@ export function Inspector({
                 options={channels}
                 onChange={setChannel}
               />
-              {(e.keys[channel] ?? []).map((k, i) => (
+              {(move.effect.keys[channel] ?? []).map((k, i) => (
                 <div className="key-row" key={i}>
                   <ScrubNumber
                     title={settingHelp(`Key ${i + 1} time`)}

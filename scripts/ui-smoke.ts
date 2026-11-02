@@ -146,6 +146,15 @@ try {
       "0.8",
     );
   }
+  await moves.nth(0).click();
+  await page.getByLabel("Duration value", { exact: true }).fill("0.9");
+  await moves.nth(1).click({ modifiers: ["Control"] });
+  await moves.nth(1).click({ modifiers: ["Control"] });
+  assert.equal(
+    await page.getByLabel("Duration value", { exact: true }).inputValue(),
+    "0.9",
+    "Controls show the checked selection even if the active move was unchecked",
+  );
   await inspector.getByRole("button", { name: "effects", exact: true }).click();
   await moves.nth(2).click();
   assert.equal(

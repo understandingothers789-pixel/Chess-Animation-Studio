@@ -1,0 +1,9 @@
+{
+  "run": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41391595330",
+  "sourceCommit": "efaedf3207fd1a4fe7807630f44450e92b6afdd8",
+  "conclusion": "success",
+  "duration": "8m 8s",
+  "linuxVisualGate": "success",
+  "nativeWindowsBuildAndPackagedSmoke": "success",
+  "publication": "skipped; push event does not authorize publication"
+}

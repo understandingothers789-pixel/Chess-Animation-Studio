@@ -70,3 +70,5 @@ Three.js reported 117 geometries in all measured configurations and 14 textures 
 - `efaedf3`: browser/unit/Electron regressions and Linux visual release gate.
 
 [Hosted Phase III validation run](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41391595330) tests the source commit `efaedf3`; the subsequent documentation commit changes only this report, architecture pointers and saved evidence. The run is a normal push validation, so its release-publication condition is false.
+
+Hosted validation completed successfully in **8m 8s**: the Linux/Chromium gate passed, followed by native Windows build, unit/service tests, portable packaging, packaged bloom export and presentation recovery. Publication was skipped because this was a push event. See `render-phase3/hosted-validation.json`.

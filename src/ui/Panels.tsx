@@ -711,7 +711,15 @@ export function MusicPanel(q: PanelProps) {
             })
           }
         />
-        <Toggle label="Horse sound for knight moves" checked={p.audio.knightHorse} onChange={(v) => edit("Knight horse sound", p => { p.audio.knightHorse = v; })} />
+        <Toggle
+          label="Horse sound for knight moves"
+          checked={p.audio.knightHorse}
+          onChange={(v) =>
+            edit("Knight horse sound", (p) => {
+              p.audio.knightHorse = v;
+            })
+          }
+        />
         <Range
           label="Chess sounds volume"
           value={p.audio.chess}
@@ -1049,6 +1057,52 @@ export function ScenePanel(q: PanelProps) {
           below. Camera settings and the intro still apply. Background images
           apply to the other views.
         </p>
+      </Section>
+      <Section
+        title="Cinematic bloom"
+        onReset={() =>
+          edit("Reset bloom", (p) => {
+            p.bloom = blank().bloom;
+          })
+        }
+      >
+        <Toggle
+          label="Enable bloom"
+          checked={p.bloom.enabled}
+          onChange={(v) =>
+            edit("Bloom", (p) => {
+              p.bloom.enabled = v;
+            })
+          }
+        />
+        {(["intensity", "threshold", "radius", "softness"] as const).map(
+          (key) => (
+            <Range
+              key={key}
+              label={`Bloom ${key}`}
+              value={p.bloom[key]}
+              min={key === "softness" ? 0.001 : 0}
+              max={key === "radius" ? 8 : key === "intensity" ? 2 : 1}
+              onChange={(v) =>
+                edit("Bloom", (p) => {
+                  p.bloom[key] = v;
+                })
+              }
+            />
+          ),
+        )}
+        {(["pieces", "captures", "highlights"] as const).map((key) => (
+          <Toggle
+            key={key}
+            label={`Glow ${key}`}
+            checked={p.bloom[key]}
+            onChange={(v) =>
+              edit("Bloom selection", (p) => {
+                p.bloom[key] = v;
+              })
+            }
+          />
+        ))}
       </Section>
       <Section
         title="Snow particles · amount & appearance"
@@ -1467,8 +1521,18 @@ export function AnalysisPanel(q: PanelProps) {
   return (
     <>
       <Section title="Evaluation bar">
-        <Toggle label="Show evaluation bar" checked={p.evalBar} onChange={(v) => q.edit("Evaluation bar", p => { p.evalBar = v; })} />
-        <p className="hint">Run Stockfish review to update the bar for each move.</p>
+        <Toggle
+          label="Show evaluation bar"
+          checked={p.evalBar}
+          onChange={(v) =>
+            q.edit("Evaluation bar", (p) => {
+              p.evalBar = v;
+            })
+          }
+        />
+        <p className="hint">
+          Run Stockfish review to update the bar for each move.
+        </p>
       </Section>
       <Section title="Analysis suggestions">
         <Select

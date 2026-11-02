@@ -1,5 +1,19 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Enable bloom":
+    "Add selective cinematic glow in preview, presentation and export. Off preserves the original image.",
+  "Bloom intensity":
+    "Glow strength from 0 to 2. Lower values preserve contrast.",
+  "Bloom threshold":
+    "Minimum linear brightness to glow, from 0 to 1. Higher values select brighter details.",
+  "Bloom radius":
+    "Spatial blur radius from 0 to 8 half-resolution pixels. No temporal trails.",
+  "Bloom softness":
+    "Width of the brightness transition, from 0.001 to 1. Higher values soften the threshold.",
+  "Glow pieces": "Include visible chess pieces in the glow mask.",
+  "Glow captures": "Include capture halos, bursts and dust in the glow mask.",
+  "Glow highlights":
+    "Include move paths and highlight trails in the glow mask.",
   "Capture camera shake":
     "Add a short, deterministic camera tremor at the capture impact phase. Zero disables it; range 0–1.",
   "Capture light pulse":

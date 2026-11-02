@@ -45,6 +45,7 @@ export class PieceSystem {
           enableCrumble(mat);
           return mat;
         });
+        m.userData.bloom = "pieces";
         this.meshes.set(key, m);
         this.root.add(m);
       }

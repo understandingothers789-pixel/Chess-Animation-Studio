@@ -22,9 +22,11 @@ export class CaptureSystem {
         blending: T.AdditiveBlending,
       }),
     );
+    this.halo.userData.bloom = "captures";
     this.root.add(this.halo);
     this.bursts = makePoints(36);
     this.bursts.frustumCulled = false;
+    this.bursts.userData.bloom = "captures";
     this.root.add(this.bursts);
     this.captureDust = makePoints(2048);
     this.captureDust.geometry.setAttribute(
@@ -44,6 +46,7 @@ export class CaptureSystem {
     dustMat.depthTest = true;
     this.captureDust.renderOrder = 25;
     this.captureDust.frustumCulled = false;
+    this.captureDust.userData.bloom = "captures";
     this.root.add(this.captureDust);
     for (const m of [this.halo, this.bursts, this.captureDust]) {
       this.resources.own(m.geometry);

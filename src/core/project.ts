@@ -409,7 +409,30 @@ const analysisSchema = z.object({
     })
     .optional(),
 });
+export const bloomDefaults = {
+  enabled: false,
+  intensity: 0.35,
+  threshold: 0.55,
+  radius: 2,
+  softness: 0.2,
+  pieces: true,
+  captures: true,
+  highlights: true,
+};
+export const bloomSchema = z
+  .object({
+    enabled: z.boolean(),
+    intensity: n(0, 2),
+    threshold: n(0, 1),
+    radius: n(0, 8),
+    softness: n(0.001, 1),
+    pieces: z.boolean(),
+    captures: z.boolean(),
+    highlights: z.boolean(),
+  })
+  .default(bloomDefaults);
 export const projectSchema = z.object({
+  bloom: bloomSchema,
   schema: z.literal(2),
   appVersion: str,
   id: str,
@@ -649,6 +672,7 @@ export type Move = Project["moves"][number];
 export const uid = () => crypto.randomUUID();
 export function blank(): Project {
   return {
+    bloom: { ...bloomDefaults },
     schema: 2,
     appVersion: VERSION,
     id: uid(),

@@ -1,4 +1,5 @@
 import * as T from "three";
+import { BloomSystem } from "./systems/BloomSystem";
 import { worldToSquare } from "./engine/coordinates";
 import type { Project, Format } from "../core/project";
 import { buildGame, type Game } from "../core/chess";
@@ -96,7 +97,9 @@ export class Scene {
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
     const capture = new CaptureSystem(this.root, camera, pieces.meshes);
+    const bloom = new BloomSystem(r, this.world, camera);
     const systems = [
+      bloom,
       capture,
       pieces,
       atmosphere,
@@ -238,6 +241,13 @@ export class Scene {
           inputs: ["scene-color"],
           active: (c) => !!c.e.jam && c.e.jam.envelope > 0.001,
           render: (c) => spotlight.post(c),
+        },
+        {
+          id: "cinematic-bloom",
+          stage: "post",
+          after: ["spotlight-post"],
+          render: (c) => bloom.render(c),
+          dispose: () => bloom.dispose(),
         },
         {
           id: "information-overlay",

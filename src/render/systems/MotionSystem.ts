@@ -15,6 +15,7 @@ export class MotionSystem {
       );
       m.position.z = 0.012;
       m.visible = false;
+      m.userData.bloom = "highlights";
       this.paths.push(m);
       this.root.add(m);
     }
@@ -26,6 +27,7 @@ export class MotionSystem {
         side: T.DoubleSide,
       }),
     );
+    this.trail.userData.bloom = "highlights";
     this.root.add(this.trail);
     for (const m of [...this.paths, this.trail]) {
       this.resources.own(m.geometry);

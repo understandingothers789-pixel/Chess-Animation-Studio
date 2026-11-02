@@ -1,0 +1,9 @@
+{
+  "frames": 60,
+  "resets": 59,
+  "resetMs": 0.7999999970197678,
+  "playbackMs": 108,
+  "renderer": "SwiftShader",
+  "width": 270,
+  "height": 480
+}

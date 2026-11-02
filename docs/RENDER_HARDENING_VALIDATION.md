@@ -1,5 +1,7 @@
 # Rendering architecture hardening — implementation report
 
+For subsequent resource validity, retry, context-loss and publication changes, see [Phase II validation](RENDER_PHASE2_VALIDATION.md).
+
 ## A. Repository state
 
 Repository: `understandingothers789-pixel/Chess-Animation-Studio`.

@@ -1,0 +1,6 @@
+
+> chess-animation-studio@0.2.17 test:render
+> node --import tsx scripts/render-regression.ts final
+
+PHASE2_METRICS {"frames":60,"resets":59,"resetMs":0.7999999970197678,"playbackMs":108,"renderer":"SwiftShader","width":270,"height":480}
+PASS: 216 render requests, 168 unique fixtures (final)

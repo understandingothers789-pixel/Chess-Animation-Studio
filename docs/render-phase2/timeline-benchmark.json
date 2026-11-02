@@ -1,0 +1,25 @@
+{
+  "node": "v24.19.0",
+  "platform": "linux",
+  "arch": "x64",
+  "results": [
+    {
+      "plies": 4,
+      "frames": 3000,
+      "baselineMedianMs": 19.73480999999998,
+      "compiledMedianMs": 19.78335800000002
+    },
+    {
+      "plies": 60,
+      "frames": 3000,
+      "baselineMedianMs": 30.208642999999938,
+      "compiledMedianMs": 16.675786000000016
+    },
+    {
+      "plies": 300,
+      "frames": 3000,
+      "baselineMedianMs": 103.85781799999995,
+      "compiledMedianMs": 29.139443999999912
+    }
+  ]
+}

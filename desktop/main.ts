@@ -36,6 +36,7 @@ let editor: BrowserWindow | null = null,
   worker: BrowserWindow | null = null,
   job: VideoJob | null = null,
   analysis: AbortController | null = null;
+let exportGeneration = 0;
 let pathProjectId: string | null = null;
 let currentPath: string | null = null,
   lastProject: Project | null = null;
@@ -484,8 +485,11 @@ app.whenReady().then(async () => {
       filters: [{ name: "MP4 video", extensions: ["mp4"] }],
     });
     if (r.canceled || !r.filePath) return false;
-    const progress = (v: unknown) =>
-      editor?.webContents.send("export-progress", v);
+    const generation = ++exportGeneration;
+    const progress = (v: unknown) => {
+      if (generation === exportGeneration)
+        editor?.webContents.send("export-progress", v);
+    };
     job = new VideoJob(
       p,
       options,

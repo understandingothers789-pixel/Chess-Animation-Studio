@@ -11,6 +11,8 @@ export class VideoJob {
   private child: ChildProcessWithoutNullStreams | null = null;
   private temp = "";
   private cancelled = false;
+  private finalizing: Promise<void> | null = null;
+  private finalized = false;
   private encoder = "libx264";
   private errors = "";
   private completion: Promise<void> | null = null;
@@ -191,6 +193,7 @@ export class VideoJob {
         (e) => (e ? reject(e) : resolve()),
       );
     });
+    this.check();
     this.count++;
     this.progress({
       phase: `Rendering · ${this.encoder}`,
@@ -209,7 +212,14 @@ export class VideoJob {
       this.check();
       await this.mixAudio();
       this.check();
-      await fs.rename(path.join(this.temp, "complete.mp4"), this.destination);
+      // Atomic rename is the irreversible commit point. A cancellation arriving
+      // after it starts waits for that outcome rather than claiming rollback.
+      this.finalizing = fs.rename(
+        path.join(this.temp, "complete.mp4"),
+        this.destination,
+      );
+      await this.finalizing;
+      this.finalized = true;
       this.progress({
         phase: "Complete",
         done: this.frames,
@@ -395,6 +405,12 @@ export class VideoJob {
     await this.run(args);
   }
   async cancel() {
+    if (this.finalizing) {
+      try {
+        await this.finalizing;
+      } catch {}
+    }
+    if (this.finalized) return;
     this.cancelled = true;
     this.child?.kill();
     await this.clean();

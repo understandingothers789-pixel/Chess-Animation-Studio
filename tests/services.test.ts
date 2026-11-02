@@ -297,3 +297,104 @@ it("cancels during asynchronous encoder startup without leaving late temporary f
   await job.clean();
   expect(await fs.readdir(dir)).toEqual([]);
 });
+
+it("rejects an acknowledged frame after cancellation instead of reporting late progress", async () => {
+  const phases: string[] = [];
+  const job = new VideoJob(
+    blank(),
+    { format: "landscape", start: 0, end: 1, width: 2, height: 2, fps: 1 },
+    "unused.mp4",
+    "unused",
+    false,
+    (p) => phases.push(p.phase),
+  );
+  let acknowledge!: (error?: Error) => void;
+  Object.assign(job, {
+    child: {
+      stdin: {
+        write(_bytes: unknown, done: (error?: Error) => void) {
+          acknowledge = done;
+        },
+      },
+      kill() {},
+    },
+  });
+  const pending = job.frame(new Uint8Array(16), 0),
+    rejected = expect(pending).rejects.toThrow(/cancelled/);
+  await job.cancel();
+  acknowledge();
+  await rejected;
+  expect(phases).toEqual(["Cancelled"]);
+});
+
+it("treats final rename as an irreversible commit and preserves destinations when it fails", async () => {
+  const { vi } = await import("vitest");
+  const dir = await temp(),
+    out = path.join(dir, "output.mp4");
+  const realRename = fs.rename.bind(fs);
+  const options = {
+    format: "landscape" as const,
+    start: 0,
+    end: 1,
+    width: 16,
+    height: 16,
+    fps: 1,
+  };
+  const phases: string[] = [];
+  const job = new VideoJob(
+    blank(),
+    options,
+    out,
+    process.env.FFMPEG_PATH ?? "ffmpeg",
+    false,
+    (p) => phases.push(p.phase),
+  );
+  await job.start();
+  await job.frame(new Uint8Array(16 * 16 * 4), 0);
+  let entered!: () => void, proceed!: () => void;
+  const barrier = new Promise<void>((r) => (entered = r)),
+    gate = new Promise<void>((r) => (proceed = r));
+  const spy = vi
+    .spyOn(fs, "rename")
+    .mockImplementationOnce(async (from, to) => {
+      entered();
+      await gate;
+      return realRename(from, to);
+    });
+  try {
+    const finish = job.finish();
+    await barrier;
+    const cancel = job.cancel();
+    proceed();
+    await Promise.all([finish, cancel]);
+    expect(phases.at(-1)).toBe("Complete");
+    expect(phases).not.toContain("Cancelled");
+  } finally {
+    spy.mockRestore();
+    await job.clean();
+  }
+  await fs.writeFile(out, "keep existing");
+  const failed = new VideoJob(
+    blank(),
+    options,
+    out,
+    process.env.FFMPEG_PATH ?? "ffmpeg",
+    false,
+    () => {},
+  );
+  await failed.start();
+  await failed.frame(new Uint8Array(16 * 16 * 4), 0);
+  const failure = vi
+    .spyOn(fs, "rename")
+    .mockRejectedValueOnce(Error("final rename failed"));
+  try {
+    await expect(failed.finish()).rejects.toThrow("final rename failed");
+  } finally {
+    failure.mockRestore();
+    await failed.clean();
+  }
+  expect(await fs.readFile(out, "utf8")).toBe("keep existing");
+  expect(
+    (await fs.readdir(dir)).some((f) => f.startsWith(".chess-studio-export")),
+  ).toBe(false);
+});

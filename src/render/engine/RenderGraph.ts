@@ -1,18 +1,27 @@
 import { composePasses, type PassDescriptor } from "../effectCompositor";
+import {
+  RuntimeResources,
+  type ResourceKey,
+  type ResourceUse,
+} from "./RuntimeResources";
 export interface Pass<C> extends PassDescriptor {
   /** Named resources: producers are scheduled before consumers. */
   inputs?: readonly string[];
   outputs?: readonly string[];
+  /** Typed runtime data; legacy inputs/outputs remain ordering-only. */
+  requires?: readonly ResourceUse[];
+  provides?: readonly ResourceKey<unknown>[];
   initialize?: () => void;
   resize?: (width: number, height: number) => void;
   dispose?: () => void;
   active?: (context: C) => boolean;
-  render: (context: C) => void;
+  render: (context: C, resources: RuntimeResources) => void;
 }
 /** Compiles structural dependencies once; activation remains absolute-time based. */
 export class RenderGraph<C> {
   private readonly ordered: readonly Pass<C>[];
   private dead = false;
+  private resources = new RuntimeResources();
   private width = 0;
   private height = 0;
   constructor(passes: readonly Pass<C>[]) {
@@ -23,10 +32,27 @@ export class RenderGraph<C> {
           throw Error(`Multiple producers for ${output}`);
         producers.set(output, p.id);
       }
+    const runtimeProducers = new Map<ResourceKey<unknown>, string>();
+    const names = new Set<string>();
+    for (const p of passes)
+      for (const key of p.provides ?? []) {
+        if (runtimeProducers.has(key) || names.has(key.name))
+          throw Error(`Multiple producers for ${key.name}`);
+        runtimeProducers.set(key, p.id);
+        names.add(key.name);
+      }
     const linked = passes.map((p) => ({
       ...p,
       after: [
         ...(p.after ?? []),
+        ...(p.requires ?? []).flatMap((use) => {
+          const producer = runtimeProducers.get(use.key);
+          if (!producer && !use.optional && !use.fallback)
+            throw Error(
+              `Pass ${p.id}: missing producer for required resource ${use.key.name}`,
+            );
+          return producer ? [producer] : [];
+        }),
         ...(p.inputs ?? []).map((input) => {
           const producer = producers.get(input);
           if (!producer) throw Error(`Pass ${p.id}: missing input ${input}`);
@@ -51,7 +77,19 @@ export class RenderGraph<C> {
         p.initialize?.();
       }
     } catch (error) {
-      for (const p of initialized.reverse()) p.dispose?.();
+      const errors: unknown[] = [];
+      for (const p of initialized.reverse())
+        try {
+          p.dispose?.();
+        } catch (cleanup) {
+          errors.push(cleanup);
+        }
+      if (errors.length)
+        throw new AggregateError(
+          [error, ...errors],
+          "Render graph initialization failed; cleanup also failed",
+          { cause: error },
+        );
       throw error;
     }
   }
@@ -67,24 +105,56 @@ export class RenderGraph<C> {
     )
       throw RangeError("Invalid render dimensions");
     if (width !== this.width || height !== this.height) {
-      for (const p of this.ordered) p.resize?.(width, height);
+      // Invalidate first: after partial failure even reverting to the old size
+      // must retry every hook, rather than accepting partially resized state.
+      this.width = this.height = 0;
+      for (const p of this.ordered)
+        try {
+          p.resize?.(width, height);
+        } catch (error) {
+          throw new Error(`Resize pass "${p.id}" failed`, { cause: error });
+        }
       this.width = width;
       this.height = height;
     }
-    for (const p of this.ordered) {
-      if (
-        p.enabled === false ||
-        time < (p.start ?? -Infinity) ||
-        time >= (p.end ?? Infinity) ||
-        p.active?.(context) === false
-      )
-        continue;
-      try {
-        p.render(context);
-      } catch (error) {
-        throw new Error(`Render pass "${p.id}" failed`, { cause: error });
+    this.resources.begin();
+    let failure: unknown;
+    let failed = false;
+    try {
+      for (const p of this.ordered) {
+        if (
+          p.enabled === false ||
+          time < (p.start ?? -Infinity) ||
+          time >= (p.end ?? Infinity) ||
+          p.active?.(context) === false
+        )
+          continue;
+        try {
+          this.resources.enter(p.id, p.requires ?? [], p.provides ?? []);
+          p.render(context, this.resources);
+        } catch (error) {
+          throw new Error(
+            `Render pass "${p.id}" failed: ${error instanceof Error ? error.message : String(error)}`,
+            { cause: error },
+          );
+        }
       }
+    } catch (error) {
+      failure = error;
+      failed = true;
     }
+    try {
+      this.resources.finish(!failed);
+    } catch (error) {
+      if (failed)
+        throw new AggregateError(
+          [failure, error],
+          "Render and resource cleanup failed",
+          { cause: failure },
+        );
+      throw error;
+    }
+    if (failed) throw failure;
   }
   dispose() {
     if (this.dead) return;
@@ -96,6 +166,11 @@ export class RenderGraph<C> {
       } catch (e) {
         errors.push(e);
       }
+    try {
+      this.resources.dispose();
+    } catch (error) {
+      errors.push(error);
+    }
     if (errors.length)
       throw new AggregateError(errors, "Render graph cleanup failed");
   }

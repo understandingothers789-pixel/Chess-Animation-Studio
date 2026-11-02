@@ -82,3 +82,101 @@ it("cleans partially initialized passes and reports failing render nodes", () =>
   expect(() => graph.render(NaN, {}, 10, 10)).toThrow(/time/);
   expect(() => graph.render(0, {}, 0, 10)).toThrow(/dimensions/);
 });
+
+it("separates world setup, draw, post and overlays without changing equal-priority order", () => {
+  const calls: string[] = [];
+  const pass = (id: string, stage: Pass<null>["stage"], extra = {}) => ({
+    id,
+    stage,
+    render: () => calls.push(id),
+    ...extra,
+  });
+  const graph = new RenderGraph([
+    pass("base", "board"),
+    pass("world", "world"),
+    pass("overlay", "overlay"),
+    pass("post", "post"),
+    pass("extension", "board"),
+    pass("last", "board", { after: ["extension"], priority: -100 }),
+  ]);
+  graph.render(0, null, 10, 10);
+  expect(calls).toEqual([
+    "base",
+    "extension",
+    "last",
+    "world",
+    "post",
+    "overlay",
+  ]);
+  expect(
+    () =>
+      new RenderGraph([
+        pass("world", "world", { after: ["post"] }),
+        pass("post", "post"),
+      ]),
+  ).toThrow(/stage order/);
+});
+
+it("continues rollback after cleanup errors and preserves the original initialization failure", () => {
+  const calls: string[] = [],
+    original = Error("initialization");
+  let failure: AggregateError | undefined;
+  try {
+    new RenderGraph([
+      {
+        id: "a",
+        stage: "board",
+        render() {},
+        dispose() {
+          calls.push("a");
+        },
+      },
+      {
+        id: "b",
+        stage: "board",
+        render() {},
+        initialize() {
+          throw original;
+        },
+        dispose() {
+          calls.push("b");
+          throw Error("cleanup");
+        },
+      },
+    ]);
+  } catch (error) {
+    failure = error as AggregateError;
+  }
+  expect(calls).toEqual(["b", "a"]);
+  expect(failure?.cause).toBe(original);
+  expect(failure?.errors).toHaveLength(2);
+});
+
+it("retries all resize hooks after partial failure, including when reverting dimensions", () => {
+  const sizes: number[] = [];
+  let fail = false;
+  const graph = new RenderGraph([
+    {
+      id: "a",
+      stage: "board",
+      render() {},
+      resize(w) {
+        sizes.push(w);
+      },
+    },
+    {
+      id: "b",
+      stage: "board",
+      render() {},
+      resize() {
+        if (fail) throw Error("resize");
+      },
+    },
+  ]);
+  graph.render(0, {}, 10, 10);
+  fail = true;
+  expect(() => graph.render(0, {}, 20, 20)).toThrow(/Resize pass "b"/);
+  fail = false;
+  graph.render(0, {}, 10, 10);
+  expect(sizes).toEqual([10, 20, 10]);
+});

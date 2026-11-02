@@ -1,4 +1,5 @@
 import * as T from "three";
+import { CinematicCaptureSystem } from "./systems/CinematicCaptureSystem";
 import { BloomSystem } from "./systems/BloomSystem";
 import { worldToSquare } from "./engine/coordinates";
 import type { Project, Format } from "../core/project";
@@ -97,9 +98,15 @@ export class Scene {
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
     const capture = new CaptureSystem(this.root, camera, pieces.meshes);
+    const cinematic = new CinematicCaptureSystem(
+      this.root,
+      camera,
+      pieces.meshes,
+    );
     const bloom = new BloomSystem(r, this.world, camera);
     const systems = [
       bloom,
+      cinematic,
       capture,
       pieces,
       atmosphere,
@@ -187,6 +194,13 @@ export class Scene {
           dispose: () => capture.dispose(),
         },
         {
+          id: "cinematic-captures",
+          stage: "board",
+          after: ["capture"],
+          render: (c) => cinematic.update(c),
+          dispose: () => cinematic.dispose(),
+        },
+        {
           id: "atmosphere",
           stage: "board",
           inputs: ["camera"],
@@ -216,7 +230,14 @@ export class Scene {
         {
           id: "world",
           stage: "world",
-          after: ["capture", "atmosphere", "spotlight", "lighting", "badges"],
+          after: [
+            "cinematic-captures",
+            "capture",
+            "atmosphere",
+            "spotlight",
+            "lighting",
+            "badges",
+          ],
           outputs: ["scene-color"],
           render: (c) => {
             if (c.square || c.short) {

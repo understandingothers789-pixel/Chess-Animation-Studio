@@ -431,8 +431,66 @@ export const bloomSchema = z
     highlights: z.boolean(),
   })
   .default(bloomDefaults);
+export const cinematicPresets = {
+  Subtle: {
+    enabled: true,
+    intensity: 0.45,
+    amount: 48,
+    size: 0.045,
+    spread: 0.8,
+    duration: 0.65,
+    color: "#ffd080",
+    sparks: true,
+    fragments: true,
+    shockwaves: true,
+    dust: true,
+  },
+  Cinematic: {
+    enabled: true,
+    intensity: 0.8,
+    amount: 120,
+    size: 0.065,
+    spread: 1.4,
+    duration: 1.2,
+    color: "#ffc16b",
+    sparks: true,
+    fragments: true,
+    shockwaves: true,
+    dust: true,
+  },
+  Epic: {
+    enabled: true,
+    intensity: 1.3,
+    amount: 240,
+    size: 0.09,
+    spread: 2.3,
+    duration: 2,
+    color: "#ff9d42",
+    sparks: true,
+    fragments: true,
+    shockwaves: true,
+    dust: true,
+  },
+};
+export const cinematicSchema = z
+  .object({
+    enabled: z.boolean(),
+    intensity: n(0, 2),
+    amount: n(8, 256).int(),
+    size: n(0.01, 0.2),
+    spread: n(0.1, 4),
+    duration: n(0.2, 3),
+    color,
+    sparks: z.boolean(),
+    fragments: z.boolean(),
+    shockwaves: z.boolean(),
+    dust: z.boolean(),
+  })
+  .default({ ...cinematicPresets.Cinematic, enabled: false });
+export type CinematicSettings = z.infer<typeof cinematicSchema>;
 export const projectSchema = z.object({
   bloom: bloomSchema,
+  cinematic: cinematicSchema,
   schema: z.literal(2),
   appVersion: str,
   id: str,
@@ -672,6 +730,7 @@ export type Move = Project["moves"][number];
 export const uid = () => crypto.randomUUID();
 export function blank(): Project {
   return {
+    cinematic: { ...cinematicPresets.Cinematic, enabled: false },
     bloom: { ...bloomDefaults },
     schema: 2,
     appVersion: VERSION,

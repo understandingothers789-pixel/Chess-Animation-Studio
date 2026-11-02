@@ -2,6 +2,7 @@ import { settingHelp } from "./help";
 import { useState } from "react";
 import {
   effect,
+  cinematicPresets,
   rainbowDefaults,
   blank,
   presets,
@@ -1057,6 +1058,100 @@ export function ScenePanel(q: PanelProps) {
           below. Camera settings and the intro still apply. Background images
           apply to the other views.
         </p>
+      </Section>
+      <Section
+        title="Cinematic captures"
+        onReset={() =>
+          edit("Reset cinematic captures", (p) => {
+            p.cinematic = blank().cinematic;
+          })
+        }
+      >
+        <Toggle
+          label="Enable cinematic captures"
+          checked={p.cinematic.enabled}
+          onChange={(v) =>
+            edit("Cinematic captures", (p) => {
+              p.cinematic.enabled = v;
+            })
+          }
+        />
+        <Select
+          label="Capture cinema preset"
+          value=""
+          options={[
+            ["", "Choose preset"],
+            ...["Subtle", "Cinematic", "Epic"].map(
+              (v) => [v, v] as [string, string],
+            ),
+          ]}
+          onChange={(v) => {
+            if (v)
+              edit("Capture cinema preset", (p) => {
+                p.cinematic = {
+                  ...cinematicPresets[v as keyof typeof cinematicPresets],
+                };
+              });
+          }}
+        />
+        {(["intensity", "amount", "size", "spread", "duration"] as const).map(
+          (key) => (
+            <Range
+              key={key}
+              label={`Cinema ${key}`}
+              value={p.cinematic[key]}
+              min={
+                key === "amount"
+                  ? 8
+                  : key === "size"
+                    ? 0.01
+                    : key === "duration"
+                      ? 0.2
+                      : key === "spread"
+                        ? 0.1
+                        : 0
+              }
+              max={
+                key === "amount"
+                  ? 256
+                  : key === "size"
+                    ? 0.2
+                    : key === "spread"
+                      ? 4
+                      : key === "duration"
+                        ? 3
+                        : 2
+              }
+              step={key === "amount" ? 1 : 0.01}
+              onChange={(v) =>
+                edit("Cinematic captures", (p) => {
+                  p.cinematic[key] = v;
+                })
+              }
+            />
+          ),
+        )}
+        <Color
+          label="Cinema color"
+          value={p.cinematic.color}
+          onChange={(v) =>
+            edit("Cinema color", (p) => {
+              p.cinematic.color = v;
+            })
+          }
+        />
+        {(["sparks", "fragments", "shockwaves", "dust"] as const).map((key) => (
+          <Toggle
+            key={key}
+            label={`Cinema ${key}`}
+            checked={p.cinematic[key]}
+            onChange={(v) =>
+              edit("Cinematic captures", (p) => {
+                p.cinematic[key] = v;
+              })
+            }
+          />
+        ))}
       </Section>
       <Section
         title="Cinematic bloom"

@@ -1,5 +1,22 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Enable cinematic captures":
+    "Add optional sparks, fragments, shockwaves and drifting dust at capture impact. Historical capture effects remain active.",
+  "Capture cinema preset":
+    "Apply Subtle, Cinematic or Epic controls and enable cinematic captures.",
+  "Cinema intensity": "Capture brightness and opacity, from 0 to 2.",
+  "Cinema amount":
+    "Particle budget per capture, 8 to 256, divided among three particle layers.",
+  "Cinema size": "Particle size in board units, from 0.01 to 0.2.",
+  "Cinema spread": "Capture spread in board units, from 0.1 to 4.",
+  "Cinema duration":
+    "Seconds until cinematic particles finish fading, from 0.2 to 3.",
+  "Cinema color":
+    "Tint for sparks and shockwaves. Debris and dust sample the captured artwork.",
+  "Cinema sparks": "Bright additive particles bursting from impact.",
+  "Cinema fragments": "Square debris colored from the captured piece artwork.",
+  "Cinema shockwaves": "Expanding rings fading after impact.",
+  "Cinema dust": "Soft particles that slow and fade naturally.",
   "Enable bloom":
     "Add selective cinematic glow in preview, presentation and export. Off preserves the original image.",
   "Bloom intensity":

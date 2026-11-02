@@ -609,6 +609,9 @@ try {
   );
   completed = true;
 } finally {
+  diagnostics.push(
+    `before cleanup: exitCode=${electronProcess.exitCode} signalCode=${electronProcess.signalCode}`,
+  );
   try {
     await launch.close();
   } finally {

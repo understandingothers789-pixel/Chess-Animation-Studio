@@ -57,6 +57,37 @@ export async function phase4Frames() {
   renderer.clear();
   bloom.render(maskFrame);
   if (brightness() === 0) throw Error("Unoccluded glow missing");
+  // Selected trail/highlight geometry and dust-like points must obey the same foreground depth.
+  for (const category of ["captures", "highlights"]) {
+    back.userData.bloom = category;
+    front.visible = true;
+    renderer.clear();
+    bloom.render(maskFrame);
+    if (brightness() !== 0)
+      throw Error(category + " glow leaked through a piece");
+  }
+  back.visible = false;
+  const dust = new T.Points(
+    new T.BufferGeometry().setFromPoints([new T.Vector3(0, 0, 0)]),
+    new T.PointsMaterial({
+      color: 0xffffff,
+      size: 10,
+      sizeAttenuation: false,
+      depthTest: true,
+    }),
+  );
+  dust.userData.bloom = "captures";
+  world.add(dust);
+  renderer.clear();
+  bloom.render(maskFrame);
+  if (brightness() !== 0) throw Error("Dust glow leaked through a piece");
+  front.visible = false;
+  renderer.clear();
+  bloom.render(maskFrame);
+  if (brightness() === 0) throw Error("Unoccluded dust glow missing");
+  dust.geometry.dispose();
+  (dust.material as T.Material).dispose();
+  world.remove(dust);
   bloom.dispose();
   geometry.dispose();
   (front.material as T.Material[]).forEach((m) => m.dispose());

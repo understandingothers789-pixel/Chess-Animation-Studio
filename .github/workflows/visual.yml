@@ -26,9 +26,16 @@ jobs:
           git worktree add --detach "$RUNNER_TEMP/visual-reference" 9fcf3f54913ac1a27560a61e0db8e80abb998dd5
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
           npm run test:render -- final
+          golden_ref=$(cat docs/cinematic-goldens/source-ref)
+          [[ "$golden_ref" =~ ^[0-9a-f]{40}$ ]]
+          git worktree add --detach "$RUNNER_TEMP/cinematic-reference" "$golden_ref"
+          (cd "$RUNNER_TEMP/cinematic-reference" && npm ci && APPROVE_CINEMATIC_GOLDENS=phase4-reviewed node --import tsx scripts/cinematic-visual.ts)
+          CINEMATIC_GOLDEN_DIR="$RUNNER_TEMP/cinematic-reference/test-results/phase4-candidate" node --import tsx scripts/cinematic-visual.ts
           node scripts/compare-render-hashes.mjs "$RUNNER_TEMP/visual-reference/test-results/render-reference/hashes.json" test-results/render-final/hashes.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Chromium-visual-evidence
-          path: test-results/render-final/
+          path: |
+            test-results/render-final/
+            test-results/phase4-candidate/

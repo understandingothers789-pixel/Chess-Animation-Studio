@@ -1,0 +1,7 @@
+
+> chess-animation-studio@0.2.18 test:render
+> node --import tsx scripts/render-regression.ts final
+
+PHASE2_METRICS {"frames":60,"resets":59,"resetMs":0.7000000067055225,"playbackMs":108.80000000074506,"renderer":"SwiftShader","width":270,"height":480}
+PHASE3_METRICS {"recovery":"WEBGL_lose_context plus full Scene/canvas reconstruction","measurements":[{"w":1920,"h":1080,"enabled":false,"samplesMs":[512.1000000014901,465.3999999985099,435.9000000022352],"medianMs":465.3999999985099,"memory":{"geometries":117,"textures":14},"bloomTargetBytes":0},{"w":1920,"h":1080,"enabled":true,"samplesMs":[535.1999999992549,539.5,536.5],"medianMs":536.5,"memory":{"geometries":117,"textures":18},"bloomTargetBytes":16588800},{"w":3840,"h":2160,"enabled":false,"samplesMs":[1026.800000000745,900.1999999992549,978],"medianMs":978,"memory":{"geometries":117,"textures":14},"bloomTargetBytes":0},{"w":3840,"h":2160,"enabled":true,"samplesMs":[1361,1214.699999999255,1229.3999999985099],"medianMs":1229.3999999985099,"memory":{"geometries":117,"textures":18},"bloomTargetBytes":66355200}]}
+PASS: 216 render requests, 168 unique fixtures (final)

@@ -1,0 +1,7 @@
+{
+  "fixtures": 168,
+  "exact": 168,
+  "tolerated": 0,
+  "comparison": "exact PNG SHA256",
+  "reference": "preserved render-phase2-baseline; verified Phase II source"
+}

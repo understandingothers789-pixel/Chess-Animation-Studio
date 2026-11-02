@@ -169,3 +169,7 @@ Preview and presentation request up to two retries at 250 ms and 500 ms. Loading
 Scene detects actual `webglcontextlost` events and synchronous `isContextLost()` before render/cache reuse or readback. It fails clearly rather than returning a stale frame or exporting invalid bytes. Preview stops drawing and offers **Reload graphics**; this constructs a fresh Scene and re-prepares assets from the retained immutable editor state. Even if Three.js restores its own context automatically, Scene requires recreation because extensions may own raw GPU objects that cannot be revived safely. Constructor failures also expose the reload action. Driver-level and whole Electron graphics-process recovery remain separate limitations. The WebGL extension simulation tests loss and subsequent new-scene operation; it does not establish real driver recovery.
 
 `renderer.resetState()` is retained. The measured software-renderer cost was small relative to frame work and cannot justify weakening failure recovery. See the Phase II report for exact measurements and coverage.
+
+## Phase III cinematic bloom
+
+`cinematic-bloom` is a built-in post pass after spotlight processing. It lazily owns its mask/blur targets and uses a display framebuffer copy for composition; it has no temporal history. See [Phase III contracts and evidence](RENDER_PHASE3_VALIDATION.md) for selective object categories, schema defaults, cleanup, presentation recovery and the Linux visual release gate.

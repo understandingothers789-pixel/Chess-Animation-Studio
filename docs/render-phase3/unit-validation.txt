@@ -1,0 +1,27 @@
+
+> chess-animation-studio@0.2.18 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/chess-architecture
+
+ ✓ tests/compiledTimeline.test.ts (4 tests) 190ms
+ ✓ tests/core.test.ts (23 tests) 642ms
+   ✓ deterministic evaluation > reconstructs backward seeks, normalized keys, particles and per-format cameras  380ms
+ ✓ tests/renderFrame.test.ts (5 tests) 48ms
+ ✓ tests/assets.test.ts (8 tests) 13ms
+ ✓ tests/bloom.test.ts (3 tests) 49ms
+ ✓ tests/runtimeResources.test.ts (8 tests) 12ms
+ ✓ tests/renderGraph.test.ts (6 tests) 8ms
+ ✓ tests/effectCompositor.test.ts (7 tests) 5ms
+ ✓ tests/services.test.ts (9 tests) 1785ms
+   ✓ exports measured audio offset and trim, and cleans up cancelled jobs  842ms
+   ✓ treats final rename as an irreversible commit and preserves destinations when it fails  523ms
+ ✓ tests/graphicsSession.test.ts (1 test) 13ms
+ ✓ tests/releaseWorkflow.test.ts (1 test) 4ms
+
+ Test Files  11 passed (11)
+      Tests  75 passed (75)
+   Start at  04:59:08
+   Duration  2.48s (transform 549ms, setup 0ms, collect 1.70s, tests 2.77s, environment 2ms, prepare 896ms)
+

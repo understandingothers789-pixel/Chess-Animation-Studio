@@ -1181,3 +1181,197 @@ summary:focus-visible {
     grid-template-columns: 310px minmax(400px, 1fr) 320px;
   }
 }
+
+/* Composition navigation and persistent settings panes. */
+[hidden] {
+  display: none !important;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.library-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, 68px);
+  gap: 5px;
+  padding: 10px;
+  flex-shrink: 0;
+}
+.library-tabs button {
+  font-size: 12px;
+  text-transform: capitalize;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+.library-tabs button:hover {
+  background: #24372a;
+  border-color: #526c49;
+}
+.library-tabs button.active {
+  border-color: #7c9c63;
+  background: #30472e;
+  color: #e2f3ce;
+}
+.library-content {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+.library-content > [data-category] {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 15px 30px;
+  scrollbar-gutter: stable;
+}
+.panel-context {
+  padding: 13px 0;
+}
+.settings-search {
+  position: relative;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  z-index: 4;
+}
+.settings-search > input {
+  width: 100%;
+  min-height: 34px;
+}
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 10px;
+  width: 330px;
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid #6f8564;
+  border-radius: 6px;
+  padding: 6px;
+  background: #17251c;
+  box-shadow: 0 10px 35px #0009;
+}
+.search-results button {
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  margin: 2px 0;
+}
+.search-results small {
+  color: var(--muted);
+}
+.search-target {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.inspector-host,
+.inspector-slot {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.inspector-slot > .inspector {
+  flex: 1;
+}
+.inspector .tabs button {
+  text-transform: capitalize;
+}
+.inspector-content {
+  scroll-behavior: auto;
+}
+.inspector-content > [data-inspector-tab] {
+  min-width: 0;
+}
+.effect-status {
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 12px;
+  background: #2b3e2c;
+  color: #c7e49e;
+  padding: 2px 7px;
+  margin-left: auto;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.effect-status[data-status="Off"] {
+  color: #9aaa9f;
+  background: #222e26;
+}
+.mixed-value {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #e9cc8f;
+  font-style: normal;
+}
+.section summary {
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.5;
+}
+.secondary-actions summary {
+  color: var(--muted);
+  cursor: pointer;
+  padding: 5px 0;
+}
+.secondary-actions .button-row {
+  padding: 5px 0;
+}
+.range-field > span,
+.toggle,
+.select-field,
+.text-field,
+.color-field {
+  font-size: 12px;
+}
+.hint,
+.inspector-guide {
+  font-size: 12px;
+}
+.section .section {
+  border: 1px solid var(--line);
+  padding: 10px;
+  border-radius: 5px;
+}
+.return-move {
+  margin: 8px;
+}
+@media (max-width: 1250px) {
+  .app-header {
+    padding: 0 12px;
+    gap: 12px;
+  }
+  .brand {
+    width: 235px;
+  }
+  .header-actions {
+    gap: 4px;
+  }
+  .header-actions button {
+    padding: 6px 8px;
+  }
+}
+.library-tabs button {
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 2px;
+}
+.library-tabs button svg {
+  flex-shrink: 0;
+}
+.section summary > .effect-status {
+  flex: 0 0 auto;
+}
+.section summary > span:first-child {
+  min-width: 0;
+}
+/* Let timeline controls wrap without overlapping the tracks on narrow windows. */
+.timeline > header { height: auto; min-height: 41px; flex-shrink: 0; }
+.timeline > header label { white-space: nowrap; }
+.timeline > header input[type="checkbox"] { width: auto; flex-shrink: 0; }

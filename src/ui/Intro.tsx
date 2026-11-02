@@ -125,7 +125,7 @@ export function IntroInspector({
           />
           <p className="hint">
             Any time left after the animation holds the board still. Snow is
-            configurable in Scene → Snow particles.
+            configurable in Atmosphere → Snow particles.
           </p>
         </Section>
       </div>

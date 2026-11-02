@@ -1,5 +1,12 @@
 import { settingHelp } from "./help";
-import { useRef, type ReactNode, type InputHTMLAttributes } from "react";
+import {
+  useRef,
+  useState,
+  createContext,
+  useContext,
+  type ReactNode,
+  type InputHTMLAttributes,
+} from "react";
 export function ScrubNumber({
   value,
   min,
@@ -23,7 +30,7 @@ export function ScrubNumber({
       {...rest}
       title={`${rest.title ?? "Adjust value"} Drag left/right or up/down to adjust; hold Shift for finer control.`}
       type="number"
-      value={value}
+      value={rest["data-mixed" as keyof typeof rest] ? "" : value}
       min={min}
       max={max}
       step={step}
@@ -58,21 +65,41 @@ export function ScrubNumber({
     />
   );
 }
+const sectionState = new Map<string, boolean>();
+export const SettingsScope = createContext("settings");
 export function Section({
   title,
   children,
   open = true,
   onReset,
+  status,
 }: {
   title: string;
+  status?: string;
   children: ReactNode;
   open?: boolean;
   onReset?: () => void;
 }) {
+  const scope = useContext(SettingsScope);
+  const key = scope + ":" + title;
+  const [expanded, setExpanded] = useState(() => sectionState.get(key) ?? open);
   return (
-    <details className="section" open={open}>
+    <details
+      className="section"
+      open={expanded}
+      onToggle={(e) => {
+        const v = e.currentTarget.open;
+        sectionState.set(key, v);
+        setExpanded(v);
+      }}
+    >
       <summary>
         <span>{title}</span>
+        {status && (
+          <span className="effect-status" data-status={status}>
+            {status}
+          </span>
+        )}
         {onReset && (
           <button
             type="button"
@@ -95,6 +122,7 @@ export function Section({
 }
 export function Range({
   label,
+  mixed = false,
   value,
   onChange,
   min,
@@ -105,6 +133,7 @@ export function Range({
   onReset,
 }: {
   label: string;
+  mixed?: boolean;
   value: number;
   onChange: (v: number) => void;
   min: number;
@@ -119,6 +148,7 @@ export function Range({
       <span>
         <span>
           {label}
+          {mixed && <em className="mixed-value">Mixed</em>}
           {(onReset || resetValue !== undefined) && (
             <button
               type="button"
@@ -147,6 +177,8 @@ export function Range({
             max={max}
             step={step}
             value={Number(value.toFixed(4))}
+            data-mixed={mixed || undefined}
+            placeholder={mixed ? "Mixed" : undefined}
             onValueChange={onChange}
           />
           {unit}
@@ -161,6 +193,8 @@ export function Range({
         max={max}
         step={step}
         value={value}
+        aria-valuetext={mixed ? "Mixed values" : undefined}
+        data-mixed={mixed || undefined}
         onChange={(e) => onChange(+e.target.value)}
       />
     </label>
@@ -168,25 +202,35 @@ export function Range({
 }
 export function Select<T extends string>({
   label,
+  mixed = false,
   value,
   options,
   onChange,
 }: {
   label: string;
+  mixed?: boolean;
   value: T;
   options: readonly T[] | readonly (readonly [T, string])[];
   onChange: (v: T) => void;
 }) {
   return (
     <label className="select-field" title={settingHelp(label)}>
-      <span>{label}</span>
+      <span>
+        {label}
+        {mixed && <em className="mixed-value">Mixed</em>}
+      </span>
       <select
         aria-label={label}
         title={settingHelp(label)}
         aria-description={settingHelp(label)}
-        value={value}
+        value={mixed ? "__mixed__" : value}
         onChange={(e) => onChange(e.target.value as T)}
       >
+        {mixed && (
+          <option value="__mixed__" disabled>
+            Mixed values
+          </option>
+        )}
         {options.map((o) => {
           const [v, l] = typeof o === "string" ? [o, o] : o;
           return (
@@ -201,21 +245,30 @@ export function Select<T extends string>({
 }
 export function Toggle({
   label,
+  mixed = false,
   checked,
   onChange,
 }: {
   label: string;
+  mixed?: boolean;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
     <label className="toggle" title={settingHelp(label)}>
-      <span>{label}</span>
+      <span>
+        {label}
+        {mixed && <em className="mixed-value">Mixed</em>}
+      </span>
       <input
         aria-label={label}
         title={settingHelp(label)}
         aria-description={settingHelp(label)}
         type="checkbox"
+        ref={(el) => {
+          if (el) el.indeterminate = mixed;
+        }}
+        aria-checked={mixed ? "mixed" : checked}
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />
@@ -224,10 +277,12 @@ export function Toggle({
 }
 export function Color({
   label,
+  mixed = false,
   value,
   onChange,
 }: {
   label: string;
+  mixed?: boolean;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -235,7 +290,7 @@ export function Color({
     <label className="color-field" title={settingHelp(label)}>
       <span>{label}</span>
       <span>
-        <code>{value.toUpperCase()}</code>
+        <code>{mixed ? "Mixed" : value.toUpperCase()}</code>
         <input
           aria-label={label}
           title={settingHelp(label)}

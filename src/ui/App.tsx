@@ -22,6 +22,10 @@ import {
   Check,
   Copy,
   RefreshCw,
+  Grid3X3,
+  Crop,
+  CloudSnow,
+  Sparkles,
 } from "lucide-react";
 import { useProject } from "./state";
 import {
@@ -44,13 +48,17 @@ import {
   GamePanel,
   StylesPanel,
   MusicPanel,
-  ScenePanel,
+  BoardPanel,
+  FramingPanel,
+  AtmospherePanel,
+  EffectsPanel,
   AnalysisPanel,
   FilesPanel,
   type PanelProps,
 } from "./Panels";
 import { Timeline } from "./Timeline";
-import { clock, Select, Range } from "./controls";
+import { SettingsSearch } from "./SettingsSearch";
+import { clock, Select, Range, SettingsScope } from "./controls";
 import type { Settings, ExportProgress } from "../bridge";
 export function App() {
   const {
@@ -96,6 +104,11 @@ export function App() {
     [rangeStart, setRangeStart] = useState(0),
     [rangeEnd, setRangeEnd] = useState(0),
     [loadingAudio, setLoadingAudio] = useState(0);
+  const [audition, setAudition] = useState<{
+    time: number;
+    playing: boolean;
+    end: number;
+  } | null>(null);
   const latest = useRef(p),
     timeRef = useRef(time),
     audio = useRef<AudioPlayer | null>(null),
@@ -123,6 +136,7 @@ export function App() {
   }, []);
   const stop = useCallback(() => {
     setPlaying(false);
+    setAudition(null);
     audio.current?.stop();
   }, []);
   const seek = useCallback(
@@ -290,6 +304,13 @@ export function App() {
       const tick = () => {
         if (!alive) return;
         const t = start + Math.max(0, (performance.now() - origin) / 1000);
+        if (audition && t >= audition.end) {
+          setTime(audition.time);
+          timeRef.current = audition.time;
+          setPlaying(audition.playing);
+          setAudition(null);
+          return;
+        }
         if (t >= duration(latest.current)) {
           setTime(duration(latest.current));
           stop();
@@ -306,7 +327,7 @@ export function App() {
       cancelAnimationFrame(raf);
       audio.current?.stop();
     };
-  }, [playing]);
+  }, [playing, audition]);
   useEffect(() => {
     audio.current?.updateMusic(p, timeRef.current);
   }, [p.music.volume, p.music.muted, p.music.volumePoints]);
@@ -333,7 +354,8 @@ export function App() {
         )
       )
         return;
-      if (e.code === "Space") {
+      const buttonFocus = (e.target as HTMLElement).closest("button,summary");
+      if (e.code === "Space" && !buttonFocus) {
         e.preventDefault();
         if (!loadingAudio) setPlaying((v) => !v);
       }
@@ -346,9 +368,10 @@ export function App() {
         e.preventDefault();
         save(false);
       }
-      if (e.key === "ArrowRight")
+      if (e.key === "ArrowRight" && !buttonFocus)
         select(Math.min(latest.current.moves.length - 1, selected + 1));
-      if (e.key === "ArrowLeft") select(Math.max(0, selected - 1));
+      if (e.key === "ArrowLeft" && !buttonFocus)
+        select(Math.max(0, selected - 1));
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -548,15 +571,45 @@ export function App() {
     setPromotion,
     analysisProgress,
   };
+  function selectIntro() {
+    setIntroSelected(true);
+    setChecked(new Set());
+    seek(0);
+  }
+  function previewMove() {
+    if (audition) {
+      setTime(audition.time);
+      setPlaying(audition.playing);
+      setAudition(null);
+      return;
+    }
+    const segment = segments(p)[selected];
+    if (!segment) return;
+    const impact =
+      segment.depart +
+      p.moves[selected].effect.duration *
+        p.moves[selected].effect.capture.impact;
+    const effectEnd = Math.max(
+      segment.end,
+      impact + p.moves[selected].effect.capture.dustDuration,
+      p.cinematic.enabled ? impact + p.cinematic.duration : 0,
+    );
+    setAudition({ time, playing, end: Math.min(duration(p), effectEnd) });
+    setTime(segment.start);
+    timeRef.current = segment.start;
+    setPlaying(true);
+  }
   const panels: Record<string, React.ComponentType<PanelProps>> = {
-      game: GamePanel,
-      styles: StylesPanel,
-      music: MusicPanel,
-      scene: ScenePanel,
-      analysis: AnalysisPanel,
-      files: FilesPanel,
-    },
-    Panel = panels[tab];
+    game: GamePanel,
+    presets: StylesPanel,
+    music: MusicPanel,
+    board: BoardPanel,
+    framing: FramingPanel,
+    atmosphere: AtmospherePanel,
+    effects: EffectsPanel,
+    analysis: AnalysisPanel,
+    files: FilesPanel,
+  };
   const end = duration(p),
     progressBusy =
       !!exportProgress &&
@@ -669,11 +722,40 @@ export function App() {
       )}
       <div className="workspace">
         <aside className="library">
-          <nav className="library-tabs">
+          <nav
+            className="library-tabs"
+            aria-label="Composition categories"
+            onKeyDown={(e) => {
+              const buttons = Array.from(
+                e.currentTarget.querySelectorAll("button"),
+              );
+              const index = buttons.indexOf(
+                document.activeElement as HTMLButtonElement,
+              );
+              const offset = (
+                {
+                  ArrowRight: 1,
+                  ArrowLeft: -1,
+                  ArrowDown: 3,
+                  ArrowUp: -3,
+                } as Record<string, number>
+              )[e.key];
+              if (offset !== undefined && index >= 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                const next = buttons[(index + offset + 9) % 9];
+                next.focus();
+                next.click();
+              }
+            }}
+          >
             {[
               ["game", BookOpen],
-              ["scene", Palette],
-              ["styles", SlidersHorizontal],
+              ["board", Grid3X3],
+              ["framing", Crop],
+              ["atmosphere", CloudSnow],
+              ["effects", Sparkles],
+              ["presets", SlidersHorizontal],
               ["music", Music2],
               ["analysis", Activity],
               ["files", FolderOpen],
@@ -690,59 +772,93 @@ export function App() {
               </button>
             ))}
           </nav>
-          <div className="panel-context">
-            <span className="eyebrow">PROJECT SETTINGS</span>
-            <h2>
-              {
-                (
-                  {
-                    game: "1. Choose your game",
-                    scene: "2. Set the scene",
-                    styles: "3. Style the moves",
-                    music: "4. Add music & beats",
-                    analysis: "Analysis & suggestions",
-                    files: "Files & setup",
-                  } as Record<string, string>
-                )[tab]
-              }
-            </h2>
-            <p>
-              {
-                (
-                  {
-                    game: "Import a PGN or start with the sample. Select a move to edit it on the right.",
-                    scene:
-                      "Board, framing and atmosphere for the whole video. Set the output format above the preview.",
-                    styles:
-                      "Apply a starting style, then fine-tune selected moves in the right panel.",
-                    music:
-                      "Import a track, set its level, then arrange beats. Lock markers when timing is right.",
-                    analysis:
-                      "Optional suggestions for move badges. Your manual edits stay under your control.",
-                    files:
-                      "Set up local tools, manage assets and export a settings report for help.",
-                  } as Record<string, string>
-                )[tab]
-              }
-            </p>
-          </div>
-          <div className="library-content" key={tab}>
-            {tab === "game" && (
-              <button
-                className="sample-button"
-                onClick={() => {
-                  if (confirmDiscard())
-                    run(async () => {
-                      const project = await window.studio.sample();
-                      adopted(project, null);
-                      message("Opera Game sample opened.");
-                    });
-                }}
+          <SettingsSearch navigate={setTab} selectIntro={selectIntro} />
+          <div className="library-content">
+            {Object.entries(panels).map(([category, Panel]) => (
+              <div
+                key={category}
+                data-category={category}
+                hidden={tab !== category}
               >
-                Open Opera Game with original music <span>↗</span>
-              </button>
-            )}
-            <Panel {...props} />
+                <SettingsScope.Provider value={category}>
+                  <div className="panel-context">
+                    <span className="eyebrow">
+                      {category === "presets"
+                        ? "MOVE ANIMATION LIBRARY"
+                        : "COMPOSITION SETTINGS"}
+                    </span>
+                    <h2>{category[0].toUpperCase() + category.slice(1)}</h2>
+                    <p>
+                      {
+                        (
+                          {
+                            game: "Import games and manage moves and variations.",
+                            board:
+                              "Piece artwork, board colors and orientation.",
+                            framing:
+                              "Output formats, backgrounds and board positioning.",
+                            atmosphere:
+                              "Continuous particles, color cycles and board animation.",
+                            effects:
+                              "Cinematic captures and glow across the composition.",
+                            presets:
+                              "Apply animation styles to selected, checked or all moves.",
+                            music: "Music, beats, sound cues and audio levels.",
+                            analysis:
+                              "Evaluation, classifications and review styling.",
+                            files: "Project recovery, assets and local tools.",
+                          } as Record<string, string>
+                        )[category]
+                      }
+                    </p>
+                  </div>
+                  {(category === "framing" || category === "atmosphere") && (
+                    <button className="wide" onClick={selectIntro}>
+                      Edit intro clip →
+                    </button>
+                  )}
+                  {category === "game" && (
+                    <button
+                      className="sample-button"
+                      onClick={() => {
+                        if (confirmDiscard())
+                          run(async () => {
+                            const project = await window.studio.sample();
+                            adopted(project, null);
+                            message("Opera Game sample opened.");
+                          });
+                      }}
+                    >
+                      Open Opera Game with original music <span>↗</span>
+                    </button>
+                  )}
+                  {category === "effects" && (
+                    <>
+                      <p className="hint">
+                        Global cinema adds sparks, fragments, shockwaves and
+                        dust to captures at each move’s impact time. Per-move
+                        capture and lighting settings remain separate. Bloom
+                        processes the enabled glow sources.
+                      </p>
+                      <button
+                        className="wide"
+                        onClick={() => {
+                          setIntroSelected(false);
+                          document
+                            .querySelector<HTMLButtonElement>(
+                              '.inspector .tabs [data-tab="effects"]',
+                            )
+                            ?.click();
+                        }}
+                      >
+                        Edit selected move’s capture impact →
+                      </button>
+                    </>
+                  )}
+                  <Panel {...props} />
+                </SettingsScope.Provider>
+              </div>
+            ))}
           </div>
         </aside>
         <main className="studio">
@@ -867,31 +983,50 @@ export function App() {
             edit={edit}
           />
         </main>
-        {introSelected ? (
-          <IntroInspector project={p} edit={edit} />
-        ) : (
-          <Inspector
-            project={p}
-            checked={checked}
-            index={selected}
-            edit={edit}
-            onCopy={() => {
-              clipboard.current = structuredClone(p.moves[selected].effect);
-              message("Move effect copied.");
-            }}
-            onPaste={() => {
-              if (clipboard.current)
-                edit("Paste effect", (p) => {
-                  for (const m of p.moves.filter((m) =>
-                    checked.size
-                      ? checked.has(m.id)
-                      : m.id === p.moves[selected]?.id,
-                  ))
-                    m.effect = structuredClone(clipboard.current!);
-                });
-            }}
-          />
-        )}
+        <div className="inspector-host">
+          <div hidden={!introSelected} className="inspector-slot">
+            <IntroInspector project={p} edit={edit} />
+            <button
+              className="return-move"
+              data-return-move
+              onClick={() => setIntroSelected(false)}
+            >
+              Return to selected move
+            </button>
+          </div>
+          <div hidden={introSelected} className="inspector-slot">
+            <SettingsScope.Provider value="move-inspector">
+              <Inspector
+                project={p}
+                checked={checked}
+                index={selected}
+                edit={edit}
+                onPreview={previewMove}
+                previewing={!!audition}
+                previewDisabled={loadingAudio > 0}
+                onGlobalEffects={() => setTab("effects")}
+                onCopy={() => {
+                  if (p.moves[selected])
+                    clipboard.current = structuredClone(
+                      p.moves[selected].effect,
+                    );
+                  message("Move effect copied.");
+                }}
+                onPaste={() => {
+                  if (clipboard.current)
+                    edit("Paste effect", (p) => {
+                      for (const m of p.moves.filter((m) =>
+                        checked.size
+                          ? checked.has(m.id)
+                          : m.id === p.moves[selected]?.id,
+                      ))
+                        m.effect = structuredClone(clipboard.current!);
+                    });
+                }}
+              />
+            </SettingsScope.Provider>
+          </div>
+        </div>
       </div>
       <footer className={"status-bar " + (error ? "error" : "")}>
         <span>

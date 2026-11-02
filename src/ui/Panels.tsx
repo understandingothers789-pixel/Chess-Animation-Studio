@@ -410,7 +410,7 @@ export function StylesPanel(q: PanelProps) {
           ))
         ) : (
           <p className="hint">
-            Save a refined move as a preset from the Motion inspector.
+            Save a refined move as a preset from the Move inspector.
           </p>
         )}
         <button
@@ -844,11 +844,9 @@ export function MusicPanel(q: PanelProps) {
     </>
   );
 }
-export function ScenePanel(q: PanelProps) {
+export function BoardPanel(q: PanelProps) {
   const p = q.project,
-    edit = q.edit,
-    [badgeKind, setBadgeKind] = useState("brilliant");
-  const layout = p.layouts[p.format];
+    edit = q.edit;
   return (
     <>
       <Section
@@ -877,28 +875,26 @@ export function ScenePanel(q: PanelProps) {
           Nocturne's vector artwork, with a thin solid edge and mirrored reverse
           face.
         </p>
-        {(["light", "dark", "rim", "background", "accent"] as const).map(
-          (k) => (
-            <Color
-              label={
-                {
-                  light: "Light squares",
-                  dark: "Dark squares",
-                  rim: "Board rim",
-                  background: "Background",
-                  accent: "Accent",
-                }[k]
-              }
-              key={k}
-              value={p.style[k]}
-              onChange={(v) =>
-                edit("Color " + k, (p) => {
-                  p.style[k] = v;
-                })
-              }
-            />
-          ),
-        )}
+        {(["light", "dark", "rim", "accent"] as const).map((k) => (
+          <Color
+            label={
+              {
+                light: "Light squares",
+                dark: "Dark squares",
+                rim: "Board rim",
+                background: "Background",
+                accent: "Accent",
+              }[k]
+            }
+            key={k}
+            value={p.style[k]}
+            onChange={(v) =>
+              edit("Color " + k, (p) => {
+                p.style[k] = v;
+              })
+            }
+          />
+        ))}
         <Select
           label="Orientation"
           value={p.style.orientation}
@@ -919,6 +915,34 @@ export function ScenePanel(q: PanelProps) {
           }
         />
       </Section>
+    </>
+  );
+}
+export function FramingPanel(q: PanelProps) {
+  const p = q.project,
+    edit = q.edit;
+  const layout = p.layouts[p.format];
+  return (
+    <>
+      <Select
+        label="Output format"
+        value={p.format}
+        options={formats}
+        onChange={(v) =>
+          edit("Output format", (p) => {
+            p.format = v;
+          })
+        }
+      />
+      <Color
+        label="Background color"
+        value={p.style.background}
+        onChange={(v) =>
+          edit("Background color", (p) => {
+            p.style.background = v;
+          })
+        }
+      />
       <Section
         title={"Composition · " + p.format}
         onReset={() =>
@@ -1059,8 +1083,17 @@ export function ScenePanel(q: PanelProps) {
           apply to the other views.
         </p>
       </Section>
+    </>
+  );
+}
+export function EffectsPanel(q: PanelProps) {
+  const p = q.project,
+    edit = q.edit;
+  return (
+    <>
       <Section
-        title="Cinematic captures"
+        title="Cinematic Captures"
+        status={p.cinematic.enabled ? "Enabled" : "Off"}
         onReset={() =>
           edit("Reset cinematic captures", (p) => {
             p.cinematic = blank().cinematic;
@@ -1094,43 +1127,45 @@ export function ScenePanel(q: PanelProps) {
               });
           }}
         />
-        {(["intensity", "amount", "size", "spread", "duration"] as const).map(
-          (key) => (
-            <Range
-              key={key}
-              label={`Cinema ${key}`}
-              value={p.cinematic[key]}
-              min={
-                key === "amount"
-                  ? 8
-                  : key === "size"
-                    ? 0.01
-                    : key === "duration"
+        <Section title="Advanced cinema parameters" open={false}>
+          {(["intensity", "amount", "size", "spread", "duration"] as const).map(
+            (key) => (
+              <Range
+                key={key}
+                label={`Cinema ${key}`}
+                value={p.cinematic[key]}
+                min={
+                  key === "amount"
+                    ? 8
+                    : key === "size"
+                      ? 0.01
+                      : key === "duration"
+                        ? 0.2
+                        : key === "spread"
+                          ? 0.1
+                          : 0
+                }
+                max={
+                  key === "amount"
+                    ? 256
+                    : key === "size"
                       ? 0.2
                       : key === "spread"
-                        ? 0.1
-                        : 0
-              }
-              max={
-                key === "amount"
-                  ? 256
-                  : key === "size"
-                    ? 0.2
-                    : key === "spread"
-                      ? 4
-                      : key === "duration"
-                        ? 3
-                        : 2
-              }
-              step={key === "amount" ? 1 : 0.01}
-              onChange={(v) =>
-                edit("Cinematic captures", (p) => {
-                  p.cinematic[key] = v;
-                })
-              }
-            />
-          ),
-        )}
+                        ? 4
+                        : key === "duration"
+                          ? 3
+                          : 2
+                }
+                step={key === "amount" ? 1 : 0.01}
+                onChange={(v) =>
+                  edit("Cinematic captures", (p) => {
+                    p.cinematic[key] = v;
+                  })
+                }
+              />
+            ),
+          )}
+        </Section>
         <Color
           label="Cinema color"
           value={p.cinematic.color}
@@ -1154,7 +1189,8 @@ export function ScenePanel(q: PanelProps) {
         ))}
       </Section>
       <Section
-        title="Cinematic bloom"
+        title="Bloom & Glow"
+        status={p.bloom.enabled ? "Enabled" : "Off"}
         onReset={() =>
           edit("Reset bloom", (p) => {
             p.bloom = blank().bloom;
@@ -1199,8 +1235,17 @@ export function ScenePanel(q: PanelProps) {
           />
         ))}
       </Section>
+    </>
+  );
+}
+export function AtmospherePanel(q: PanelProps) {
+  const p = q.project,
+    edit = q.edit;
+  return (
+    <>
       <Section
         title="Snow particles · amount & appearance"
+        status={p.ambient.enabled ? "Enabled" : "Off"}
         onReset={() =>
           edit("Reset ambient", (p) => {
             p.ambient = blank().ambient;
@@ -1300,11 +1345,11 @@ export function ScenePanel(q: PanelProps) {
         />
       </Section>
       <Section
-        title="Board atmosphere & intro"
+        title="Board atmosphere"
+        status={p.boardFX.enabled ? "Enabled" : "Off"}
         onReset={() =>
           edit("Reset board atmosphere", (p) => {
             p.boardFX = blank().boardFX;
-            p.lead = blank().lead;
           })
         }
       >
@@ -1314,28 +1359,6 @@ export function ScenePanel(q: PanelProps) {
           onChange={(v) =>
             edit("Board FX", (p) => {
               p.boardFX.enabled = v;
-            })
-          }
-        />
-        <Toggle
-          label="Zoom-and-turn intro"
-          checked={p.boardFX.intro}
-          onChange={(v) =>
-            edit("Intro", (p) => {
-              p.boardFX.intro = v;
-            })
-          }
-        />
-        <Range
-          label="Intro lead-in"
-          value={p.lead}
-          resetValue={blank().lead}
-          min={0.2}
-          max={8}
-          onChange={(v) =>
-            edit("Intro lead", (p) => {
-              p.lead = v;
-              p.boardFX.introDuration = Math.min(p.boardFX.introDuration, v);
             })
           }
         />
@@ -1389,9 +1412,6 @@ export function ScenePanel(q: PanelProps) {
           [
             "shimmer",
             "shimmerSpeed",
-            "introDuration",
-            "introZoom",
-            "introTurn",
             "bpm",
             "beatStrength",
             "beatDecay",
@@ -1426,43 +1446,30 @@ export function ScenePanel(q: PanelProps) {
             value={p.boardFX[k]}
             resetValue={blank().boardFX[k]}
             min={
-              k === "introDuration"
-                ? 0.2
-                : k === "beatDecay"
-                  ? 0.05
-                  : k === "introTurn"
-                    ? -90
-                    : k === "bpm"
-                      ? 20
-                      : k === "introZoom"
-                        ? 0.2
-                        : k.includes("Speed")
-                          ? 0.05
-                          : 0
+              k === "beatDecay"
+                ? 0.05
+                : k === "bpm"
+                  ? 20
+                  : k.includes("Speed")
+                    ? 0.05
+                    : 0
             }
             max={
-              k === "introTurn"
-                ? 90
-                : k === "bpm"
-                  ? 240
-                  : k === "introDuration"
-                    ? 8
-                    : k.includes("Speed")
-                      ? 3
-                      : k === "shimmer"
-                        ? 0.2
-                        : k === "sweep"
-                          ? 0.3
-                          : k === "introZoom"
-                            ? 1
-                            : k === "beatDecay"
-                              ? 2
-                              : 0.5
+              k === "bpm"
+                ? 240
+                : k.includes("Speed")
+                  ? 3
+                  : k === "shimmer"
+                    ? 0.2
+                    : k === "sweep"
+                      ? 0.3
+                      : k === "beatDecay"
+                        ? 2
+                        : 0.5
             }
             onChange={(v) =>
               edit("Board " + k, (p) => {
                 p.boardFX[k] = v;
-                if (k === "introDuration") p.lead = Math.max(p.lead, v);
               })
             }
           />
@@ -1470,6 +1477,7 @@ export function ScenePanel(q: PanelProps) {
       </Section>
       <Section
         title="Dark-square beat pulse"
+        status={p.pulse.enabled ? "Enabled" : "Off"}
         onReset={() =>
           edit("Reset pulse", (p) => {
             p.pulse = blank().pulse;
@@ -1524,6 +1532,15 @@ export function ScenePanel(q: PanelProps) {
           />
         ))}
       </Section>
+    </>
+  );
+}
+export function BadgeArtworkPanel(q: PanelProps) {
+  const p = q.project,
+    edit = q.edit;
+  const [badgeKind, setBadgeKind] = useState("brilliant");
+  return (
+    <>
       <Section title="Badge artwork">
         <Select
           label="Badge to replace"
@@ -1967,6 +1984,7 @@ export function FilesPanel(q: PanelProps) {
           </button>
         ))}
       </Section>
+      <BadgeArtworkPanel {...q} />
       <Section title="Local asset references">
         {p.assets.map((a) => (
           <div className="asset-card" key={a.id}>

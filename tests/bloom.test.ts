@@ -82,3 +82,45 @@ it("reuses bloom targets, releases them on resize/disable, and restores selectio
   material.dispose();
   mesh.geometry.dispose();
 });
+it("retains multi-material piece occlusion and restores original materials", () => {
+  const materials = [
+    new T.MeshBasicMaterial({ transparent: true, alphaTest: 0.02 }),
+    new T.MeshStandardMaterial(),
+  ];
+  const mesh = new T.Mesh(new T.BoxGeometry(), materials);
+  mesh.userData.bloom = "pieces";
+  const world = new T.Scene();
+  world.add(mesh);
+  let masks = 0;
+  const r = {
+    setViewport() {},
+    copyFramebufferToTexture() {},
+    setRenderTarget() {},
+    setScissor() {},
+    setScissorTest() {},
+    setClearColor() {},
+    clear() {},
+    render(scene: T.Scene) {
+      if (scene === world) {
+        expect(mesh.visible).toBe(true);
+        expect(mesh.material).not.toBe(materials);
+        expect(Array.isArray(mesh.material)).toBe(true);
+        for (const m of mesh.material) {
+          expect(m.depthWrite).toBe(true);
+          expect(m.transparent).toBe(false);
+        }
+        masks++;
+      }
+    },
+  };
+  const bloom = new BloomSystem(r as any, world, new T.Camera());
+  const p = blank();
+  p.bloom.enabled = true;
+  p.bloom.pieces = false;
+  bloom.render({ p, w: 100, h: 100, viewY: 0, viewH: 100 } as RenderFrame);
+  expect(masks).toBe(1);
+  expect(mesh.material).toBe(materials);
+  bloom.dispose();
+  materials.forEach((m) => m.dispose());
+  mesh.geometry.dispose();
+});

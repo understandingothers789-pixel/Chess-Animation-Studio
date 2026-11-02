@@ -1,11 +1,42 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
+import { enableCrumble } from "../pieces";
 import { Resources } from "../engine/resources";
 const vertex = `varying vec2 uv0; void main(){uv0=uv;gl_Position=vec4(position.xy,0.,1.);}`;
 /** Selective, half-resolution spatial bloom. Owns all targets; no temporal history. */
 export class BloomSystem {
   private resources = new Resources();
   private targets: T.WebGLRenderTarget[] = [];
+  private masks = new Map<
+    T.Material,
+    { material: T.MeshBasicMaterial; release: () => void }
+  >();
+  private mask(source: T.Material) {
+    let entry = this.masks.get(source);
+    if (!entry) {
+      const original = source as T.MeshBasicMaterial;
+      const material = new T.MeshBasicMaterial({
+        color: 0,
+        map: original.map ?? null,
+        alphaMap: original.alphaMap ?? null,
+        alphaTest: Math.max(0.02, source.alphaTest),
+        side: source.side,
+        depthWrite: true,
+      });
+      enableCrumble(material);
+      const release = () => {
+        source.removeEventListener("dispose", release);
+        material.dispose();
+        this.masks.delete(source);
+      };
+      entry = { material, release };
+      this.masks.set(source, entry);
+      source.addEventListener("dispose", release);
+    }
+    entry.material.opacity = source.opacity;
+    entry.material.userData.crumble.value = source.userData.crumble?.value ?? 0;
+    return entry.material;
+  }
   private frame?: T.FramebufferTexture;
   private width = 0;
   private height = 0;
@@ -115,14 +146,18 @@ export class BloomSystem {
         if (category && settings[category]) return;
         if (
           object instanceof T.Mesh &&
-          !Array.isArray(object.material) &&
-          !object.material.transparent
+          (object.userData.bloom === "pieces" ||
+            (Array.isArray(object.material)
+              ? object.material.every((m) => !m.transparent)
+              : !object.material.transparent))
         ) {
           const material = object.material;
           saved.push(() => {
             object.material = material;
           });
-          object.material = this.black;
+          object.material = Array.isArray(material)
+            ? material.map((m) => this.mask(m))
+            : this.mask(material);
         } else {
           const visible = object.visible;
           saved.push(() => {
@@ -179,6 +214,7 @@ export class BloomSystem {
   }
   dispose() {
     this.releaseTargets();
+    for (const entry of [...this.masks.values()]) entry.release();
     this.resources.dispose();
     this.screen.clear();
   }

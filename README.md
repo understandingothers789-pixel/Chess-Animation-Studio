@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.19
+# Chess Animation Studio · 0.2.20
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
@@ -6,7 +6,7 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 ## Windows downloads
 
-**0.2.20 Windows build:** The [validation run](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41402691879) failed during the packaged app save/open check. A validated download is not available yet.
+**[Download 0.2.20 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41404021222/artifacts/13122314827).** Adds optional cinematic capture sparks, debris, shockwaves and dust. The Linux visual gate and Windows packaged-app, save/open and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.19 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41396735796/artifacts/13119639192).** Adds selective cinematic bloom and safer presentation graphics recovery. The Linux visual gate, Windows build, packaged app, and export checks passed. The app displays version 0.2.19. This Actions artifact is retained for 90 days.
 

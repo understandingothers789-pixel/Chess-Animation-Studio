@@ -34,8 +34,24 @@ const launch = await electron.launch({
   },
   timeout: 60000,
 });
+// Keep process-level evidence when the Electron inspector context disappears.
+// This is especially useful on CI, where the packaged profile is ephemeral.
+const diagnostics: string[] = [];
+const electronProcess = launch.process();
+let completed = false;
+electronProcess.stdout?.on("data", (data) =>
+  diagnostics.push(`stdout: ${data}`),
+);
+electronProcess.stderr?.on("data", (data) =>
+  diagnostics.push(`stderr: ${data}`),
+);
+electronProcess.on("exit", (code, signal) =>
+  diagnostics.push(`process exit: code=${code} signal=${signal}`),
+);
 try {
   const page = await launch.firstWindow();
+  page.on("crash", () => diagnostics.push("editor renderer crashed"));
+  page.on("close", () => diagnostics.push("editor window closed"));
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
@@ -591,6 +607,16 @@ try {
     path.join(dir, "desktop-validation.txt"),
     `PASS on ${process.platform}, ${packed ? "packaged app" : "development app"}; no renderer errors.\n`,
   );
+  completed = true;
 } finally {
-  await launch.close();
+  try {
+    await launch.close();
+  } finally {
+    if (!completed)
+      console.error("Electron process diagnostics:\n" + diagnostics.join("\n"));
+    await fs.writeFile(
+      path.join(dir, "electron-process-diagnostics.txt"),
+      diagnostics.join("\n"),
+    );
+  }
 }

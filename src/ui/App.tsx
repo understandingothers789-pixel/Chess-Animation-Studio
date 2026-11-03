@@ -500,6 +500,13 @@ export function App() {
           ...p.music,
           asset: a.id,
           sourceDuration: 0,
+          trimStart: 0,
+          trimEnd: 0,
+          offset: 0,
+          volumePoints: [],
+          muted: false,
+          fadeIn: 0,
+          fadeOut: 0,
         };
         p.waveform = [];
         p.beats = [];

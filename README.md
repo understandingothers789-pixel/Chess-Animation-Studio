@@ -1,8 +1,10 @@
-# Chess Animation Studio · 0.2.21
+# Chess Animation Studio · 0.2.22
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
 ![Version 0.2.11 editor with guided project workflow and selected-move controls](docs/images/editor-011.png)
+
+The experimental creator workspace is documented in [the engineering report](docs/creator-workspace/ENGINEERING.md).
 
 ## Windows downloads
 

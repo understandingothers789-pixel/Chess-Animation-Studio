@@ -626,7 +626,7 @@ export function App() {
     timeRef.current = segment.start;
     setPlaying(true);
   }
-  const panels: Record<string, React.ComponentType<PanelProps>> = {
+  const panels: Record<string, React.ComponentType<PanelProps> | null> = {
     game: GamePanel,
     presets: null,
     music: MusicPanel,

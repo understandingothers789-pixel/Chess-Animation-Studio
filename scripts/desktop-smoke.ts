@@ -410,6 +410,70 @@ try {
     "aac",
   );
   console.log("PASS: exact-time H.264/AAC MP4 with bloom exported at 60 FPS.");
+  for (const fps of [24, 30]) {
+    const file = path.join(dir, `creator-${fps}.mp4`);
+    await launch.evaluate((_, file) => {
+      (globalThis as any).__savePath = file;
+    }, file);
+    await page.evaluate(async (fps) => {
+      (window as any).__progress = null;
+      const p = await window.studio.sample();
+      p.annotations = [
+        {
+          id: "caption-test",
+          kind: "caption",
+          from: "e2",
+          to: "e4",
+          text: "Find the winning move!",
+          color: "#c8e79c",
+          background: "#173322",
+          width: 0.09,
+          opacity: 1,
+          start: 0,
+          end: 20,
+          fade: 0.1,
+          entrance: "fade",
+          exit: "fade",
+          x: 0.5,
+          y: 0.15,
+          size: 48,
+          font: "sans-serif",
+          align: "center",
+          outline: true,
+          shadow: true,
+        },
+      ];
+      await window.studio.export(p, {
+        format: "landscape",
+        start: 4,
+        end: 4.25,
+        width: 640,
+        height: 360,
+        fps,
+      });
+    }, fps);
+    await page.waitForFunction(
+      () => ["Complete", "Failed"].includes((window as any).__progress?.phase),
+      {},
+      { timeout: 180000 },
+    );
+    const result = await page.evaluate(() => (window as any).__progress);
+    assert.equal(result.phase, "Complete", result.error);
+    const probe = JSON.parse(
+      execFileSync(
+        ffprobe,
+        ["-v", "error", "-show_streams", "-of", "json", file],
+        { encoding: "utf8" },
+      ),
+    );
+    assert.equal(
+      probe.streams.find((s: any) => s.codec_type === "video").r_frame_rate,
+      `${fps}/1`,
+    );
+  }
+  console.log(
+    "PASS: captions exported through the native compositor at 24 and 30 FPS.",
+  );
   for (const format of ["vertical", "square", "square-in-vertical"] as const) {
     const f = path.join(dir, format + ".mp4");
     await launch.evaluate((_, file) => {

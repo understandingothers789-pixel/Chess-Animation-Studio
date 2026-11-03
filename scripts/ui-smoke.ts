@@ -56,7 +56,7 @@ try {
   });
   await page.goto(origin);
   await page.waitForSelector(".app-shell", { timeout: 90000 });
-  await fs.mkdir("docs/redesign", { recursive: true });
+  await fs.mkdir("docs/creator-workspace", { recursive: true });
   const nav = page.locator(".library-tabs");
   const categories = [
     "game",
@@ -78,7 +78,10 @@ try {
   );
   assert.equal(new Set(boxes.map((r) => r.x)).size, 3);
   assert.equal(new Set(boxes.map((r) => r.y)).size, 3);
-  assert.ok(boxes.every((r) => r.h >= 65 && r.h <= 75));
+  assert.ok(boxes.every((r) => r.h >= 30 && r.h <= 45));
+  await page
+    .getByRole("button", { name: "Compact navigation", exact: true })
+    .click();
   const original = await page.evaluate(() =>
     JSON.stringify((window as any).__state.project),
   );
@@ -88,7 +91,7 @@ try {
       await page.locator(`[data-category="${category}"]`).isVisible(),
       true,
     );
-    await page.screenshot({ path: `docs/redesign/${category}.png` });
+    await page.screenshot({ path: `docs/creator-workspace/${category}.png` });
   }
   assert.equal(
     await page.evaluate(() => JSON.stringify((window as any).__state.project)),
@@ -210,7 +213,7 @@ try {
   assert.ok(
     await page.getByLabel("Opener preset", { exact: true }).isVisible(),
   );
-  await page.screenshot({ path: "docs/redesign/intro.png" });
+  await page.screenshot({ path: "docs/creator-workspace/intro.png" });
   await page.getByRole("button", { name: "Return to selected move" }).click();
   assert.ok(
     await inspector.locator('[data-inspector-tab="effects"]').isVisible(),
@@ -227,9 +230,9 @@ try {
     .evaluate((el) => {
       el.scrollTop = 0;
     });
-  await page.screenshot({ path: "docs/redesign/inspector.png" });
+  await page.screenshot({ path: "docs/creator-workspace/inspector.png" });
   await page.setViewportSize({ width: 1100, height: 768 });
-  await page.screenshot({ path: "docs/redesign/narrow.png" });
+  await page.screenshot({ path: "docs/creator-workspace/narrow.png" });
   const timelineHeader = page.locator(".timeline > header");
   assert.ok(
     await timelineHeader.evaluate((header) => {

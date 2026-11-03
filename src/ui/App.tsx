@@ -1,5 +1,10 @@
+import { ExportDialog } from "./export/ExportDialog";
+import { AnnotationEditor } from "./annotations/AnnotationEditor";
+import { annotation } from "../core/annotations";
+import { PresetBrowser } from "./presets/PresetBrowser";
+import { useWorkspace, WorkspaceBar, Splitter } from "./workspace/Workspace";
 import { settingHelp } from "./help";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
   BookOpen,
   SlidersHorizontal,
@@ -46,7 +51,6 @@ import { Inspector } from "./Inspector";
 import { IntroInspector } from "./Intro";
 import {
   GamePanel,
-  StylesPanel,
   MusicPanel,
   BoardPanel,
   FramingPanel,
@@ -71,9 +75,18 @@ export function App() {
     canUndo,
     canRedo,
   } = useProject();
+  const workspace = useWorkspace();
+  const layout = workspace.layout;
+  const [annotationId, setAnnotationId] = useState<string | null>(null);
+  const [drawing, setDrawing] = useState<"arrow" | "circle" | null>(null);
+  const annotationFrom = useRef<string | null>(null);
+  const [presetDraft, setPresetDraft] = useState<Effect | null>(null);
+
   const [introSelected, setIntroSelected] = useState(false);
   const [selected, setSelected] = useState(0),
-    [tab, setTab] = useState("game"),
+    [tab, setTab] = useState(
+      () => localStorage.getItem("studio.category") || "game",
+    ),
     [time, setTime] = useState(0),
     [playing, setPlaying] = useState(false),
     [status, setStatus] = useState("Ready to shape your next move."),
@@ -105,6 +118,13 @@ export function App() {
     [rangeStart, setRangeStart] = useState(0),
     [rangeEnd, setRangeEnd] = useState(0),
     [loadingAudio, setLoadingAudio] = useState(0);
+  useEffect(() => localStorage.setItem("studio.category", tab), [tab]);
+  const previewProject = useMemo(() => {
+    if (!presetDraft || !p.moves[selected]) return p;
+    const next = structuredClone(p);
+    next.moves[selected].effect = structuredClone(presetDraft);
+    return next;
+  }, [p, presetDraft, selected]);
   const [audition, setAudition] = useState<{
     time: number;
     playing: boolean;
@@ -369,6 +389,21 @@ export function App() {
         e.preventDefault();
         save(false);
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        document
+          .querySelector<HTMLInputElement>('[aria-label="Search settings"]')
+          ?.focus();
+      }
+      if (
+        e.shiftKey &&
+        ["ArrowRight", "ArrowLeft"].includes(e.key) &&
+        !buttonFocus
+      ) {
+        e.preventDefault();
+        seek(timeRef.current + (e.key === "ArrowRight" ? 1 / 60 : -1 / 60));
+        return;
+      }
       if (e.key === "ArrowRight" && !buttonFocus)
         select(Math.min(latest.current.moves.length - 1, selected + 1));
       if (e.key === "ArrowLeft" && !buttonFocus)
@@ -593,7 +628,7 @@ export function App() {
   }
   const panels: Record<string, React.ComponentType<PanelProps>> = {
     game: GamePanel,
-    presets: StylesPanel,
+    presets: null,
     music: MusicPanel,
     board: BoardPanel,
     framing: FramingPanel,
@@ -712,7 +747,18 @@ export function App() {
           </button>
         </div>
       )}
-      <div className="workspace">
+      <WorkspaceBar workspace={workspace} />
+      <div
+        className={`workspace flexible ${layout.compact ? "compact-nav" : ""} ${layout.hideLeft ? "left-hidden" : ""} ${layout.hideRight ? "right-hidden" : ""} ${layout.hideTimeline ? "timeline-hidden" : ""}`}
+        style={
+          {
+            "--left": `${layout.left}px`,
+            "--right": `${layout.right}px`,
+            "--timeline": `${layout.timeline}px`,
+            "--ui-scale": layout.scale / 100,
+          } as React.CSSProperties
+        }
+      >
         <aside className="library">
           <nav
             className="library-tabs"
@@ -754,6 +800,7 @@ export function App() {
             ].map(([name, Icon]) => (
               <button
                 key={name as string}
+                title={name as string}
                 aria-label={name as string}
                 aria-current={tab === name ? "page" : undefined}
                 className={tab === name ? "active" : ""}
@@ -847,12 +894,37 @@ export function App() {
                       </button>
                     </>
                   )}
-                  <Panel {...props} />
+                  {category === "presets" ? (
+                    <PresetBrowser
+                      project={p}
+                      index={selected}
+                      checked={checked}
+                      edit={edit}
+                      onPreview={(fx) => {
+                        setPresetDraft(fx);
+                        seek(segments(p)[selected]?.start ?? 0);
+                        setPlaying(true);
+                      }}
+                      onCancel={() => {
+                        setPresetDraft(null);
+                        stop();
+                      }}
+                    />
+                  ) : (
+                    Panel && <Panel {...props} />
+                  )}
                 </SettingsScope.Provider>
               </div>
             ))}
           </div>
         </aside>
+        <Splitter
+          label="Left settings width"
+          value={layout.left}
+          min={220}
+          max={500}
+          onChange={(left) => workspace.patch({ left })}
+        />
         <main className="studio">
           <div className="composition-bar">
             <div>
@@ -883,14 +955,51 @@ export function App() {
           </div>
           <div className="preview-area">
             <Preview
-              project={p}
+              project={previewProject}
               time={time}
               assets={Object.fromEntries(
                 p.assets
                   .filter((a) => a.kind === "image" && assets[a.id])
                   .map((a) => [a.id, assets[a.id]]),
               )}
-              onSquare={square}
+              onCompositionPoint={(x, y) => {
+                const a = p.annotations.find((a) => a.id === annotationId);
+                if (a && (a.kind === "text" || a.kind === "caption"))
+                  edit("Position annotation", (p) => {
+                    Object.assign(
+                      p.annotations.find((a) => a.id === annotationId)!,
+                      { x, y },
+                    );
+                  });
+              }}
+              onSquare={(sq) => {
+                if (!drawing) {
+                  square(sq);
+                  return;
+                }
+                if (drawing === "arrow" && !annotationFrom.current) {
+                  annotationFrom.current = sq;
+                  message("Click the arrow destination square.");
+                  return;
+                }
+                const existing = p.annotations.find(
+                  (a) => a.id === annotationId && a.kind === drawing,
+                );
+                const a = existing
+                  ? structuredClone(existing)
+                  : annotation(drawing, time);
+                a.from = annotationFrom.current ?? sq;
+                a.to = sq;
+                edit("Draw annotation", (p) => {
+                  if (existing)
+                    Object.assign(p.annotations.find((v) => v.id === a.id)!, a);
+                  else p.annotations.push(a);
+                });
+                setAnnotationId(a.id);
+                annotationFrom.current = null;
+                setDrawing(null);
+                message("Annotation added.");
+              }}
               onError={(s) => {
                 setStatus(s);
                 setError(true);
@@ -959,6 +1068,14 @@ export function App() {
               onChange={(e) => seek(+e.target.value)}
             />
           </div>
+          <Splitter
+            label="Timeline height"
+            vertical
+            value={layout.timeline}
+            min={120}
+            max={520}
+            onChange={(timeline) => workspace.patch({ timeline })}
+          />
           <Timeline
             project={p}
             time={time}
@@ -975,7 +1092,36 @@ export function App() {
             edit={edit}
           />
         </main>
+        <Splitter
+          label="Right inspector width"
+          value={layout.right}
+          min={240}
+          max={540}
+          onChange={(right) => workspace.patch({ right })}
+        />
         <div className="inspector-host">
+          <details className="annotation-drawer">
+            <summary>
+              Annotations · {p.annotations.length}
+              {drawing ? " · click preview squares" : ""}
+            </summary>
+            <AnnotationEditor
+              project={p}
+              edit={edit}
+              time={time}
+              selected={annotationId}
+              onSelect={setAnnotationId}
+              onDraw={(kind) => {
+                setDrawing(kind);
+                annotationFrom.current = null;
+                message(
+                  kind
+                    ? "Click preview squares to draw " + kind + "."
+                    : "Select text and Alt-click the preview to position it.",
+                );
+              }}
+            />
+          </details>
           <div hidden={!introSelected} className="inspector-slot">
             <IntroInspector project={p} edit={edit} />
             <button
@@ -994,6 +1140,7 @@ export function App() {
                 index={selected}
                 edit={edit}
                 onPreview={previewMove}
+                seek={seek}
                 previewing={!!audition}
                 previewDisabled={loadingAudio > 0}
                 onGlobalEffects={() => setTab("effects")}
@@ -1039,97 +1186,21 @@ export function App() {
         </span>
       </footer>
       {exportOpen && (
-        <div className="modal-backdrop">
-          <section className="export-dialog">
-            <span className="eyebrow">RENDER YOUR COMPOSITION</span>
-            <h2>Export MP4</h2>
-            <p>{sizes[p.format].join(" × ")} · 60 FPS · H.264 + AAC</p>
-            <Range
-              label="Export start"
-              value={rangeStart}
-              resetValue={0}
-              min={0}
-              max={Math.max(0, end - 0.1)}
-              step={0.05}
-              unit="s"
-              onChange={setRangeStart}
-            />
-            <Range
-              label="Export end"
-              value={rangeEnd}
-              resetValue={end}
-              min={Math.min(end, rangeStart + 0.1)}
-              max={end}
-              step={0.05}
-              unit="s"
-              onChange={setRangeEnd}
-            />
-            <p className="hint">
-              Each frame is rendered from its exact timeline timestamp. Music
-              and sound cues are mixed into the video.
-            </p>
-            {missing.size > 0 && (
-              <p className="danger">
-                Relink missing assets in Files before exporting.
-              </p>
-            )}
-            {exportProgress && (
-              <div className="export-progress">
-                <progress
-                  max={Math.max(1, exportProgress.total)}
-                  value={exportProgress.done}
-                />
-                <p>
-                  {exportProgress.phase} {exportProgress.done}/
-                  {exportProgress.total}
-                </p>
-                {exportProgress.error && (
-                  <p className="danger">{exportProgress.error}</p>
-                )}
-                {exportProgress.path && (
-                  <p className="path">{exportProgress.path}</p>
-                )}
-              </div>
-            )}
-            <div className="button-row">
-              {progressBusy ? (
-                <button onClick={() => run(() => window.studio.cancelExport())}>
-                  Cancel export
-                </button>
-              ) : (
-                <>
-                  <button onClick={() => setExportOpen(false)}>Close</button>
-                  <button
-                    className="primary"
-                    disabled={
-                      !settings.ffmpeg ||
-                      missing.size > 0 ||
-                      rangeEnd <= rangeStart
-                    }
-                    onClick={() =>
-                      run(async () => {
-                        const started = await window.studio.export(p, {
-                          format: p.format,
-                          start: rangeStart,
-                          end: rangeEnd,
-                        });
-                        if (!started)
-                          message("Export file selection cancelled.");
-                      })
-                    }
-                  >
-                    Choose output & render
-                  </button>
-                </>
-              )}
-            </div>
-            {!settings.ffmpeg && (
-              <p className="danger">
-                Choose an FFmpeg executable in Files to enable export.
-              </p>
-            )}
-          </section>
-        </div>
+        <ExportDialog
+          project={p}
+          index={selected}
+          settings={settings}
+          missing={missing.size}
+          progress={exportProgress}
+          close={() => setExportOpen(false)}
+          cancel={() => run(() => window.studio.cancelExport())}
+          render={(options) =>
+            run(async () => {
+              const started = await window.studio.export(p, options);
+              if (!started) message("Export file selection cancelled.");
+            })
+          }
+        />
       )}
     </div>
   );

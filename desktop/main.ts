@@ -1,3 +1,4 @@
+import { validateExport } from "../src/core/exportOptions";
 import {
   app,
   BrowserWindow,
@@ -469,17 +470,7 @@ app.whenReady().then(async () => {
     if (job) throw Error("An export is already running.");
     const p = parseProject(value);
     checkAssets(p);
-    if (
-      !formats.includes(options.format) ||
-      !Number.isFinite(options.start) ||
-      !Number.isFinite(options.end)
-    )
-      throw Error("Invalid export settings.");
-    if (
-      (options.width || options.height || options.fps) &&
-      !process.env.STUDIO_TEST
-    )
-      throw Error("Custom dimensions are only available in validation mode.");
+    options = validateExport(p, options);
     const r = await dialog.showSaveDialog(editor!, {
       defaultPath: p.title.replace(/[^a-z0-9 _-]/gi, "") + ".mp4",
       filters: [{ name: "MP4 video", extensions: ["mp4"] }],

@@ -1,3 +1,5 @@
+import { KeyframePanel } from "./keyframes/KeyframePanel";
+import { CurveEditor } from "./keyframes/CurveEditor";
 import { settingHelp } from "./help";
 import { useState } from "react";
 import {
@@ -15,18 +17,7 @@ import {
 } from "../core/project";
 import type { Edit } from "./state";
 import { Section, Range, Select, Toggle, Color, ScrubNumber } from "./controls";
-export const presetLabels: Record<Preset, string> = {
-  slide: "Clean slide",
-  soft: "Soft landing",
-  spin: "Thin-edge spin",
-  flip: "Capture flip",
-  sway: "Slow sway",
-  "sway-half": "Half sway",
-  hop: "Soft hop",
-  dramatic: "Dramatic landing",
-  capture: "Capture impact",
-  finale: "Final move boom",
-};
+import { presetLabels } from "./presets/catalog";
 export function Inspector({
   project,
   index,
@@ -38,6 +29,7 @@ export function Inspector({
   previewing,
   previewDisabled,
   onGlobalEffects,
+  seek,
 }: {
   project: Project;
   index: number;
@@ -49,6 +41,7 @@ export function Inspector({
   previewing: boolean;
   previewDisabled: boolean;
   onGlobalEffects: () => void;
+  seek?: (time: number) => void;
 }) {
   const [tab, setTab] = useState("move"),
     [channel, setChannel] = useState<Channel>("rz"),
@@ -1251,113 +1244,12 @@ export function Inspector({
         }
         {
           <div data-inspector-tab="keys" hidden={tab !== "keys"}>
-            <Section
-              title="Normalized keyframes"
-              onReset={() => resetFields(["keys"])}
-            >
-              <p className="hint">
-                Key times run from 0 to 1 within this move. Duration edits
-                preserve the curve. Rotation values use degrees; positions use
-                board squares.
-              </p>
-              <button onClick={() => change("keys", {})}>
-                Clear keys for {selectionCount} selected move(s)
-              </button>
-              <Select
-                label="Keyframe channel"
-                value={channel}
-                options={channels}
-                onChange={setChannel}
-              />
-              {(move.effect.keys[channel] ?? []).map((k, i) => (
-                <div className="key-row" key={i}>
-                  <ScrubNumber
-                    title={settingHelp(`Key ${i + 1} time`)}
-                    aria-description={settingHelp(`Key ${i + 1} time`)}
-                    aria-label={`Key ${i + 1} time`}
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={k.at}
-                    onValueChange={(n) =>
-                      edit("Key time", (p) => {
-                        p.moves[index].effect.keys[channel]![i].at = n;
-                      })
-                    }
-                  />
-                  <ScrubNumber
-                    title={settingHelp(`Key ${i + 1} value`)}
-                    aria-description={settingHelp(`Key ${i + 1} value`)}
-                    aria-label={`Key ${i + 1} value`}
-                    min={-10000}
-                    max={10000}
-                    step={0.1}
-                    value={k.value}
-                    onValueChange={(n) =>
-                      edit("Key value", (p) => {
-                        p.moves[index].effect.keys[channel]![i].value = n;
-                      })
-                    }
-                  />
-                  <select
-                    title={settingHelp(`Key ${i + 1} easing`)}
-                    aria-description={settingHelp(`Key ${i + 1} easing`)}
-                    aria-label={`Key ${i + 1} easing`}
-                    value={k.ease}
-                    onChange={(v) =>
-                      edit("Key easing", (p) => {
-                        p.moves[index].effect.keys[channel]![i].ease = v.target
-                          .value as "smooth";
-                      })
-                    }
-                  >
-                    {["smooth", "linear", "soft", "accelerate"].map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </select>
-                  <button
-                    aria-label="Delete key"
-                    onClick={() =>
-                      edit("Delete key", (p) => {
-                        p.moves[index].effect.keys[channel]!.splice(i, 1);
-                      })
-                    }
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                className="wide"
-                onClick={() =>
-                  edit("Add key", (p) => {
-                    const keys = (p.moves[index].effect.keys[channel] ??= []);
-                    keys.push({
-                      at: keys.length ? Math.min(1, keys.at(-1)!.at + 0.25) : 0,
-                      value:
-                        channel === "scale" ||
-                        channel === "opacity" ||
-                        channel === "cameraZoom"
-                          ? 1
-                          : 0,
-                      ease: "smooth",
-                    });
-                  })
-                }
-              >
-                + Add keyframe
-              </button>
-              <button
-                className="wide secondary"
-                onClick={() =>
-                  edit("Reset curve", (p) => {
-                    delete p.moves[index].effect.keys[channel];
-                  })
-                }
-              >
-                Reset this curve
-              </button>
-            </Section>
+            <KeyframePanel
+              project={project}
+              index={index}
+              edit={edit}
+              seek={seek}
+            />
           </div>
         }
       </div>

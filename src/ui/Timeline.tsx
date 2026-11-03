@@ -1,3 +1,4 @@
+import { AnnotationRegion } from "./timeline/AnnotationRegion";
 import { settingHelp } from "./help";
 import { useRef, useState } from "react";
 import { segments, duration } from "../core/timeline";
@@ -29,12 +30,28 @@ export function Timeline({
   edit: Edit;
 }) {
   const [zoom, setZoom] = useState(1);
+  const [hiddenTracks, setHiddenTracks] = useState<string[]>([]);
+  const resize = useRef<{
+    i: number;
+    x: number;
+    duration: number;
+    scale: number;
+  } | null>(null);
   const [snap, setSnap] = useState(true);
   const host = useRef<HTMLDivElement>(null),
     length = duration(p),
     seq = segments(p),
     width = Math.max(760, Math.min(16000, length * 18 * zoom)),
     x = (t: number) => (t / length) * width;
+  const events = [
+    ...seq.flatMap((s, i) => [
+      s.land,
+      ...Object.values(p.moves[i].effect.keys).flatMap((keys) =>
+        (keys ?? []).map((k) => s.depart + k.at * p.moves[i].effect.duration),
+      ),
+    ]),
+    ...p.annotations.flatMap((a) => [a.start, a.end]),
+  ].sort((a, b) => a - b);
   const dragged = useRef<string | null>(null);
   const pointer = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -92,21 +109,58 @@ export function Timeline({
             {p.moves.length} moves · {clock(length)}
           </small>
         </div>
-        <label>
-          Playhead
-          <input
-            type="range"
-            aria-label="Playhead position"
-            aria-valuetext={clock(time)}
-            title="Seek with the arrow keys"
-            aria-description="Seek through the timeline with the arrow keys"
-            min={0}
-            max={length}
-            step={0.1}
-            value={Math.max(0, Math.min(length, time))}
-            onChange={(e) => seek(Number(e.target.value))}
-          />
-        </label>
+        <button
+          title="Jump to the previous effect, annotation or keyframe"
+          onClick={() =>
+            seek(events.filter((t) => t < time - 0.001).at(-1) ?? 0)
+          }
+        >
+          Previous event
+        </button>
+        <button
+          title="Jump to the next effect, annotation or keyframe"
+          onClick={() => seek(events.find((t) => t > time + 0.001) ?? length)}
+        >
+          Next event
+        </button>
+        <button
+          onClick={() =>
+            setZoom(
+              Math.max(
+                0.5,
+                (host.current?.clientWidth ?? 760) / Math.max(1, length * 18),
+              ),
+            )
+          }
+        >
+          Fit timeline
+        </button>
+        <button onClick={() => seek(Math.max(0, time - 1 / 60))}>
+          − Frame
+        </button>
+        <button onClick={() => seek(Math.min(length, time + 1 / 60))}>
+          + Frame
+        </button>
+        <select
+          aria-label="Toggle timeline track"
+          title="Show or hide a timeline track without changing the composition."
+          aria-description="Show or hide a timeline track without changing the composition."
+          value=""
+          onChange={(e) => {
+            const v = e.target.value;
+            setHiddenTracks((t) =>
+              t.includes(v) ? t.filter((k) => k !== v) : [...t, v],
+            );
+          }}
+        >
+          <option value="">Tracks…</option>
+          {["camera", "effect", "music"].map((t) => (
+            <option key={t} value={t}>
+              {hiddenTracks.includes(t) ? "Show" : "Hide"} {t}
+            </option>
+          ))}
+        </select>
+        <output aria-label="Timeline playhead">{clock(time)}</output>
         <label title="Lock beat markers to prevent accidental edits">
           <input
             type="checkbox"
@@ -161,9 +215,10 @@ export function Timeline({
         <div className="track-labels">
           <span>TIME</span>
           <span>MOVES</span>
-          <span>CAMERA</span>
-          <span>BADGES / FX</span>
-          <span>MUSIC / BEATS</span>
+          <span hidden={hiddenTracks.includes("camera")}>CAMERA</span>
+          <span hidden={hiddenTracks.includes("effect")}>BADGES / FX</span>
+          <span>ANNOTATIONS</span>
+          <span hidden={hiddenTracks.includes("music")}>MUSIC / BEATS</span>
         </div>
         <div className="timeline-scroll" ref={host}>
           <div
@@ -239,6 +294,69 @@ export function Timeline({
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(event) => select(i, event)}
                 >
+                  <span
+                    className="clip-resize"
+                    role="slider"
+                    aria-label={`Duration of ${p.moves[i].san}`}
+                    aria-valuemin={0.2}
+                    aria-valuemax={30}
+                    aria-valuenow={p.moves[i].effect.duration}
+                    tabIndex={0}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      edit.begin();
+                      resize.current = {
+                        i,
+                        x: e.clientX,
+                        duration: p.moves[i].effect.duration,
+                        scale: width / length,
+                      };
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                    }}
+                    onPointerMove={(e) => {
+                      const d = resize.current;
+                      if (!d) return;
+                      e.stopPropagation();
+                      let value = d.duration + (e.clientX - d.x) / d.scale;
+                      if (snap && !e.altKey)
+                        value = Math.round(value * 20) / 20;
+                      edit("Resize move", (p) => {
+                        p.moves[d.i].effect.duration = Math.max(
+                          0.2,
+                          Math.min(30, value),
+                        );
+                      });
+                    }}
+                    onPointerUp={(e) => {
+                      e.stopPropagation();
+                      resize.current = null;
+                      edit.end();
+                    }}
+                    onLostPointerCapture={() => {
+                      resize.current = null;
+                      edit.end();
+                    }}
+                    onKeyDown={(e) => {
+                      if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        edit("Resize move", (p) => {
+                          p.moves[i].effect.duration = Math.max(
+                            0.2,
+                            Math.min(
+                              30,
+                              p.moves[i].effect.duration +
+                                (e.key === "ArrowRight" ? 0.05 : -0.05),
+                            ),
+                          );
+                        });
+                      }
+                    }}
+                  >
+                    ⋮
+                  </span>
                   <strong>{p.moves[i].san}</strong>
                   <small>
                     {p.moves[i].effect.preset}
@@ -247,7 +365,10 @@ export function Timeline({
                 </button>
               ))}
             </div>
-            <div className="camera-track">
+            <div
+              className="camera-track"
+              hidden={hiddenTracks.includes("camera")}
+            >
               {seq.map((s, i) => (
                 <button
                   key={i}
@@ -258,11 +379,14 @@ export function Timeline({
                     width: Math.max(8, x(s.end - s.start) - 3),
                   }}
                 >
-                  ⌁
+                  {p.moves[i].effect.cameras[p.format]?.mode ?? "Route"}
                 </button>
               ))}
             </div>
-            <div className="effect-track">
+            <div
+              className="effect-track"
+              hidden={hiddenTracks.includes("effect")}
+            >
               {seq.map((s, i) => (
                 <button
                   key={i}
@@ -273,11 +397,32 @@ export function Timeline({
                     width: Math.max(8, x(s.end - s.start) - 3),
                   }}
                 >
-                  {p.moves[i].effect.badge.manual ?? "·"}
+                  {[
+                    p.moves[i].effect.badge.manual,
+                    p.moves[i].effect.jam.enabled ? "Spotlight" : "",
+                    p.moves[i].effect.keys.opacity?.length ? "Opacity" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Move FX"}
                 </button>
               ))}
             </div>
-            <div className="music-track">
+            <div className="annotation-track">
+              {p.annotations.map((a) => (
+                <AnnotationRegion
+                  key={a.id}
+                  a={a}
+                  pixels={width / length}
+                  snap={snap}
+                  seek={seek}
+                  edit={edit}
+                />
+              ))}
+            </div>
+            <div
+              className="music-track"
+              hidden={hiddenTracks.includes("music")}
+            >
               <svg width={width} height={44} aria-label="Music waveform">
                 <path
                   d={wave
@@ -341,7 +486,8 @@ export function Timeline({
         </div>
       </div>
       <footer>
-        Click to seek · Double-click to add a beat · Drag a marker to correct it
+        Drag clip right edge to resize · Alt bypasses snapping · Double-click
+        empty space to add a beat
       </footer>
     </section>
   );

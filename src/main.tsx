@@ -8,3 +8,4 @@ const role = new URLSearchParams(location.search).get("role");
 createRoot(document.getElementById("root")!).render(
   role === "export" || role === "presentation" ? <Output /> : <App />,
 );
+import './ui/workspace/workspace.css';

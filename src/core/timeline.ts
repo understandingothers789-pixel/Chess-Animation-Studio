@@ -389,12 +389,6 @@ export function evaluate(
       target.y = subject.y + (e.cameras[format]?.y ?? 0);
     }
   }
-  if (e) {
-    for (const ch of ["cameraX", "cameraY", "cameraZoom"] as const) {
-      const k = ch === "cameraX" ? "x" : ch === "cameraY" ? "y" : "zoom";
-      target[k] = curve(e.keys[ch], u, target[k]);
-    }
-  }
   const blend = initial
     ? 0
     : ease(
@@ -422,6 +416,27 @@ export function evaluate(
     tilt: mix(previous.tilt, target.tilt, blend),
     rotation: mix(previous.rotation, target.rotation, blend),
   };
+  if (e) {
+    for (const ch of [
+      "cameraX",
+      "cameraY",
+      "cameraZoom",
+      "cameraRotation",
+      "cameraTilt",
+    ] as const) {
+      const k =
+        ch === "cameraX"
+          ? "x"
+          : ch === "cameraY"
+            ? "y"
+            : ch === "cameraRotation"
+              ? "rotation"
+              : ch === "cameraTilt"
+                ? "tilt"
+                : "zoom";
+      cam[k] = curve(e.keys[ch], u, cam[k]);
+    }
+  }
   const jam =
     e?.jam.enabled && step
       ? evaluateBeatSpotlight(

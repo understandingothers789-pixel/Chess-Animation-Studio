@@ -1,3 +1,4 @@
+import { ViewportTools, initialViewport } from "./preview/ViewportTools";
 import { useEffect, useRef, useState } from "react";
 import { Scene, ContextLostError } from "../render/Scene";
 import { sizes, type Project } from "../core/project";
@@ -7,13 +8,41 @@ export function Preview({
   assets,
   onSquare,
   onError,
+  onCompositionPoint,
 }: {
   project: Project;
   time: number;
   assets: Record<string, string>;
   onSquare: (square: string) => void;
   onError: (message: string) => void;
+  onCompositionPoint?: (x: number, y: number) => void;
 }) {
+  const [view, setView] = useState(initialViewport);
+  const panDrag = useRef<{
+    x: number;
+    y: number;
+    ox: number;
+    oy: number;
+  } | null>(null);
+  const shell = useRef<HTMLDivElement>(null);
+  const fit = () => setView(initialViewport);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.key.toLowerCase() === "f" &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !(e.target as HTMLElement).closest(
+          "input,textarea,select,[contenteditable]",
+        )
+      ) {
+        e.preventDefault();
+        setView(initialViewport);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const canvas = useRef<HTMLCanvasElement>(null),
     host = useRef<HTMLDivElement>(null),
     scene = useRef<Scene | null>(null),
@@ -62,6 +91,8 @@ export function Preview({
           ),
           width = Math.max(2, Math.floor(w * scale)),
           height = Math.max(2, Math.floor(h * scale));
+        canvas.current!.parentElement!.style.width = width + "px";
+        canvas.current!.parentElement!.style.height = height + "px";
         canvas.current!.style.width = width + "px";
         canvas.current!.style.height = height + "px";
         try {
@@ -117,28 +148,121 @@ export function Preview({
     };
   }, [assets, ready, retry]);
   return (
-    <div className="preview-host" ref={host}>
-      <canvas
-        aria-label="Chess composition preview"
-        ref={canvas}
-        onClick={(e) => {
-          const square = scene.current?.pick(e.clientX, e.clientY);
-          if (square) click.current(square);
+    <div className="preview-shell" ref={shell}>
+      <ViewportTools
+        view={view}
+        set={(patch) => setView((v) => ({ ...v, ...patch }))}
+        fit={fit}
+        full={() => {
+          if (document.fullscreenElement) void document.exitFullscreen();
+          else void shell.current?.requestFullscreen();
+        }}
+        png={() => {
+          if (!scene.current || !ready) return;
+          const [w, h] = sizes[project.format];
+          scene.current.render(project, time, w, h);
+          const link = document.createElement("a");
+          link.download = `${project.title.replace(/[^a-z0-9]/gi, "-")}-frame.png`;
+          link.href = canvas.current!.toDataURL("image/png");
+          link.click();
         }}
       />
-      {graphicsFailed && (
-        <button onClick={() => setGeneration((value) => value + 1)}>
-          Reload graphics
-        </button>
-      )}
-      {assetFailed && (
-        <button onClick={() => setRetry((value) => value + 1)}>
-          Retry images
-        </button>
-      )}
-      {!ready && !graphicsFailed && (
-        <div className="loading">Preparing vector pieces…</div>
-      )}
+      <div
+        className="preview-host"
+        ref={host}
+        onWheel={(e) => {
+          if (e.ctrlKey) {
+            e.preventDefault();
+            setView((v) => ({
+              ...v,
+              zoom: Math.max(
+                0.25,
+                Math.min(4, v.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)),
+              ),
+            }));
+          }
+        }}
+        onPointerDown={(e) => {
+          if (view.pan || e.button === 1) {
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            panDrag.current = {
+              x: e.clientX,
+              y: e.clientY,
+              ox: view.offset.x,
+              oy: view.offset.y,
+            };
+          }
+        }}
+        onPointerMove={(e) => {
+          const d = panDrag.current;
+          if (d)
+            setView((v) => ({
+              ...v,
+              offset: { x: d.ox + e.clientX - d.x, y: d.oy + e.clientY - d.y },
+            }));
+        }}
+        onPointerUp={() => {
+          panDrag.current = null;
+        }}
+        onLostPointerCapture={() => {
+          panDrag.current = null;
+        }}
+      >
+        <div
+          className="composition-viewport"
+          style={{
+            transform: `translate(${view.offset.x}px,${view.offset.y}px) scale(${view.zoom})`,
+          }}
+        >
+          <canvas
+            aria-label="Chess composition preview"
+            ref={canvas}
+            onClick={(e) => {
+              if (e.altKey) {
+                const r = e.currentTarget.getBoundingClientRect();
+                onCompositionPoint?.(
+                  Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)),
+                  Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)),
+                );
+                return;
+              }
+              if (view.pan || e.button === 1) return;
+              const square = scene.current?.pick(e.clientX, e.clientY);
+              if (square) click.current(square);
+            }}
+          />
+          {view.guides !== "none" && (
+            <div
+              className={`framing-guides guide-${view.guides}`}
+              aria-label="Editor framing guides"
+            >
+              <i />
+              <i />
+              <i />
+              <i />
+              {view.guides === "shorts" && (
+                <span>
+                  Approximate social UI safe area · varies by platform
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        {graphicsFailed && (
+          <button onClick={() => setGeneration((value) => value + 1)}>
+            Reload graphics
+          </button>
+        )}
+        {assetFailed && (
+          <button onClick={() => setRetry((value) => value + 1)}>
+            Retry images
+          </button>
+        )}
+        {!ready && !graphicsFailed && (
+          <div className="loading">Preparing vector pieces…</div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { annotationSchema } from "./annotations";
 import { z } from "zod";
 import packageInfo from "../../package.json";
 export const VERSION = packageInfo.version;
@@ -40,6 +41,8 @@ export const channels = [
   "cameraX",
   "cameraY",
   "cameraZoom",
+  "cameraRotation",
+  "cameraTilt",
 ] as const;
 export type Channel = (typeof channels)[number];
 export const badgeNames = [
@@ -489,6 +492,7 @@ export const cinematicSchema = z
   .default({ ...cinematicPresets.Cinematic, enabled: false });
 export type CinematicSettings = z.infer<typeof cinematicSchema>;
 export const projectSchema = z.object({
+  annotations: z.array(annotationSchema).max(100).default([]),
   bloom: bloomSchema,
   cinematic: cinematicSchema,
   schema: z.literal(2),
@@ -730,6 +734,7 @@ export type Move = Project["moves"][number];
 export const uid = () => crypto.randomUUID();
 export function blank(): Project {
   return {
+    annotations: [],
     cinematic: { ...cinematicPresets.Cinematic, enabled: false },
     bloom: { ...bloomDefaults },
     schema: 2,

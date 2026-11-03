@@ -1,3 +1,4 @@
+import { AnnotationSystem } from "./systems/AnnotationSystem";
 import * as T from "three";
 import { CinematicCaptureSystem } from "./systems/CinematicCaptureSystem";
 import { BloomSystem } from "./systems/BloomSystem";
@@ -94,6 +95,7 @@ export class Scene {
     const background = new BackgroundSystem(r, this.assets);
     this.board = new BoardSystem(this.root);
     const motion = new MotionSystem(this.root);
+    const annotations = new AnnotationSystem(this.root, r);
     const overlay = new OverlaySystem(this.root, r, this.assets);
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
@@ -105,6 +107,7 @@ export class Scene {
     );
     const bloom = new BloomSystem(r, this.world, camera);
     const systems = [
+      annotations,
       bloom,
       cinematic,
       capture,
@@ -228,6 +231,12 @@ export class Scene {
           dispose: () => overlay.dispose(),
         },
         {
+          id: "annotations",
+          stage: "board",
+          render: (c) => annotations.update(c),
+          dispose: () => annotations.dispose(),
+        },
+        {
           id: "world",
           stage: "world",
           after: [
@@ -237,6 +246,7 @@ export class Scene {
             "spotlight",
             "lighting",
             "badges",
+            "annotations",
           ],
           outputs: ["scene-color"],
           render: (c) => {
@@ -277,6 +287,12 @@ export class Scene {
           active: (c) =>
             c.p.evalBar || (c.p.introTitle.enabled && c.time < c.p.lead),
           render: (c) => overlay.post(c),
+        },
+        {
+          id: "annotation-text",
+          stage: "overlay",
+          after: ["information-overlay"],
+          render: (c) => annotations.post(c),
         },
         ...extraPasses,
       ]);

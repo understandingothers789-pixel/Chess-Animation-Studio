@@ -1,73 +1,94 @@
 import { useCallback, useRef, useState } from "react";
 import { sample } from "../core/chess";
 import { VERSION, type Project } from "../core/project";
-export type Edit = (label: string, fn: (p: Project) => void) => void;
+export type Edit = ((label: string, fn: (p: Project) => void) => void) & {
+  begin: () => void;
+  end: () => void;
+};
 export function useProject() {
   const [project, set] = useState<Project>(sample),
-    history = useRef<{
-      past: Project[];
-      future: Project[];
-      label: string;
-      at: number;
-    }>({ past: [], future: [], label: "", at: 0 });
-  const [, revision] = useState(0);
-  const replace = useCallback((p: Project, record = true) => {
-    set((old) => {
-      if (record) {
-        history.current.past.push(old);
-        history.current.past = history.current.past.slice(-80);
-      }
+    current = useRef(project);
+  const history = useRef({
+    past: [] as Project[],
+    future: [] as Project[],
+    label: "",
+    at: 0,
+    drag: false,
+    recorded: false,
+  });
+  const commit = useCallback((p: Project) => {
+    current.current = p;
+    set(p);
+  }, []);
+  const record = () => {
+    const h = history.current;
+    h.past.push(current.current);
+    h.past = h.past.slice(-80);
+    h.future = [];
+  };
+  const edit = useCallback(
+    Object.assign(
+      (label: string, fn: (p: Project) => void) => {
+        const old = current.current,
+          h = history.current,
+          now = Date.now();
+        if (h.drag ? !h.recorded : h.label !== label || now - h.at > 450)
+          record();
+        h.recorded = true;
+        h.label = label;
+        h.at = now;
+        h.future = [];
+        const next = structuredClone(old);
+        fn(next);
+        const previous = new Map(old.moves.map((m) => [m.id, m]));
+        for (const m of next.moves) {
+          const before = previous.get(m.id);
+          if (
+            before?.autoPreset &&
+            JSON.stringify(m.effect) !== JSON.stringify(before.effect)
+          )
+            delete m.autoPreset;
+        }
+        next.appVersion = VERSION;
+        commit(next);
+      },
+      {
+        begin: () => {
+          history.current.drag = true;
+          history.current.recorded = false;
+          history.current.label = "";
+        },
+        end: () => {
+          history.current.drag = false;
+          history.current.label = "";
+        },
+      },
+    ),
+    [commit],
+  );
+  const replace = useCallback(
+    (p: Project, recordHistory = true) => {
+      if (recordHistory) record();
+      else history.current.past = [];
       history.current.future = [];
-      return p;
-    });
-    revision((v) => v + 1);
-  }, []);
-  const edit: Edit = useCallback((label, fn) => {
-    set((old) => {
-      const h = history.current,
-        now = Date.now();
-      if (h.label !== label || now - h.at > 450) {
-        h.past.push(old);
-        h.past = h.past.slice(-80);
-      }
-      h.label = label;
-      h.at = now;
-      h.future = [];
-      const next = structuredClone(old);
-      fn(next);
-      const previous = new Map(old.moves.map((move) => [move.id, move]));
-      for (const move of next.moves) {
-        const before = previous.get(move.id);
-        if (
-          before?.autoPreset &&
-          JSON.stringify(move.effect) !== JSON.stringify(before.effect)
-        )
-          delete move.autoPreset;
-      }
-      next.appVersion = VERSION;
-      return next;
-    });
-    revision((v) => v + 1);
-  }, []);
+      history.current.label = "";
+      commit(p);
+    },
+    [commit],
+  );
   const undo = () => {
     const h = history.current;
     if (!h.past.length) return;
-    set((old) => {
-      h.future.push(old);
-      return h.past.pop()!;
-    });
+    h.future.push(current.current);
     h.label = "";
-    revision((v) => v + 1);
+    commit(h.past.pop()!);
   };
   const redo = () => {
     const h = history.current;
     if (!h.future.length) return;
-    set((old) => {
-      h.past.push(old);
-      return h.future.pop()!;
-    });
+    h.past.push(current.current);
     h.label = "";
-    revision((v) => v + 1);
+    commit(h.future.pop()!);
   };
   return {
     project,

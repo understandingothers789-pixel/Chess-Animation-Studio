@@ -31,6 +31,7 @@ export function MoveClip({
       active: boolean;
     } | null>(null),
     [resizing, setResizing] = useState(false);
+  const [bypass, setBypass] = useState(false);
   const finish = (cancel = false) => {
     const d = drag.current;
     if (d?.active) {
@@ -91,6 +92,7 @@ export function MoveClip({
             edit.begin();
             setResizing(true);
           }
+          setBypass(e.altKey);
           let value = d.duration + (e.clientX - d.x) / d.pixels;
           if (snap && !e.altKey) value = Math.round(value * 20) / 20;
           edit("Resize move", (p) => {
@@ -133,7 +135,8 @@ export function MoveClip({
       </span>
       {resizing && (
         <output className="duration-feedback" role="status">
-          {move.san} · {move.effect.duration.toFixed(2)}s{snap ? " · snap" : ""}
+          {move.san} · {move.effect.duration.toFixed(2)}s
+          {snap && !bypass ? " · snap" : ""}
         </output>
       )}
     </div>

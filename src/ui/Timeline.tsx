@@ -192,9 +192,9 @@ export function Timeline({
               aria-description={settingHelp("Timeline zoom")}
               aria-label="Timeline zoom"
               type="range"
-              min={0.5}
+              min={0.02}
               max={6}
-              step={0.1}
+              step={0.01}
               value={zoom}
               onChange={(e) => setZoom(+e.target.value)}
             />

@@ -38,7 +38,12 @@ jobs:
         run: npm ci
       - name: Install export validation tool
         shell: pwsh
-        run: choco install ffmpeg -y --no-progress
+        run: |
+          choco install ffmpeg -y --no-progress
+          $ffmpeg = (Get-Command ffmpeg.exe -ErrorAction Stop).Source
+          $ffprobe = (Get-Command ffprobe.exe -ErrorAction Stop).Source
+          "FFMPEG_PATH=$ffmpeg" >> $env:GITHUB_ENV
+          "FFPROBE_PATH=$ffprobe" >> $env:GITHUB_ENV
       - name: Install pinned Stockfish for validation only
         shell: pwsh
         run: |

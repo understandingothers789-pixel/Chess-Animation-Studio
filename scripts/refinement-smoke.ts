@@ -127,7 +127,14 @@ try {
   await page.getByTitle("Undo", { exact: true }).click();
   assert.equal(await snapshot(), original);
   await shot("selected-timeline");
-  await page.getByRole('button',{name:'Fit timeline',exact:true}).click();assert.ok(await page.locator('.timeline-scroll').evaluate(el=>el.scrollWidth<=el.clientWidth+2),'Fit timeline shows the entire sequence');await page.getByLabel('Timeline zoom',{exact:true}).fill('1');
+  await page.getByRole("button", { name: "Fit timeline", exact: true }).click();
+  assert.ok(
+    await page
+      .locator(".timeline-scroll")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth + 2),
+    "Fit timeline shows the entire sequence",
+  );
+  await page.getByLabel("Timeline zoom", { exact: true }).fill("1");
   const format = page
       .locator(".composition-bar")
       .getByLabel("Output format", { exact: true }),
@@ -180,6 +187,13 @@ try {
             () => document.documentElement.scrollWidth <= innerWidth,
           ),
         );
+        if (mode !== "Preview")
+          assert.ok(
+            await page
+              .locator(".timeline-body")
+              .evaluate((el) => el.clientHeight >= 50),
+            "Timeline tracks retain usable height",
+          );
         if (
           scale === "100" &&
           [1100, 1440, 1920].includes(size[0]) &&
@@ -199,6 +213,19 @@ try {
   for (const width of [1100, 1920]) {
     await page.setViewportSize({ width, height: width === 1100 ? 768 : 1080 });
     await page.getByLabel("UI scale", { exact: true }).selectOption("150");
+    if (width === 1100) {
+      await page.getByRole("button", { name: "View ▾", exact: true }).click();
+      await expect(
+        page.getByRole("button", { name: "Fit timeline", exact: true }),
+      ).toBeVisible();
+      await shot("timeline-view-popover");
+      await page.keyboard.press("Escape");
+    }
+    assert.ok(
+      await page
+        .getByLabel("Preview zoom", { exact: true })
+        .evaluate((el) => el.clientWidth >= 70),
+    );
     await shot(`scale150-${width}`);
   }
   await page.setViewportSize({ width: 1440, height: 900 });

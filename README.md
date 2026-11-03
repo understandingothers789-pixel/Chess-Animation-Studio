@@ -1,12 +1,14 @@
-# Chess Animation Studio · 0.2.22
+# Chess Animation Studio · 0.2.23
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
 ![Version 0.2.11 editor with guided project workflow and selected-move controls](docs/images/editor-011.png)
 
-The experimental creator workspace is documented in [the engineering report](docs/creator-workspace/ENGINEERING.md).
+The editor usability refinements are documented in [the UI report](docs/ui-refinement/REPORT.md).
 
 ## Windows downloads
+
+**[Download 0.2.23 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41594622951/artifacts/13212610939).** Makes move resizing and selection clearer, improves timeline and control readability, and expands usable preview space. The visual gate, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.22 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41563394960/artifacts/13198048629).** Adds a resizable creator workspace, preview controls, visual animation presets and curves, timed chess annotations, and expanded export options. The visual gate, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

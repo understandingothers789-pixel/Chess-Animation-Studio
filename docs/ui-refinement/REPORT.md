@@ -38,3 +38,51 @@ At very short durations clips still require zooming for comfortable pointer targ
 - [6ced7ba](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/6ced7ba): preview, controls and workspace refinements.
 
 Validation results and final Git verification follow after the checks complete.
+
+## Responsive review and fixes
+
+Visual review at 150% and 1100×768 revealed that a wrapped toolbar could consume the timeline. At narrow container widths, Navigation, View and Behavior now use labeled popovers with keyboard access, Escape dismissal and outside-click dismissal. Track space is reserved. Preview numeric and guide controls use text-relative widths so the zoom value remains readable. Playback metadata truncates safely rather than colliding with playback buttons.
+
+The minimum-duration test also exposed overlap between the selection button's padding and the grip. Both are now flex siblings with separate allocated widths; selecting the minimum-duration move is explicitly tested without forcing the pointer through an obstruction.
+
+[150% at 1100×768](scale150-1100.png) · [150% at 1920×1080](scale150-1920.png) · [Narrow View popover](timeline-view-popover.png) · [Compact navigation](creator/compact-navigation.png).
+
+## Executed checks
+
+| Command | Result | Scope |
+| --- | --- | --- |
+| `npm test` | 90 passed, 1 skipped | Existing core/service tests. Local Stockfish integration skipped because its executable is unavailable. |
+| `npm run build` | Passed | Latest production TypeScript, Vite and desktop bundles for 0.2.23. |
+| `npm run test:ui` | Passed, including repeat after responsive fixes | Settings, selection scopes, search/reveal, navigation, intro controls and narrow header layout. |
+| `npm run test:creator` | Passed, including repeat after responsive fixes | Presets, clip and keyframe drag undo, workspace persistence, annotations, PNG download, export choices and UI scaling. |
+| `node --import tsx scripts/refinement-smoke.ts` | Passed after correcting issues found by the test and visual review | Independent resize/selection, no-op clicks, minimum-duration selection, keyboard adjustments, snap and Alt bypass, live feedback, one-step undo, full-sequence timeline Fit, fullscreen playback, guide-preserving Fit, popover access, readable zoom fields and at least 50px of track space. All 96 requested resolution/scale/workspace combinations fit correctly. Full project data is unchanged after view/layout operations and undo. |
+| `npm run test:desktop` | Passed | Native startup, save/reopen, exports at 24/30/60 FPS, aspect ratios, cancellation cleanup, backward reconstruction and presentation recovery. |
+| `npm run test:render -- refinement` | Passed | 216 render requests, 168 unique fixtures; determinism, resource lifetime, independent renderers and cinematic recovery checks. No renderer changes were necessary. |
+
+The standalone software-renderer measurements are diagnostic fixtures, not UI FPS measurements or a claimed speedup. The UI retains one existing Scene instance during zoom, panel resizing and workspace changes.
+
+## Major files
+
+- `src/ui/timeline/MoveClip.tsx`: independent selection and transactional duration grip.
+- `src/ui/Timeline.tsx`, `timeline/ControlGroup.tsx`, `timeline/timeline.css`: readable sequence, grouped controls, responsive popovers and consolidated styles.
+- `src/ui/styles/tokens.css`, `style.css`, `workspace/workspace.css`: typography tokens, consistent controls, reduced chrome and removal of obsolete timeline overrides.
+- `src/ui/Preview.tsx`, `preview/ViewportTools.tsx`: grouped viewport controls, guide-preserving Fit and fullscreen playback.
+- `src/ui/workspace/Workspace.tsx`: return from Preview to the preceding editing layout.
+- `src/ui/Inspector.tsx`, `App.tsx`: shorter selection guidance and preview playback integration.
+- `scripts/refinement-smoke.ts`: focused interaction and responsive validation. Existing browser scripts store their new screenshots separately from the 0.2.22 baseline.
+
+Windows verification and Git references are recorded below. No public release is authorized or published by this workflow.
+
+## Windows and final verification
+
+[Windows validation run 41594622951](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41594622951) passed the visual comparison, Windows build and unit/service tests, portable packaging, runtime signature step, and packaged application checks (including save/reopen, export, cancellation and recovery). The public-release publication step was skipped.
+
+[Download validated 0.2.23 Windows portable](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41594622951/artifacts/13212610939), 158 MB, retained for 90 days; GitHub sign-in is required. Artifact SHA-256: `6be421ae663efc7330bb9cdde2b762c1f785f7f785f55f57220aee570ac61ddf`.
+
+The validated application source is [be2ad74c2a2faada4921f58e8ca4592b868c984d](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/be2ad74c2a2faada4921f58e8ca4592b868c984d). Subsequent changes contain tests, screenshots, this report and the README download entry; application source and package versions remain identical to that validated build.
+
+Additional implementation commits: [f8ba3db](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/f8ba3db), [a3e6401](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/a3e6401), [3293cce](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/3293cce), and [be2ad74](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/be2ad74). [f9ef4a6](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/f9ef4a6) records the new validation suite and initial evidence. The final documentation/evidence commit updates the final reviewed screenshots and results.
+
+All implementation was committed and pushed exclusively to `architecture/effect-compositor`. Protected branch references match startup: `studio-main` = `9e2eccc56e228fee5b526c9fc097316400c2ab08`, `main` = `e4ce9a7c61c250c6e1f84707d643da5942ea4cf7`, `fresh-start` = `5030ba80ff8444b312d775257319b594bf9b3fba`, `windows-download` = `6c185b473c2f4d855eb42517d1f8367d4edc8319`. No branch merge, force push, public release or cloud environment publication was performed.
+
+Status: **Implemented and validated**, with the space and zoom limitations documented above. Final local/remote HEAD verification accompanies the final delivery.

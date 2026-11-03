@@ -149,7 +149,7 @@ export function Timeline({
             onClick={() =>
               setZoom(
                 Math.max(
-                  0.5,
+                  0.02,
                   (host.current?.clientWidth ?? 760) / Math.max(1, length * 52),
                 ),
               )

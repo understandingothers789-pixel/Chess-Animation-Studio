@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.20
+# Chess Animation Studio · [0.21](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/tree/architecture/effect-compositor)
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 

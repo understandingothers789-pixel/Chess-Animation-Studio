@@ -62,9 +62,9 @@ try {
   await page.goto(origin);
   await page.waitForSelector(".app-shell");
   await page.waitForFunction(() => !!(window as any).__state);
-  await fs.mkdir("docs/creator-workspace", { recursive: true });
+  await fs.mkdir("docs/ui-refinement/creator", { recursive: true });
   const shot = async (name: string) => {
-    await page.screenshot({ path: `docs/creator-workspace/${name}.png` });
+    await page.screenshot({ path: `docs/ui-refinement/creator/${name}.png` });
   };
   const state = () =>
     page.evaluate(() => JSON.stringify((window as any).__state.project));

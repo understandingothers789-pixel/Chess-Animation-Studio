@@ -56,7 +56,7 @@ try {
   });
   await page.goto(origin);
   await page.waitForSelector(".app-shell", { timeout: 90000 });
-  await fs.mkdir("docs/creator-workspace", { recursive: true });
+  await fs.mkdir("docs/ui-refinement/regression", { recursive: true });
   const nav = page.locator(".library-tabs");
   const categories = [
     "game",
@@ -91,7 +91,7 @@ try {
       await page.locator(`[data-category="${category}"]`).isVisible(),
       true,
     );
-    await page.screenshot({ path: `docs/creator-workspace/${category}.png` });
+    await page.screenshot({ path: `docs/ui-refinement/regression/${category}.png` });
   }
   assert.equal(
     await page.evaluate(() => JSON.stringify((window as any).__state.project)),
@@ -213,7 +213,7 @@ try {
   assert.ok(
     await page.getByLabel("Opener preset", { exact: true }).isVisible(),
   );
-  await page.screenshot({ path: "docs/creator-workspace/intro.png" });
+  await page.screenshot({ path: "docs/ui-refinement/regression/intro.png" });
   await page.getByRole("button", { name: "Return to selected move" }).click();
   assert.ok(
     await inspector.locator('[data-inspector-tab="effects"]').isVisible(),
@@ -230,9 +230,9 @@ try {
     .evaluate((el) => {
       el.scrollTop = 0;
     });
-  await page.screenshot({ path: "docs/creator-workspace/inspector.png" });
+  await page.screenshot({ path: "docs/ui-refinement/regression/inspector.png" });
   await page.setViewportSize({ width: 1100, height: 768 });
-  await page.screenshot({ path: "docs/creator-workspace/narrow.png" });
+  await page.screenshot({ path: "docs/ui-refinement/regression/narrow.png" });
   const timelineHeader = page.locator(".timeline > header");
   assert.ok(
     await timelineHeader.evaluate((header) => {

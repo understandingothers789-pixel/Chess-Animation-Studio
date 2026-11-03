@@ -6,7 +6,7 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 ## Windows downloads
 
-**[Download 0.2.21 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/workflows/windows.yml?query=branch%3Aarchitecture%2Feffect-compositor).** Organizes editing into nine workspace categories, improves the move inspector, and adds settings search and move preview. Windows build and packaged-app/export validation are running; this Actions artifact will be retained for 90 days.
+**[Download 0.2.21 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41556960596/artifacts/13194579743).** Organizes editing into nine workspace categories, improves the move inspector, and adds settings search and move preview. The Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.20 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41404021222/artifacts/13122314827).** Adds optional cinematic capture sparks, debris, shockwaves and dust. The Linux visual gate and Windows packaged-app, save/open and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

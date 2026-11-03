@@ -500,3 +500,4 @@
   right: 0;
 }
 .annotation-editor .button-row,.curve-editor .button-row,.preset-browser .button-row{flex-wrap:wrap}.annotation-editor .button-row button{white-space:normal;min-width:0}.annotation-editor textarea{resize:vertical}.flexible .inspector-slot{overflow-x:hidden}@media(max-width:1000px){.compact-nav .library-tabs button span{display:none}.compact-nav .library-tabs button{justify-content:center}.flexible .preview-caption{font-size:8px}}
+.timeline-body{overflow-y:auto}.timeline-scroll{min-height:190px;overflow-y:hidden}.track-labels{height:190px;min-height:190px}

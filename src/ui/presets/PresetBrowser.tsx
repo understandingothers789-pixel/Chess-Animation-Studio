@@ -16,7 +16,10 @@ const descriptions: Record<string, string> = {
 };
 function preference(key: string) {
   try {
-    return JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
+    const value: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(value)
+      ? value.filter((v): v is string => typeof v === "string")
+      : [];
   } catch {
     return [];
   }
@@ -74,7 +77,9 @@ export function PresetBrowser({
   return (
     <section className="preset-browser">
       <input
-        aria-label="Search animation presets" title="Filter animations by name and description before previewing or applying them." aria-description="Filter animations by name and description before previewing or applying them."
+        aria-label="Search animation presets"
+        title="Filter animations by name and description before previewing or applying them."
+        aria-description="Filter animations by name and description before previewing or applying them."
         placeholder="Search animations…"
         value={query}
         onChange={(e) => search(e.target.value)}
@@ -178,7 +183,9 @@ export function PresetBrowser({
       <label>
         Apply animation to{" "}
         <select
-          aria-label="Preset target scope" title="Choose the active move, the checked group, or every move before applying an animation." aria-description="Choose the active move, the checked group, or every move before applying an animation."
+          aria-label="Preset target scope"
+          title="Choose the active move, the checked group, or every move before applying an animation."
+          aria-description="Choose the active move, the checked group, or every move before applying an animation."
           value={scope}
           onChange={(e) => setScope(e.target.value)}
         >

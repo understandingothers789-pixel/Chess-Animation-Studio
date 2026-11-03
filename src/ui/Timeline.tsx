@@ -233,6 +233,7 @@ export function Timeline({
               if (e.buttons === 1) pointer(e);
             }}
             onPointerUp={() => {
+              if (dragged.current) edit.end();
               dragged.current = null;
             }}
             onDoubleClick={(e) => {
@@ -452,6 +453,7 @@ export function Timeline({
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     if (p.beatsLocked) return;
+                    edit.begin();
                     dragged.current = b.id;
                     (
                       e.currentTarget.parentElement!

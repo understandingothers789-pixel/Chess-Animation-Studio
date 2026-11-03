@@ -1,3 +1,4 @@
+import { Transport } from "./transport/Transport";
 import { ExportDialog } from "./export/ExportDialog";
 import { AnnotationEditor } from "./annotations/AnnotationEditor";
 import { annotation } from "../core/annotations";
@@ -1010,64 +1011,20 @@ export function App() {
               <span>{sizes[p.format].join(" × ")} · 60 FPS</span>
             </div>
           </div>
-          <div className="transport">
-            <div className="transport-row">
-              <small>
-                <kbd>SPACE</kbd>{" "}
-                {p.moves[selected]
-                  ? `Move ${selected + 1} · ${p.moves[selected].san}`
-                  : "Starting position"}
-              </small>
-              <div className="transport-buttons">
-                <button title="Restart" onClick={() => seek(0)}>
-                  <SkipBack size={17} />
-                </button>
-                <button
-                  title="Previous move"
-                  onClick={() => select(Math.max(0, selected - 1))}
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  title={playing ? "Pause" : "Play"}
-                  aria-label={playing ? "Pause" : "Play"}
-                  className="play-button"
-                  disabled={loadingAudio > 0}
-                  onClick={() => {
-                    if (time >= end) setTime(0);
-                    setPlaying((v) => !v);
-                  }}
-                >
-                  {playing ? <Pause size={22} /> : <Play size={22} />}
-                </button>
-                <button
-                  title="Next move"
-                  onClick={() =>
-                    select(Math.min(p.moves.length - 1, selected + 1))
-                  }
-                >
-                  <ChevronRight size={18} />
-                </button>
-                <button title="End" onClick={() => seek(end)}>
-                  <SkipForward size={17} />
-                </button>
-              </div>
-              <small>
-                <strong>{clock(time)}</strong> / {clock(end)}
-              </small>
-            </div>
-            <input
-              title={settingHelp("Seek composition")}
-              aria-description={settingHelp("Seek composition")}
-              aria-label="Seek composition"
-              type="range"
-              min={0}
-              max={end}
-              step={0.001}
-              value={time}
-              onChange={(e) => seek(+e.target.value)}
-            />
-          </div>
+          <Transport
+            p={p}
+            selected={selected}
+            time={time}
+            end={end}
+            playing={playing}
+            loadingAudio={loadingAudio}
+            select={select}
+            seek={seek}
+            toggle={() => {
+              if (time >= end) setTime(0);
+              setPlaying((v) => !v);
+            }}
+          />
           <Splitter
             label="Timeline height"
             vertical

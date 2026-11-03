@@ -37,4 +37,4 @@ Images live beside this file; `README.md` links every category and shows the bef
 - The existing minimum application width is 1100 pixels. The inspected narrower view is 1100×768.
 - Native tests here run Linux Electron with software WebGL. A physical Windows/GPU run was not available in this workspace.
 
-No release or environment was published, and the application remains version 0.2.20.
+This branch is packaged as version 0.2.21. The Windows validation workflow uploads an Actions artifact; release publication remains disabled.

@@ -9,12 +9,16 @@ export function Preview({
   onSquare,
   onError,
   onCompositionPoint,
+  playing,
+  onToggle,
 }: {
   project: Project;
   time: number;
   assets: Record<string, string>;
   onSquare: (square: string) => void;
   onError: (message: string) => void;
+  playing?: boolean;
+  onToggle?: () => void;
   onCompositionPoint?: (x: number, y: number) => void;
 }) {
   const [view, setView] = useState(initialViewport);
@@ -25,7 +29,15 @@ export function Preview({
     oy: number;
   } | null>(null);
   const shell = useRef<HTMLDivElement>(null);
-  const fit = () => setView(initialViewport);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const update = () =>
+      setFullscreen(document.fullscreenElement === shell.current);
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
+  const fit = () =>
+    setView((v) => ({ ...v, zoom: 1, offset: { x: 0, y: 0 }, pan: false }));
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (
@@ -37,7 +49,7 @@ export function Preview({
         )
       ) {
         e.preventDefault();
-        setView(initialViewport);
+        setView((v) => ({ ...v, zoom: 1, offset: { x: 0, y: 0 }, pan: false }));
       }
     };
     window.addEventListener("keydown", handler);
@@ -150,6 +162,9 @@ export function Preview({
   return (
     <div className="preview-shell" ref={shell}>
       <ViewportTools
+        fullscreen={fullscreen}
+        playing={playing}
+        toggle={onToggle}
         view={view}
         set={(patch) => setView((v) => ({ ...v, ...patch }))}
         fit={fit}

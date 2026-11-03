@@ -163,9 +163,9 @@ export function Inspector({
           <small>{presetLabels[move.effect.preset]}</small>
         </h2>
         <p className="hint">
-          {selectionCount} move{selectionCount > 1 ? "s" : ""} selected · Move,
-          Effects and Camera changes apply to the selection. Keyframe-point
-          edits use the active move.
+          {selectionCount} move{selectionCount > 1 ? "s" : ""} selected ·
+          Animation, effects and camera use this selection. Keys use the active
+          move.
         </p>
         <button
           className="wide primary"

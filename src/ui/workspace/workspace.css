@@ -74,11 +74,17 @@
   gap: 4px;
 }
 .compact-nav .library-tabs button {
+  min-width: 0;
   min-height: 0;
   padding: 4px;
   flex-direction: row;
   font-size: var(--text-meta);
   gap: 4px;
+}
+.compact-nav .library-tabs button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .compact-nav .library-tabs svg {
   width: 14px;
@@ -98,7 +104,7 @@
 .flexible .composition-bar {
   padding: 8px;
   height: auto;
-  min-height: 48px;
+  min-height: 40px;
 }
 @media (max-width: 1000px) {
   .workspace.flexible:not(.left-hidden):not(.right-hidden) {
@@ -132,24 +138,51 @@
 }
 .viewport-tools {
   display: flex;
-  gap: 5px;
   align-items: center;
+  gap: 5px 8px;
   flex-wrap: wrap;
-  padding-bottom: 6px;
+  padding: 4px 0 6px;
+  font-size: var(--text-meta);
+}
+.viewport-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.viewport-group + .viewport-group {
+  border-left: 1px solid var(--border);
+  padding-left: 7px;
 }
 .viewport-tools label {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 .viewport-tools input {
-  width: 52px;
+  width: 56px;
 }
 .viewport-tools select {
-  width: 110px;
+  width: 100px;
+}
+.viewport-group select {
+  width: 76px;
 }
 .viewport-tools button {
   padding: 4px 7px;
+}
+.viewport-output {
+  margin-left: auto;
+}
+.viewport-status {
+  font-size: var(--text-meta);
+  color: var(--muted);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 .composition-viewport {
   position: relative;
@@ -464,6 +497,7 @@
     display: none;
   }
   .compact-nav .library-tabs button {
+    min-width: 0;
     justify-content: center;
   }
   .flexible .preview-caption {

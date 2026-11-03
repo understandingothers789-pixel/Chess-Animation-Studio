@@ -156,7 +156,7 @@ small {
   overflow: hidden;
 }
 .app-header {
-  height: 77px;
+  height: 56px;
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -346,18 +346,26 @@ small {
   margin-bottom: 9px;
   gap: 5px;
 }
+.range-field > span > span:first-child {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+}
 .number-wrap {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: var(--text-meta);
 }
 .number-wrap input {
-  width: 58px;
+  width: 72px;
   text-align: right;
   padding: 3px 5px;
   font-size: var(--text-meta);
-  height: 24px;
+  height: var(--control-height);
 }
 .button-row {
   display: flex;
@@ -499,7 +507,7 @@ small {
   min-height: 180px;
   display: flex;
   flex-direction: column;
-  padding: 16px 18px 0;
+  padding: 6px 8px 0;
   background: radial-gradient(ellipse at 45% 40%, #253728 0%, #101913 75%);
 }
 .preview-host {
@@ -523,13 +531,13 @@ small {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #7d9474;
+  color: var(--muted);
   font-size: var(--text-meta);
   letter-spacing: 0.7px;
   height: 26px;
 }
 .transport {
-  padding: 8px 20px 10px;
+  padding: 4px 12px 6px;
   border-bottom: 1px solid var(--line);
   background: #162219;
   flex-shrink: 0;
@@ -539,8 +547,8 @@ small {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
-  min-height: 39px;
+  margin-bottom: 4px;
+  min-height: 32px;
 }
 .transport-row > small {
   font-size: var(--text-meta);
@@ -569,8 +577,8 @@ small {
   background: var(--accent);
   color: #20371e;
   border-radius: 7px;
-  padding: 9px 13px;
-  min-height: 42px;
+  padding: 6px 10px;
+  min-height: 32px;
 }
 .transport input {
   display: block;

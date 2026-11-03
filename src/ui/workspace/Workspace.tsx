@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 export type Layout = {
   left: number;
   right: number;
@@ -69,18 +69,23 @@ export function useWorkspace() {
   useEffect(() => {
     localStorage.setItem("studio.workspace", JSON.stringify(layout));
   }, [layout]);
+  const previousLayout = useRef<Layout>(defaults);
   const patch = (v: Partial<Layout>) => setLayout((p) => ({ ...p, ...v }));
   return {
     layout,
     patch,
-    preset: (mode: string) =>
+    restore: () => setLayout(previousLayout.current),
+    preset: (mode: string) => {
+      if (mode === "Preview" && layout.mode !== "Preview")
+        previousLayout.current = layout;
       patch({
         ...defaults,
         ...modes[mode],
         mode,
         compact: layout.compact,
         scale: layout.scale,
-      }),
+      });
+    },
   };
 }
 export function Splitter({
@@ -154,6 +159,9 @@ export function WorkspaceBar({
   const { layout: l, patch, preset } = workspace;
   return (
     <div className="workspace-bar" aria-label="Workspace controls">
+      {l.mode === "Preview" && (
+        <button onClick={workspace.restore}>Return to editing</button>
+      )}
       <label>
         Workspace{" "}
         <select

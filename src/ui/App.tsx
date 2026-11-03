@@ -956,6 +956,8 @@ export function App() {
           </div>
           <div className="preview-area">
             <Preview
+              playing={playing}
+              onToggle={() => setPlaying((v) => !v)}
               project={previewProject}
               time={time}
               assets={Object.fromEntries(

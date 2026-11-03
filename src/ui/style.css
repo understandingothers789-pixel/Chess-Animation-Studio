@@ -2,7 +2,7 @@
   font-family: Inter, "Segoe UI", Arial, sans-serif;
   color: #dce4d9;
   background: #101715;
-  font-size: 12px;
+  font-size: var(--text-label);
   font-synthesis: none;
   color-scheme: dark;
   --accent: #c7e49e;
@@ -122,14 +122,14 @@ p {
   line-height: 1.65;
 }
 small {
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .muted,
 .hint {
   color: var(--muted);
 }
 .hint {
-  font-size: 11px;
+  font-size: var(--text-label);
   line-height: 1.6;
   margin: 8px 0;
 }
@@ -137,13 +137,13 @@ small {
   color: #f1a392;
 }
 .path {
-  font-size: 10px;
+  font-size: var(--text-meta);
   overflow-wrap: anywhere;
   color: #9eb096;
   margin: 6px 0;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: var(--text-meta);
   letter-spacing: 1.6px;
   color: #aec19b;
   text-transform: uppercase;
@@ -180,12 +180,12 @@ small {
 }
 
 .brand strong {
-  font-size: 10px;
+  font-size: var(--text-meta);
   letter-spacing: 1.5px;
 }
 .brand small {
   display: block;
-  font-size: 8px;
+  font-size: var(--text-meta);
   letter-spacing: 1.8px;
   margin-top: 7px;
   color: #9eb38d;
@@ -197,7 +197,7 @@ small {
   padding-left: 20px;
 }
 .project-heading input {
-  font-size: 13px;
+  font-size: var(--text-label);
   font-weight: 600;
   max-width: 300px;
   width: 100%;
@@ -209,7 +209,7 @@ small {
   display: block;
   margin-top: 6px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--text-meta);
 }
 .header-actions {
   display: flex;
@@ -253,7 +253,7 @@ small {
   flex-direction: column;
   color: #829c88;
   gap: 6px;
-  font-size: 9px;
+  font-size: var(--text-meta);
 }
 .library-tabs button.active {
   background: #2d4330;
@@ -267,7 +267,7 @@ small {
 .sample-button {
   justify-content: space-between;
   width: 100%;
-  font-size: 10px;
+  font-size: var(--text-meta);
   border-color: #536a46;
   color: #cfdfb7;
   margin-bottom: 8px;
@@ -280,7 +280,7 @@ small {
   padding: 13px 0;
 }
 .section summary {
-  font-size: 10px;
+  font-size: var(--text-meta);
   letter-spacing: 1.1px;
   text-transform: uppercase;
   color: #b7ca9f;
@@ -307,7 +307,7 @@ small {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--text-label);
   color: #afc29e;
 }
 .select-field select,
@@ -321,7 +321,7 @@ small {
   align-items: center;
   gap: 10px;
   min-height: 27px;
-  font-size: 11px;
+  font-size: var(--text-label);
   color: #b4c5a6;
 }
 .color-field > span:last-child {
@@ -330,7 +330,7 @@ small {
   gap: 9px;
 }
 .color-field code {
-  font-size: 9px;
+  font-size: var(--text-meta);
   color: var(--muted);
 }
 .range-field {
@@ -342,7 +342,7 @@ small {
   align-items: center;
   justify-content: space-between;
   color: #b6c5a9;
-  font-size: 11px;
+  font-size: var(--text-label);
   margin-bottom: 9px;
   gap: 5px;
 }
@@ -350,13 +350,13 @@ small {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: var(--text-meta);
 }
 .number-wrap input {
   width: 58px;
   text-align: right;
   padding: 3px 5px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   height: 24px;
 }
 .button-row {
@@ -383,12 +383,12 @@ small {
   align-items: center;
   justify-content: space-between;
   margin-top: 20px;
-  font-size: 9px;
+  font-size: var(--text-meta);
   letter-spacing: 1px;
   color: #a3b896;
 }
 .list-heading button {
-  font-size: 9px;
+  font-size: var(--text-meta);
   background: none;
   border: none;
   min-height: 25px;
@@ -417,11 +417,11 @@ small {
   min-height: 34px;
 }
 .move-row button strong {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .move-row button small {
   margin-left: auto;
-  font-size: 9px;
+  font-size: var(--text-meta);
   color: #98ac90;
 }
 .move-row.active {
@@ -429,7 +429,7 @@ small {
   outline: 1px solid #789860;
 }
 .badge-mini {
-  font-size: 8px;
+  font-size: var(--text-meta);
   color: #bdc9a7;
   overflow: hidden;
 }
@@ -453,10 +453,10 @@ small {
   color: #c8dfa8;
 }
 .preset-card strong {
-  font-size: 11px;
+  font-size: var(--text-label);
 }
 .preset-card small {
-  font-size: 9px;
+  font-size: var(--text-meta);
   color: #91a883;
 }
 .studio {
@@ -482,16 +482,16 @@ small {
 }
 .composition-bar strong {
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .composition-bar .select-field {
   flex-direction: row;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .composition-bar select {
   width: 163px;
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .preview-area {
   position: relative;
@@ -524,7 +524,7 @@ small {
   justify-content: space-between;
   align-items: center;
   color: #7d9474;
-  font-size: 8px;
+  font-size: var(--text-meta);
   letter-spacing: 0.7px;
   height: 26px;
 }
@@ -543,7 +543,7 @@ small {
   min-height: 39px;
 }
 .transport-row > small {
-  font-size: 9px;
+  font-size: var(--text-meta);
   color: #a4b992;
   min-width: 120px;
 }
@@ -577,206 +577,12 @@ small {
 }
 .transport kbd {
   font-family: inherit;
-  font-size: 8px;
+  font-size: var(--text-meta);
   padding: 4px;
   border: 1px solid #42563c;
   border-radius: 3px;
   color: #9db686;
   margin-right: 8px;
-}
-.timeline {
-  height: 224px;
-  flex-shrink: 0;
-  background: #152018;
-  display: flex;
-  flex-direction: column;
-}
-.timeline > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 41px;
-  padding: 10px 20px;
-}
-.timeline > header > div {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.timeline > header small {
-  color: #829b77;
-  font-size: 9px;
-}
-.timeline > header label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 9px;
-  color: #829b77;
-}
-.timeline > header input {
-  width: 80px;
-}
-.timeline-body {
-  display: flex;
-  min-height: 0;
-  flex: 1;
-}
-.track-labels {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  width: 88px;
-  border-right: 1px solid #30442d;
-  padding-left: 14px;
-  font-size: 7px;
-  color: #8fa880;
-  letter-spacing: 0.5px;
-}
-.track-labels span {
-  display: flex;
-  align-items: center;
-  height: 25px;
-}
-.track-labels span:nth-child(2) {
-  height: 43px;
-}
-.track-labels span:last-child {
-  height: 44px;
-}
-.timeline-scroll {
-  overflow: auto;
-  flex: 1;
-}
-.tracks {
-  position: relative;
-  min-height: 162px;
-  background-image: linear-gradient(90deg, #253c2440 1px, transparent 1px);
-  background-size: 50px 100%;
-  user-select: none;
-  touch-action: none;
-}
-.ruler {
-  height: 25px;
-  position: relative;
-  border-bottom: 1px solid #31442b;
-}
-.ruler span {
-  position: absolute;
-  top: 7px;
-  font-size: 7px;
-  color: #8ca779;
-  padding-left: 3px;
-}
-.move-track,
-.camera-track,
-.effect-track,
-.music-track {
-  position: relative;
-  border-bottom: 1px solid #283d25;
-}
-.move-track {
-  height: 43px;
-}
-.move-track button {
-  position: absolute;
-  top: 3px;
-  height: 36px;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  overflow: hidden;
-  gap: 1px;
-  font-size: 10px;
-  border-color: #587346;
-  background: #2c452a;
-  padding: 4px 6px;
-}
-.move-track button small {
-  font-size: 7px;
-  color: #adc297;
-}
-.move-track button.selected {
-  border-color: #c8e0a8;
-  background: #4d6640;
-  color: #f0f8e3;
-}
-.camera-track,
-.effect-track {
-  height: 25px;
-}
-.camera-track button,
-.effect-track button {
-  position: absolute;
-  top: 3px;
-  height: 19px;
-  min-height: 0;
-  font-size: 8px;
-  padding: 1px 4px;
-  background: #2b3c40;
-  border-color: #455a5c;
-  justify-content: flex-start;
-  overflow: hidden;
-}
-.effect-track button {
-  background: #39334a;
-  border-color: #58476c;
-  color: #bcaad5;
-}
-.music-track {
-  height: 44px;
-  color: #7f9b66;
-  overflow: hidden;
-}
-.music-track svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-}
-.beat {
-  position: absolute;
-  height: 43px;
-  width: 7px;
-  transform: translateX(-3px);
-  background: linear-gradient(
-    90deg,
-    transparent 3px,
-    #91a576 3px,
-    #91a576 4px,
-    transparent 4px
-  );
-  cursor: ew-resize;
-  touch-action: none;
-  font-size: 8px;
-  color: #b3c995;
-}
-.beat.accent {
-  color: #daeabc;
-}
-.beat.disabled {
-  opacity: 0.25;
-}
-.playhead {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-left: 1px solid #d9edb3;
-  pointer-events: none;
-  z-index: 5;
-}
-.playhead span {
-  display: block;
-  width: 6px;
-  height: 6px;
-  transform: translateX(-3px) rotate(45deg);
-  background: #d9edb3;
-}
-.timeline footer {
-  font-size: 8px;
-  color: #809876;
-  padding: 4px 14px;
 }
 .inspector {
   border-left: 1px solid var(--line);
@@ -794,12 +600,12 @@ small {
   gap: 12px;
 }
 .inspector h2 small {
-  font-size: 10px;
+  font-size: var(--text-meta);
   font-weight: 400;
   color: #acbd9a;
 }
 .inspector-title button {
-  font-size: 10px;
+  font-size: var(--text-meta);
   min-height: 28px;
 }
 .tabs {
@@ -813,7 +619,7 @@ small {
   border: 0;
   border-radius: 0;
   background: none;
-  font-size: 10px;
+  font-size: var(--text-meta);
   text-transform: capitalize;
   color: #819b75;
   border-bottom: 2px solid transparent;
@@ -839,7 +645,7 @@ small {
 .key-row input,
 .key-row select {
   width: 100%;
-  font-size: 9px;
+  font-size: var(--text-meta);
   padding: 4px;
 }
 .key-row button {
@@ -847,7 +653,7 @@ small {
   min-height: 27px;
 }
 .asset-name {
-  font-size: 11px;
+  font-size: var(--text-label);
   color: #ccdcba;
   overflow-wrap: anywhere;
 }
@@ -884,17 +690,17 @@ small {
 }
 .cue strong,
 .asset-card strong {
-  font-size: 11px;
+  font-size: var(--text-label);
   overflow-wrap: anywhere;
 }
 .cue small {
   color: #9bae8c;
 }
 .asset-card small {
-  font-size: 9px;
+  font-size: var(--text-meta);
 }
 .asset-card .button-row button {
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .notice {
   padding: 10px;
@@ -903,7 +709,7 @@ small {
   border-radius: 5px;
 }
 .notice p {
-  font-size: 10px;
+  font-size: var(--text-meta);
   margin-bottom: 6px;
 }
 audio {
@@ -915,7 +721,7 @@ audio {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .status-bar {
   height: 25px;
@@ -926,7 +732,7 @@ audio {
   align-items: center;
   justify-content: space-between;
   padding: 0 14px;
-  font-size: 9px;
+  font-size: var(--text-meta);
   color: #9bb987;
   gap: 20px;
 }
@@ -946,14 +752,14 @@ audio {
   background: #39452b;
   padding: 8px 16px;
   color: #d6e9b5;
-  font-size: 10px;
+  font-size: var(--text-meta);
   flex-shrink: 0;
 }
 .recovery > span {
   flex: 1;
 }
 .recovery button {
-  font-size: 10px;
+  font-size: var(--text-meta);
   min-height: 26px;
 }
 .modal-backdrop {
@@ -1044,9 +850,6 @@ progress {
   .library-content {
     padding: 10px 12px;
   }
-  .timeline {
-    height: 204px;
-  }
   .project-heading {
     padding-left: 12px;
   }
@@ -1055,9 +858,6 @@ progress {
   }
 }
 @media (max-height: 820px) {
-  .timeline {
-    height: 190px;
-  }
   .app-header {
     height: 67px;
   }
@@ -1080,15 +880,10 @@ progress {
   color: #e6f2cb;
 }
 
-.move-track button.checked {
-  border-color: #a4be78;
-  background: #405836;
-}
-
 .control-reset {
   min-height: 22px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   margin-left: 6px;
   color: #a8dfe3;
   border-color: #48636a;
@@ -1112,7 +907,7 @@ progress {
 }
 .panel-context p,
 .inspector-guide {
-  font-size: 12px;
+  font-size: var(--text-label);
   line-height: 1.6;
   color: #aabdac;
   margin: 0;
@@ -1129,7 +924,7 @@ progress {
 }
 .highlight-color-apply > button {
   min-height: 30px;
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .library-tabs {
   display: grid;
@@ -1142,7 +937,7 @@ progress {
   justify-content: flex-start;
   gap: 7px;
   padding: 9px 7px;
-  font-size: 11px;
+  font-size: var(--text-label);
   text-transform: capitalize;
   border-radius: 6px;
 }
@@ -1156,7 +951,7 @@ progress {
 .section summary {
   text-transform: none;
   letter-spacing: 0.15px;
-  font-size: 12px;
+  font-size: var(--text-label);
   line-height: 1.5;
   gap: 8px;
   align-items: center;
@@ -1171,10 +966,6 @@ button:focus-visible,
 summary:focus-visible {
   outline: 2px solid #c6e3a4;
   outline-offset: 3px;
-}
-.timeline header {
-  flex-wrap: wrap;
-  gap: 8px;
 }
 @media (min-width: 1500px) {
   .workspace {
@@ -1200,7 +991,7 @@ summary:focus-visible {
   flex-shrink: 0;
 }
 .library-tabs button {
-  font-size: 12px;
+  font-size: var(--text-label);
   text-transform: capitalize;
   gap: 8px;
   border: 1px solid transparent;
@@ -1287,7 +1078,7 @@ summary:focus-visible {
   min-width: 0;
 }
 .effect-status {
-  font-size: 10px;
+  font-size: var(--text-meta);
   letter-spacing: 0;
   text-transform: none;
   border-radius: 12px;
@@ -1304,12 +1095,12 @@ summary:focus-visible {
 }
 .mixed-value {
   margin-left: 6px;
-  font-size: 10px;
+  font-size: var(--text-meta);
   color: #e9cc8f;
   font-style: normal;
 }
 .section summary {
-  font-size: 11px;
+  font-size: var(--text-label);
   letter-spacing: 0.4px;
   align-items: center;
   gap: 4px;
@@ -1328,11 +1119,11 @@ summary:focus-visible {
 .select-field,
 .text-field,
 .color-field {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .hint,
 .inspector-guide {
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .section .section {
   border: 1px solid var(--line);
@@ -1372,6 +1163,3 @@ summary:focus-visible {
   min-width: 0;
 }
 /* Let timeline controls wrap without overlapping the tracks on narrow windows. */
-.timeline > header { height: auto; min-height: 41px; flex-shrink: 0; }
-.timeline > header label { white-space: nowrap; }
-.timeline > header input[type="checkbox"] { width: auto; flex-shrink: 0; }

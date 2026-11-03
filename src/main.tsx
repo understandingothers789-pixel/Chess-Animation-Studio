@@ -9,3 +9,6 @@ createRoot(document.getElementById("root")!).render(
   role === "export" || role === "presentation" ? <Output /> : <App />,
 );
 import './ui/workspace/workspace.css';
+
+import "./ui/styles/tokens.css";
+import "./ui/timeline/timeline.css";

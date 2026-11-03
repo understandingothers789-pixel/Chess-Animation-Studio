@@ -1,3 +1,4 @@
+import { MoveClip } from "./timeline/MoveClip";
 import { AnnotationRegion } from "./timeline/AnnotationRegion";
 import { settingHelp } from "./help";
 import { useRef, useState } from "react";
@@ -31,17 +32,11 @@ export function Timeline({
 }) {
   const [zoom, setZoom] = useState(1);
   const [hiddenTracks, setHiddenTracks] = useState<string[]>([]);
-  const resize = useRef<{
-    i: number;
-    x: number;
-    duration: number;
-    scale: number;
-  } | null>(null);
   const [snap, setSnap] = useState(true);
   const host = useRef<HTMLDivElement>(null),
     length = duration(p),
     seq = segments(p),
-    width = Math.max(760, Math.min(16000, length * 18 * zoom)),
+    width = Math.max(1, length * 52 * zoom),
     x = (t: number) => (t / length) * width;
   const events = [
     ...seq.flatMap((s, i) => [
@@ -109,107 +104,136 @@ export function Timeline({
             {p.moves.length} moves · {clock(length)}
           </small>
         </div>
-        <button
-          title="Jump to the previous effect, annotation or keyframe"
-          onClick={() =>
-            seek(events.filter((t) => t < time - 0.001).at(-1) ?? 0)
-          }
+        <div
+          className="timeline-group"
+          role="group"
+          aria-label="Timeline navigation"
         >
-          Previous event
-        </button>
-        <button
-          title="Jump to the next effect, annotation or keyframe"
-          onClick={() => seek(events.find((t) => t > time + 0.001) ?? length)}
-        >
-          Next event
-        </button>
-        <button
-          onClick={() =>
-            setZoom(
-              Math.max(
-                0.5,
-                (host.current?.clientWidth ?? 760) / Math.max(1, length * 18),
-              ),
-            )
-          }
-        >
-          Fit timeline
-        </button>
-        <button onClick={() => seek(Math.max(0, time - 1 / 60))}>
-          − Frame
-        </button>
-        <button onClick={() => seek(Math.min(length, time + 1 / 60))}>
-          + Frame
-        </button>
-        <select
-          aria-label="Toggle timeline track"
-          title="Show or hide a timeline track without changing the composition."
-          aria-description="Show or hide a timeline track without changing the composition."
-          value=""
-          onChange={(e) => {
-            const v = e.target.value;
-            setHiddenTracks((t) =>
-              t.includes(v) ? t.filter((k) => k !== v) : [...t, v],
-            );
-          }}
-        >
-          <option value="">Tracks…</option>
-          {["camera", "effect", "music"].map((t) => (
-            <option key={t} value={t}>
-              {hiddenTracks.includes(t) ? "Show" : "Hide"} {t}
-            </option>
-          ))}
-        </select>
-        <output aria-label="Timeline playhead">{clock(time)}</output>
-        <label title="Lock beat markers to prevent accidental edits">
-          <input
-            type="checkbox"
-            aria-label="Lock beat markers"
-            title="Prevent beat marker dragging, keyboard edits and adding markers"
-            aria-description="Prevent beat marker dragging, keyboard edits and adding markers"
-            checked={p.beatsLocked}
-            onChange={(e) =>
-              edit("Lock beat markers", (p) => {
-                p.beatsLocked = e.target.checked;
-              })
-            }
-          />{" "}
-          Lock beats
-        </label>
-        <label title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping">
-          <input
-            type="checkbox"
-            aria-label="Snap"
-            title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
-            aria-description="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
-            checked={snap}
-            onChange={(e) => setSnap(e.target.checked)}
-          />{" "}
-          Snap
-        </label>
-        <label>
-          Timeline zoom
+          {" "}
           <button
-            type="button"
-            className="control-reset"
-            aria-label="Reset Timeline zoom"
-            title="Restore default timeline zoom"
-            onClick={() => setZoom(1)}
+            title="Jump to the previous effect, annotation or keyframe"
+            onClick={() =>
+              seek(events.filter((t) => t < time - 0.001).at(-1) ?? 0)
+            }
           >
-            ↺
+            Previous event
           </button>
-          <input
-            title={settingHelp("Timeline zoom")}
-            aria-description={settingHelp("Timeline zoom")}
-            aria-label="Timeline zoom"
-            type="range"
-            min={0.5}
-            max={6}
-            step={0.1}
-            value={zoom}
-            onChange={(e) => setZoom(+e.target.value)}
-          />
-        </label>
+          <button
+            title="Jump to the next effect, annotation or keyframe"
+            onClick={() => seek(events.find((t) => t > time + 0.001) ?? length)}
+          >
+            Next event
+          </button>
+          <button
+            title="Previous frame"
+            aria-label="Previous frame"
+            onClick={() => seek(Math.max(0, time - 1 / 60))}
+          >
+            − Frame
+          </button>
+          <button
+            title="Next frame"
+            aria-label="Next frame"
+            onClick={() => seek(Math.min(length, time + 1 / 60))}
+          >
+            + Frame
+          </button>
+        </div>
+        <div
+          className="timeline-group timeline-view"
+          role="group"
+          aria-label="Timeline view"
+        >
+          {" "}
+          <button
+            onClick={() =>
+              setZoom(
+                Math.max(
+                  0.5,
+                  (host.current?.clientWidth ?? 760) / Math.max(1, length * 52),
+                ),
+              )
+            }
+          >
+            Fit timeline
+          </button>
+          <select
+            aria-label="Toggle timeline track"
+            title="Show or hide a timeline track without changing the composition."
+            aria-description="Show or hide a timeline track without changing the composition."
+            value=""
+            onChange={(e) => {
+              const v = e.target.value;
+              setHiddenTracks((t) =>
+                t.includes(v) ? t.filter((k) => k !== v) : [...t, v],
+              );
+            }}
+          >
+            <option value="">Tracks…</option>
+            {["camera", "effect", "music"].map((t) => (
+              <option key={t} value={t}>
+                {hiddenTracks.includes(t) ? "Show" : "Hide"} {t}
+              </option>
+            ))}
+          </select>
+          <label>
+            Timeline zoom
+            <button
+              type="button"
+              className="control-reset"
+              aria-label="Reset Timeline zoom"
+              title="Restore default timeline zoom"
+              onClick={() => setZoom(1)}
+            >
+              ↺
+            </button>
+            <input
+              title={settingHelp("Timeline zoom")}
+              aria-description={settingHelp("Timeline zoom")}
+              aria-label="Timeline zoom"
+              type="range"
+              min={0.5}
+              max={6}
+              step={0.1}
+              value={zoom}
+              onChange={(e) => setZoom(+e.target.value)}
+            />
+          </label>
+        </div>
+        <output aria-label="Timeline playhead">{clock(time)}</output>
+        <div
+          className="timeline-group timeline-behavior"
+          role="group"
+          aria-label="Timeline editing behavior"
+        >
+          {" "}
+          <label title="Lock beat markers to prevent accidental edits">
+            <input
+              type="checkbox"
+              aria-label="Lock beat markers"
+              title="Prevent beat marker dragging, keyboard edits and adding markers"
+              aria-description="Prevent beat marker dragging, keyboard edits and adding markers"
+              checked={p.beatsLocked}
+              onChange={(e) =>
+                edit("Lock beat markers", (p) => {
+                  p.beatsLocked = e.target.checked;
+                })
+              }
+            />{" "}
+            Lock beats
+          </label>
+          <label title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping">
+            <input
+              type="checkbox"
+              aria-label="Snap"
+              title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
+              aria-description="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
+              checked={snap}
+              onChange={(e) => setSnap(e.target.checked)}
+            />{" "}
+            Snap
+          </label>
+        </div>
       </header>
       <div className="timeline-body">
         <div className="track-labels">
@@ -237,6 +261,8 @@ export function Timeline({
               dragged.current = null;
             }}
             onDoubleClick={(e) => {
+              if ((e.target as HTMLElement).closest("button,[role=slider]"))
+                return;
               if (p.beatsLocked) return;
               const r = e.currentTarget.getBoundingClientRect(),
                 at = ((e.clientX - r.left) / r.width) * length;
@@ -279,91 +305,19 @@ export function Timeline({
                 </button>
               )}
               {seq.map((s, i) => (
-                <button
+                <MoveClip
                   key={p.moves[i].id}
-                  className={
-                    !introSelected && selected === i
-                      ? "selected"
-                      : checked.has(p.moves[i].id)
-                        ? "checked"
-                        : ""
-                  }
-                  style={{
-                    left: x(s.start),
-                    width: Math.max(14, x(s.end - s.start) - 2),
-                  }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(event) => select(i, event)}
-                >
-                  <span
-                    className="clip-resize"
-                    role="slider"
-                    aria-label={`Duration of ${p.moves[i].san}`}
-                    aria-valuemin={0.2}
-                    aria-valuemax={30}
-                    aria-valuenow={p.moves[i].effect.duration}
-                    tabIndex={0}
-                    onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      edit.begin();
-                      resize.current = {
-                        i,
-                        x: e.clientX,
-                        duration: p.moves[i].effect.duration,
-                        scale: width / length,
-                      };
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                    }}
-                    onPointerMove={(e) => {
-                      const d = resize.current;
-                      if (!d) return;
-                      e.stopPropagation();
-                      let value = d.duration + (e.clientX - d.x) / d.scale;
-                      if (snap && !e.altKey)
-                        value = Math.round(value * 20) / 20;
-                      edit("Resize move", (p) => {
-                        p.moves[d.i].effect.duration = Math.max(
-                          0.2,
-                          Math.min(30, value),
-                        );
-                      });
-                    }}
-                    onPointerUp={(e) => {
-                      e.stopPropagation();
-                      resize.current = null;
-                      edit.end();
-                    }}
-                    onLostPointerCapture={() => {
-                      resize.current = null;
-                      edit.end();
-                    }}
-                    onKeyDown={(e) => {
-                      if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        edit("Resize move", (p) => {
-                          p.moves[i].effect.duration = Math.max(
-                            0.2,
-                            Math.min(
-                              30,
-                              p.moves[i].effect.duration +
-                                (e.key === "ArrowRight" ? 0.05 : -0.05),
-                            ),
-                          );
-                        });
-                      }
-                    }}
-                  >
-                    ⋮
-                  </span>
-                  <strong>{p.moves[i].san}</strong>
-                  <small>
-                    {p.moves[i].effect.preset}
-                    {p.moves[i].effect.jam.enabled ? " · beat" : ""}
-                  </small>
-                </button>
+                  move={p.moves[i]}
+                  index={i}
+                  left={x(s.start)}
+                  width={Math.max(2, x(s.end - s.start) - 2)}
+                  pixels={width / length}
+                  selected={!introSelected && selected === i}
+                  checked={checked.has(p.moves[i].id)}
+                  snap={snap}
+                  edit={edit}
+                  select={select}
+                />
               ))}
             </div>
             <div
@@ -373,6 +327,13 @@ export function Timeline({
               {seq.map((s, i) => (
                 <button
                   key={i}
+                  className={
+                    !introSelected && selected === i
+                      ? "selected"
+                      : checked.has(p.moves[i].id)
+                        ? "checked"
+                        : ""
+                  }
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(event) => select(i, event)}
                   style={{
@@ -391,6 +352,13 @@ export function Timeline({
               {seq.map((s, i) => (
                 <button
                   key={i}
+                  className={
+                    !introSelected && selected === i
+                      ? "selected"
+                      : checked.has(p.moves[i].id)
+                        ? "checked"
+                        : ""
+                  }
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(event) => select(i, event)}
                   style={{

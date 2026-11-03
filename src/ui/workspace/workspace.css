@@ -3,7 +3,7 @@
     minmax(220px, var(--left)) 6px minmax(260px, 1fr)
     6px minmax(240px, var(--right));
   overflow: hidden;
-  font-size: calc(13px * var(--ui-scale));
+  font-size: var(--text-body);
 }
 .workspace.flexible.left-hidden {
   grid-template-columns: 0 0 minmax(260px, 1fr) 6px minmax(240px, var(--right));
@@ -37,10 +37,6 @@
   height: 6px;
   cursor: row-resize;
 }
-.workspace.flexible .timeline {
-  height: min(var(--timeline), 45vh);
-  overflow: auto;
-}
 .timeline-hidden .timeline,
 .timeline-hidden .horizontal {
   display: none;
@@ -53,7 +49,7 @@
   padding: 7px 14px;
   background: #1b2b22;
   border-bottom: 1px solid #364b39;
-  font-size: 12px;
+  font-size: var(--text-label);
 }
 .workspace-bar label {
   display: flex;
@@ -81,20 +77,20 @@
   min-height: 0;
   padding: 4px;
   flex-direction: row;
-  font-size: 10px;
+  font-size: var(--text-meta);
   gap: 4px;
 }
 .compact-nav .library-tabs svg {
   width: 14px;
 }
 .flexible :is(label, button, input, select, textarea, .hint) {
-  font-size: calc(12px * var(--ui-scale));
+  font-size: var(--text-label);
 }
 .flexible .eyebrow {
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .flexible .preview-caption {
-  font-size: 10px;
+  font-size: var(--text-meta);
 }
 .flexible .studio .preview-area {
   min-height: 80px;
@@ -103,16 +99,6 @@
   padding: 8px;
   height: auto;
   min-height: 48px;
-}
-.flexible .timeline > header {
-  height: auto;
-  min-height: 42px;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px;
-}
-.flexible .timeline > header small {
-  font-size: 11px;
 }
 @media (max-width: 1000px) {
   .workspace.flexible:not(.left-hidden):not(.right-hidden) {
@@ -127,7 +113,7 @@
     gap: 2px;
   }
   .flexible .transport-row small {
-    font-size: 10px;
+    font-size: var(--text-meta);
   }
   .workspace-bar {
     gap: 4px;
@@ -231,7 +217,7 @@
   position: absolute;
   bottom: 4%;
   left: 4%;
-  font-size: 10px;
+  font-size: var(--text-meta);
   color: #f2dc91;
 }
 .curve-editor svg {
@@ -243,21 +229,6 @@
 }
 .curve-editor circle {
   cursor: grab;
-}
-.clip-resize {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 12px;
-  background: #b5da8c33;
-  cursor: ew-resize;
-  z-index: 2;
-  touch-action: none;
-}
-.track-labels [hidden],
-[hidden] {
-  display: none !important;
 }
 .animation-grid {
   display: grid;
@@ -373,7 +344,7 @@
 }
 .annotation-drawer summary {
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--text-label);
   color: #d0e4b6;
 }
 .annotation-editor label,
@@ -408,12 +379,6 @@
 .curve-editor {
   margin: 10px 0;
 }
-.timeline .track-labels span {
-  font-size: 9px;
-}
-.timeline .ruler span {
-  font-size: 9px;
-}
 .flexible .inspector-host {
   display: flex;
   flex-direction: column;
@@ -441,10 +406,6 @@
   min-width: 760px;
 }
 .workspace.flexible {
-  --text-body: calc(13px * var(--ui-scale));
-  --text-label: calc(12px * var(--ui-scale));
-  --text-title: calc(17px * var(--ui-scale));
-  --text-meta: calc(10px * var(--ui-scale));
 }
 .flexible .panel-context h2 {
   font-size: var(--text-title);
@@ -452,22 +413,6 @@
 .flexible .control-label,
 .flexible .select-field {
   font-size: var(--text-label);
-}
-.track-labels span {
-  flex-shrink: 0;
-}
-.track-labels span:nth-child(5) {
-  height: 28px;
-}
-.tracks {
-  min-height: 190px;
-}
-.timeline > header output {
-  color: #b5cf9d;
-  font-size: 11px;
-}
-.timeline > footer {
-  flex-shrink: 0;
 }
 .workspace-bar :is(button, select) {
   min-height: 30px;
@@ -499,5 +444,29 @@
 .region-edge.end {
   right: 0;
 }
-.annotation-editor .button-row,.curve-editor .button-row,.preset-browser .button-row{flex-wrap:wrap}.annotation-editor .button-row button{white-space:normal;min-width:0}.annotation-editor textarea{resize:vertical}.flexible .inspector-slot{overflow-x:hidden}@media(max-width:1000px){.compact-nav .library-tabs button span{display:none}.compact-nav .library-tabs button{justify-content:center}.flexible .preview-caption{font-size:8px}}
-.timeline-body{overflow-y:auto}.timeline-scroll{min-height:190px;overflow-y:hidden}.track-labels{height:190px;min-height:190px}
+.annotation-editor .button-row,
+.curve-editor .button-row,
+.preset-browser .button-row {
+  flex-wrap: wrap;
+}
+.annotation-editor .button-row button {
+  white-space: normal;
+  min-width: 0;
+}
+.annotation-editor textarea {
+  resize: vertical;
+}
+.flexible .inspector-slot {
+  overflow-x: hidden;
+}
+@media (max-width: 1000px) {
+  .compact-nav .library-tabs button span {
+    display: none;
+  }
+  .compact-nav .library-tabs button {
+    justify-content: center;
+  }
+  .flexible .preview-caption {
+    font-size: var(--text-meta);
+  }
+}

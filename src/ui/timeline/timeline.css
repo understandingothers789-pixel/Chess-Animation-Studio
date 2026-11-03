@@ -1,6 +1,7 @@
 .timeline {
   height: min(var(--timeline, 260px), 45vh);
   flex-shrink: 0;
+  container-type: inline-size;
   background: #142119;
   display: flex;
   flex-direction: column;
@@ -70,7 +71,7 @@
 .timeline-body {
   display: flex;
   flex: 1;
-  min-height: 0;
+  min-height: 56px;
   overflow-y: auto;
 }
 .track-labels {
@@ -366,4 +367,58 @@
   padding: 4px 12px;
   color: var(--muted);
   flex-shrink: 0;
+}
+
+.timeline-group {
+  position: relative;
+}
+.timeline-menu {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.timeline-group-toggle {
+  display: none !important;
+}
+@container (max-width:650px) {
+  .timeline-group {
+    border: 0;
+    padding: 0;
+  }
+  .timeline-group-toggle {
+    display: block !important;
+  }
+  .timeline-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    min-width: 220px;
+    max-width: 260px;
+    background: #22372a;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 5px 20px #0009;
+    z-index: 30;
+  }
+  .timeline-group[data-open="true"] .timeline-menu {
+    display: flex;
+  }
+  .timeline > header {
+    gap: 5px;
+    padding: 6px;
+  }
+  .timeline header output {
+    margin-left: 0;
+  }
+  .timeline header > div:first-child {
+    min-width: 85px;
+  }
+  .timeline footer {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

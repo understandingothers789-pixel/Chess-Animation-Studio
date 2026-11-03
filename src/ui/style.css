@@ -527,6 +527,16 @@ small {
   object-fit: contain;
   cursor: crosshair;
 }
+.preview-caption > span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.preview-caption > span:last-child {
+  text-align: right;
+}
 .preview-caption {
   display: flex;
   justify-content: space-between;
@@ -543,9 +553,9 @@ small {
   flex-shrink: 0;
 }
 .transport-row {
-  display: flex;
+  display: grid;
   align-items: center;
-  justify-content: space-between;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 4px;
   min-height: 32px;
@@ -553,7 +563,10 @@ small {
 .transport-row > small {
   font-size: var(--text-meta);
   color: #a4b992;
-  min-width: 120px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .transport-row > small:last-child {
   text-align: right;

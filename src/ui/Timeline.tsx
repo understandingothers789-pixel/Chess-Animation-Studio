@@ -1,3 +1,4 @@
+import { ControlGroup } from "./timeline/ControlGroup";
 import { MoveClip } from "./timeline/MoveClip";
 import { AnnotationRegion } from "./timeline/AnnotationRegion";
 import { settingHelp } from "./help";
@@ -104,11 +105,7 @@ export function Timeline({
             {p.moves.length} moves · {clock(length)}
           </small>
         </div>
-        <div
-          className="timeline-group"
-          role="group"
-          aria-label="Timeline navigation"
-        >
+        <ControlGroup label="Navigate" name="Timeline navigation" className="">
           {" "}
           <button
             title="Jump to the previous effect, annotation or keyframe"
@@ -138,11 +135,11 @@ export function Timeline({
           >
             + Frame
           </button>
-        </div>
-        <div
-          className="timeline-group timeline-view"
-          role="group"
-          aria-label="Timeline view"
+        </ControlGroup>
+        <ControlGroup
+          label="View"
+          name="Timeline view"
+          className="timeline-view"
         >
           {" "}
           <button
@@ -199,12 +196,12 @@ export function Timeline({
               onChange={(e) => setZoom(+e.target.value)}
             />
           </label>
-        </div>
+        </ControlGroup>
         <output aria-label="Timeline playhead">{clock(time)}</output>
-        <div
-          className="timeline-group timeline-behavior"
-          role="group"
-          aria-label="Timeline editing behavior"
+        <ControlGroup
+          label="Behavior"
+          name="Timeline editing behavior"
+          className="timeline-behavior"
         >
           {" "}
           <label title="Lock beat markers to prevent accidental edits">
@@ -233,7 +230,7 @@ export function Timeline({
             />{" "}
             Snap
           </label>
-        </div>
+        </ControlGroup>
       </header>
       <div className="timeline-body">
         <div className="track-labels">

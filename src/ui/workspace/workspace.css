@@ -159,13 +159,13 @@
   gap: 2px;
 }
 .viewport-tools input {
-  width: 56px;
+  width: 4.5em;
 }
 .viewport-tools select {
-  width: 100px;
+  width: 9em;
 }
 .viewport-group select {
-  width: 76px;
+  width: 5.5em;
 }
 .viewport-tools button {
   padding: 4px 7px;

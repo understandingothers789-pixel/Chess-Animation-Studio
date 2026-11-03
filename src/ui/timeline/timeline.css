@@ -157,9 +157,10 @@
   align-items: flex-start;
   gap: 2px;
   min-width: 0;
-  width: 100%;
+  flex: 1;
+  width: 0;
   height: 100%;
-  padding: 3px 17px 3px 7px;
+  padding: 3px min(6px, 10%);
   background: none;
   border: 0;
   overflow: hidden;
@@ -204,11 +205,13 @@
   outline-offset: 2px;
 }
 .clip-resize {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
+  position: relative;
+  right: auto;
+  top: auto;
+  bottom: auto;
   width: min(16px, 35%);
+  flex: 0 0 min(16px, 35%);
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;

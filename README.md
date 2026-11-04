@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.24
+# Chess Animation Studio · 0.2.26
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
@@ -8,7 +8,7 @@ The editor usability refinements are documented in [the UI report](docs/ui-refin
 
 ## Windows downloads
 
-**[Download 0.2.24 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41737438492/artifacts/13280447036).** Fixes music replacement so a newly imported track plays across the project instead of stopping after the intro. The visual gate, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
+**[Download 0.2.26 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41765964452/artifacts/13293088329).** Restores beat driven dark square pulses by detecting markers for newly imported music, and adds horse sound volume, timing offset, and length controls for knight moves. Also fixes music stopping when unrelated audio assets are missing. The visual gate, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.22 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41563394960/artifacts/13198048629).** Adds a resizable creator workspace, preview controls, visual animation presets and curves, timed chess annotations, and expanded export options. The visual gate, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

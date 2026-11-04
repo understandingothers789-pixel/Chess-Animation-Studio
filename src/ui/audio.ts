@@ -16,7 +16,9 @@ export class AudioPlayer {
     return buffer;
   }
   clear(id: string) {
-    this.stop();
+    // Removing one unavailable asset must not stop every scheduled source.
+    // Asset health checks can clear an unrelated, unused audio asset while
+    // the selected music is playing.
     this.buffers.delete(id);
   }
   async play(p: Project, time: number) {

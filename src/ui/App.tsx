@@ -270,7 +270,46 @@ export function App() {
             return n;
           });
           setAssets((v) => ({ ...v, [a.id]: url }));
-          if (a.kind === "audio") await audio.current!.load(a.id, url);
+          if (a.kind === "audio") {
+            const buffer = await audio.current!.load(a.id, url);
+            if (
+              latest.current.music.asset === a.id &&
+              latest.current.music.sourceDuration === 0
+            ) {
+              const samples = buffer.getChannelData(0).slice();
+              const worker = new Worker(
+                new URL("../workers/audio.ts", import.meta.url),
+                { type: "module" },
+              );
+              await new Promise<void>((resolve, reject) => {
+                worker.onerror = () => {
+                  worker.terminate();
+                  reject(Error("Music beat analysis failed."));
+                };
+                worker.onmessage = (e) => {
+                  worker.terminate();
+                  if (e.data.error) {
+                    reject(Error("Music beat analysis failed."));
+                    return;
+                  }
+                  const current = latest.current;
+                  if (
+                    current.music.asset === a.id &&
+                    current.music.sourceDuration === 0
+                  )
+                    edit("Analyze imported music", (p) => {
+                      p.music.sourceDuration = buffer.duration;
+                      p.waveform = e.data.waveform;
+                      p.beats = detectedMarkers(p, e.data.peaks);
+                    });
+                  resolve();
+                };
+                worker.postMessage({ samples, rate: buffer.sampleRate }, [
+                  samples.buffer,
+                ]);
+              });
+            }
+          }
         } finally {
           if (a.kind === "audio") setLoadingAudio((n) => Math.max(0, n - 1));
         }

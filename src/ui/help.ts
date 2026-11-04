@@ -39,6 +39,12 @@ const help: Record<string, string> = {
     "Add a brief light accent synchronized to capture impact. Zero disables it; range 0–1.",
   "Horse sound for knight moves":
     "Play a horse sound when a knight lands, in previews and exports.",
+  "Horse sound volume":
+    "Set the horse cue level independently from other chess sounds.",
+  "Horse sound timing offset":
+    "Start the horse cue before or after the knight lands. Negative values start it early.",
+  "Horse sound length":
+    "Trim the horse cue playback length in both previews and exports.",
   "Show evaluation bar":
     "Display the latest available Stockfish evaluation on the left of the video.",
   "Show animated title":

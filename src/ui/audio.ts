@@ -25,7 +25,10 @@ export class AudioPlayer {
     this.stop();
     await this.context.resume();
     if (p.audio.knightHorse && !this.buffers.has("__knightHorse")) {
-      await this.load("__knightHorse", new URL("sounds/horse.oga", document.baseURI).href);
+      await this.load(
+        "__knightHorse",
+        new URL("sounds/horse.oga", document.baseURI).href,
+      );
     }
     const origin = this.context.currentTime + 0.09;
     const perf = performance.now() + 90;
@@ -99,8 +102,21 @@ export class AudioPlayer {
         });
     if (p.audio.knightHorse)
       for (let i = 0; i < seq.length; i++)
-        if (game.steps[i].before.find(piece => piece.id === game.steps[i].pieceId)?.type === "n")
-          events.push({ id: "horse" + i, asset: "__knightHorse", move: null, time: 0, at: seq[i].land, kind: "custom", volume: 0.7, bus: "chess" });
+        if (
+          game.steps[i].before.find(
+            (piece) => piece.id === game.steps[i].pieceId,
+          )?.type === "n"
+        )
+          events.push({
+            id: "horse" + i,
+            asset: "__knightHorse",
+            move: null,
+            time: 0,
+            at: seq[i].land + p.audio.knightOffset,
+            kind: "custom",
+            volume: p.audio.knightVolume,
+            bus: "chess",
+          });
     for (const cue of events) {
       if (cue.at < time) continue;
       const at = origin + cue.at - time,
@@ -112,7 +128,9 @@ export class AudioPlayer {
         s.buffer = buffer;
         g.gain.value = volume;
         s.connect(g).connect(this.context.destination);
-        s.start(at);
+        if (cue.asset === "__knightHorse")
+          s.start(at, 0, Math.min(buffer.duration, p.audio.knightDuration));
+        else s.start(at);
         this.sources.push(s);
       } else if (!cue.asset) {
         const osc = this.context.createOscillator(),

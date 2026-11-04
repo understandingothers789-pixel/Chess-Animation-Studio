@@ -712,6 +712,9 @@ export const projectSchema = z.object({
     effects: n(0, 2),
     automatic: z.boolean(),
     knightHorse: z.boolean().default(false),
+    knightVolume: n(0, 2).default(0.7),
+    knightOffset: n(-2, 2).default(-0.15),
+    knightDuration: n(0.05, 3).default(1.8),
   }),
   presets: z
     .array(z.object({ name: z.string().max(100), effect: effectSchema }))
@@ -850,7 +853,15 @@ export function blank(): Project {
     beats: [],
     waveform: [],
     cues: [],
-    audio: { chess: 0.4, effects: 0.5, automatic: true, knightHorse: false },
+    audio: {
+      chess: 0.4,
+      effects: 0.5,
+      automatic: true,
+      knightHorse: false,
+      knightVolume: 0.7,
+      knightOffset: -0.15,
+      knightDuration: 1.8,
+    },
     presets: [],
     lead: 2,
     tail: 1.5,

@@ -322,6 +322,33 @@ export function MusicPanel(q: PanelProps) {
             })
           }
         />
+        {(["knightVolume", "knightOffset", "knightDuration"] as const).map(
+          (k) => (
+            <Range
+              key={k}
+              label={
+                {
+                  knightVolume: "Horse sound volume",
+                  knightOffset: "Horse sound timing offset",
+                  knightDuration: "Horse sound length",
+                }[k]
+              }
+              value={p.audio[k]}
+              resetValue={blank().audio[k]}
+              min={
+                k === "knightOffset" ? -2 : k === "knightDuration" ? 0.05 : 0
+              }
+              max={k === "knightVolume" ? 2 : k === "knightOffset" ? 2 : 3}
+              step={k === "knightVolume" ? 0.01 : 0.05}
+              unit={k === "knightVolume" ? "" : "s"}
+              onChange={(v) =>
+                edit("Knight horse " + k, (p) => {
+                  p.audio[k] = v;
+                })
+              }
+            />
+          ),
+        )}
         <Range
           label="Chess sounds volume"
           value={p.audio.chess}

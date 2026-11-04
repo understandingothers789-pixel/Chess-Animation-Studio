@@ -337,10 +337,10 @@ export class VideoJob {
             asset: "__knightHorse",
             move: null,
             time: 0,
-            volume: 0.7,
+            volume: p.audio.knightVolume,
             kind: "custom",
             bus: "chess",
-            absolute: seq[i].land,
+            absolute: seq[i].land + p.audio.knightOffset,
           });
     for (const c of cues) {
       if (
@@ -354,9 +354,11 @@ export class VideoJob {
           ? path.resolve(__dirname, "../dist/sounds/horse.oga")
           : (asset?.path ?? (c.kind === "capture" ? captureSound : moveSound)),
         Math.max(0, this.options.start - c.absolute),
-        0,
+        c.asset === "__knightHorse" ? p.audio.knightDuration : 0,
         c.absolute - this.options.start,
         c.volume * p.audio[c.bus],
+        0,
+        0,
       );
     }
     if (labels.length) {

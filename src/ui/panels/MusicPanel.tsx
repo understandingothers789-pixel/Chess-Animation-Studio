@@ -313,42 +313,6 @@ export function MusicPanel(q: PanelProps) {
             })
           }
         />
-        <Toggle
-          label="Horse sound for knight moves"
-          checked={p.audio.knightHorse}
-          onChange={(v) =>
-            edit("Knight horse sound", (p) => {
-              p.audio.knightHorse = v;
-            })
-          }
-        />
-        {(["knightVolume", "knightOffset", "knightDuration"] as const).map(
-          (k) => (
-            <Range
-              key={k}
-              label={
-                {
-                  knightVolume: "Horse sound volume",
-                  knightOffset: "Horse sound timing offset",
-                  knightDuration: "Horse sound length",
-                }[k]
-              }
-              value={p.audio[k]}
-              resetValue={blank().audio[k]}
-              min={
-                k === "knightOffset" ? -2 : k === "knightDuration" ? 0.05 : 0
-              }
-              max={k === "knightVolume" ? 2 : k === "knightOffset" ? 2 : 3}
-              step={k === "knightVolume" ? 0.01 : 0.05}
-              unit={k === "knightVolume" ? "" : "s"}
-              onChange={(v) =>
-                edit("Knight horse " + k, (p) => {
-                  p.audio[k] = v;
-                })
-              }
-            />
-          ),
-        )}
         <Range
           label="Chess sounds volume"
           value={p.audio.chess}
@@ -468,6 +432,47 @@ export function MusicPanel(q: PanelProps) {
             </button>
           </div>
         ))}
+      </Section>
+      <Section
+        title="Knight horse sound"
+        status={p.audio.knightHorse ? "Enabled" : "Off"}
+      >
+        <Toggle
+          label="Play horse sound on knight moves"
+          checked={p.audio.knightHorse}
+          onChange={(v) =>
+            edit("Knight horse sound", (p) => {
+              p.audio.knightHorse = v;
+            })
+          }
+        />
+        {(["knightVolume", "knightOffset", "knightDuration"] as const).map(
+          (k) => (
+            <Range
+              key={k}
+              label={
+                {
+                  knightVolume: "Horse sound volume",
+                  knightOffset: "Start offset from landing",
+                  knightDuration: "Horse sound length",
+                }[k]
+              }
+              value={p.audio[k]}
+              resetValue={blank().audio[k]}
+              min={
+                k === "knightOffset" ? -2 : k === "knightDuration" ? 0.05 : 0
+              }
+              max={k === "knightVolume" ? 2 : k === "knightOffset" ? 2 : 3}
+              step={k === "knightVolume" ? 0.01 : 0.05}
+              unit={k === "knightVolume" ? "" : "s"}
+              onChange={(v) =>
+                edit("Knight horse " + k, (p) => {
+                  p.audio[k] = v;
+                })
+              }
+            />
+          ),
+        )}
       </Section>
     </>
   );

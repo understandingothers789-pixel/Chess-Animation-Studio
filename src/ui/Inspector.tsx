@@ -721,6 +721,7 @@ export function Inspector({
                 </button>
                 <Toggle
                   label="Beat spotlight"
+                  disabled={selectedEffects.every((v) => v.locked)}
                   checked={e.jam.enabled}
                   mixed={mixed((v) => v.jam.enabled)}
                   onChange={(v) =>
@@ -833,6 +834,10 @@ export function Inspector({
                             desaturate: "Spotlight desaturation",
                             vignette: "Spotlight vignette",
                           }[k]
+                        }
+                        disabled={
+                          k === "duration" &&
+                          selectedEffects.every((v) => v.locked)
                         }
                         value={e.jam[k]}
                         mixed={mixed((v) => v.jam[k])}

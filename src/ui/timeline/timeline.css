@@ -529,3 +529,31 @@
   opacity: 0.3;
   cursor: not-allowed;
 }
+.selection-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: #1b2b21;
+  flex-shrink: 0;
+  font-size: 12px;
+  border-bottom: 1px solid #344e35;
+}
+.selection-tools strong {
+  min-width: 80px;
+  color: #c4d8b8;
+}
+.selection-tools button {
+  padding: 3px 8px;
+  min-height: 26px;
+  font-size: 12px;
+}
+.timeline-context-menu button {
+  font-size: inherit;
+}
+.timeline-context-menu .context-menu-title {
+  font-size: 0.92em;
+}
+.timeline-context-menu > small {
+  font-size: 0.85em;
+}

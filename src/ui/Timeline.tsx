@@ -1,8 +1,8 @@
+import type { AnnotationStyle } from "./commands/annotationCommands";
 import {
-  annotationCommands,
-  type AnnotationStyle,
-} from "./commands/annotationCommands";
-import { moveCommands } from "./commands/moveCommands";
+  timelineCommands,
+  type TimelineTarget,
+} from "./commands/timelineCommands";
 import type { SettingsClipboard } from "../core/editing";
 import { TimelineMenu, type MenuAction } from "./timeline/TimelineMenu";
 import { ControlGroup } from "./timeline/ControlGroup";
@@ -48,15 +48,7 @@ export function Timeline({
   report: (message: string) => void;
   inspect: (index: number, section: string, annotation?: string) => void;
 }) {
-  type Context = {
-    x: number;
-    y: number;
-    track: string;
-    index: number;
-    id?: string;
-    at: number;
-  };
-  const [menu, setMenu] = useState<Context | null>(null);
+  const [menu, setMenu] = useState<TimelineTarget | null>(null);
   useEffect(() => {
     if (
       menu?.id &&
@@ -128,11 +120,12 @@ export function Timeline({
     if (dragged.current) {
       if (p.beatsLocked) return;
       const id = dragged.current;
+      const beatTime = snap && !e.altKey ? Math.round(t * 20) / 20 : t;
       edit("Drag beat", (p) => {
         const b = p.beats.find((b) => b.id === id)!;
-        b.time = t;
+        b.time = beatTime;
         if (b.sourceTime !== undefined)
-          b.sourceTime = t + p.music.trimStart - p.music.offset;
+          b.sourceTime = beatTime + p.music.trimStart - p.music.offset;
       });
     } else {
       const boundaries = [
@@ -203,202 +196,29 @@ export function Timeline({
         target.closest<HTMLElement>("[data-beat-id]")?.dataset.beatId,
     });
   };
-  const actions: MenuAction[] = [];
-  const add = (
-    label: string,
-    run: () => void,
-    disabled = false,
-    danger = false,
-  ) => actions.push({ label, run, disabled, danger });
-  if (menu) {
-    const m = p.moves[menu.index];
-    if (menu.track.startsWith("header:")) {
-      const track = menu.track.slice(7);
-      add("Open track settings…", () =>
-        track === "music"
-          ? navigate("music")
-          : ["camera", "effect", "move"].includes(track)
-            ? inspect(selected, track === "effect" ? "effects" : track)
-            : track === "annotation"
-              ? inspect(selected, "annotations")
-              : navigate("game"),
-      );
-      if (["camera", "effect", "music", "annotation"].includes(track))
-        add("Hide track", () =>
-          setHiddenTracks((t) => [...new Set([...t, track])]),
-        );
-      if (track === "music") {
-        add("Dark-square pulse settings…", () =>
-          navigate("music", "Dark-square beat pulse"),
-        );
-        add("Knight horse sound settings…", () =>
-          navigate("music", "Knight horse sound"),
-        );
-      }
-      if (track === "music")
-        add(
-          "Add beat at playhead",
-          () =>
-            edit("Add beat", (p) => {
-              p.beats.push({
-                id: crypto.randomUUID(),
-                time,
-                enabled: true,
-                accent: false,
-              });
-            }),
-          p.beatsLocked,
-        );
-    } else if (menu.track === "intro") {
-      add("Edit intro & title…", () => inspect(menu.index, "intro"));
-      add("Go to intro start", () => seek(0));
-    } else if (["move", "camera", "effect"].includes(menu.track)) {
-      actions.push(
-        ...moveCommands({
-          p,
-          index: menu.index,
-          track: menu.track,
-          checked,
-          edit,
-          copied,
-          inspect,
-          navigate,
-          preview,
-          report,
-        }),
-      );
-    } else if (menu.track === "annotation") {
-      actions.push(
-        ...annotationCommands(
-          p,
-          menu.id,
-          menu.index,
-          time,
-          edit,
-          inspect,
-          seek,
-          annotationStyle,
-        ),
-      );
-    } else if (menu.track === "music") {
-      add("Music levels & trim…", () => navigate("music", "Music"));
-      add("Dark-square pulse settings…", () =>
-        navigate("music", "Dark-square beat pulse"),
-      );
-      add("Knight horse sound settings…", () =>
-        navigate("music", "Knight horse sound"),
-      );
-      add(p.music.muted ? "Unmute music" : "Mute music", () =>
-        edit("Toggle music mute", (p) => {
-          p.music.muted = !p.music.muted;
-        }),
-      );
-      add(
-        p.pulse.enabled
-          ? "Disable dark-square beat pulse"
-          : "Enable dark-square beat pulse",
-        () =>
-          edit("Toggle beat pulse", (p) => {
-            p.pulse.enabled = !p.pulse.enabled;
-          }),
-      );
-      add(
-        p.audio.knightHorse
-          ? "Disable knight horse sound"
-          : "Enable knight horse sound",
-        () =>
-          edit("Toggle horse cue", (p) => {
-            p.audio.knightHorse = !p.audio.knightHorse;
-          }),
-      );
-      add(
-        "Add beat here",
-        () =>
-          edit("Add beat", (p) => {
-            p.beats.push({
-              id: crypto.randomUUID(),
-              time: menu.at,
-              enabled: true,
-              accent: false,
-            });
-            p.beats.sort((a, b) => a.time - b.time);
-          }),
-        p.beatsLocked,
-      );
-      add(p.beatsLocked ? "Unlock beat markers" : "Lock beat markers", () =>
-        edit("Toggle beat lock", (p) => {
-          p.beatsLocked = !p.beatsLocked;
-        }),
-      );
-      if (menu.id) {
-        const beat = p.beats.find((b) => b.id === menu.id);
-        if (beat) {
-          add("Move playhead here", () => seek(beat.time));
-          add(
-            "Set beat to playhead",
-            () =>
-              edit("Move beat", (p) => {
-                const b = p.beats.find((b) => b.id === menu.id)!;
-                b.time = time;
-                if (b.sourceTime !== undefined)
-                  b.sourceTime = time + p.music.trimStart - p.music.offset;
-              }),
-            p.beatsLocked,
-          );
-          actions.push({
-            label: "Beat enabled",
-            checked: beat.enabled,
-            disabled: p.beatsLocked,
-            run: () =>
-              edit("Toggle beat", (p) => {
-                const b = p.beats.find((b) => b.id === menu.id)!;
-                b.enabled = !b.enabled;
-              }),
-          });
-        }
-      }
-      if (menu.id) {
-        add(
-          "Toggle beat accent",
-          () =>
-            edit("Toggle beat accent", (p) => {
-              const b = p.beats.find((b) => b.id === menu.id);
-              if (b) b.accent = !b.accent;
-            }),
-          p.beatsLocked,
-        );
-        add(
-          "Delete beat",
-          () =>
-            edit("Delete beat", (p) => {
-              p.beats = p.beats.filter((b) => b.id !== menu.id);
-            }),
-          p.beatsLocked,
-          true,
-        );
-      }
-    } else {
-      add("Fit timeline to window", () =>
-        setZoom(
-          Math.max(
-            0.02,
-            (host.current?.clientWidth ?? 760) / Math.max(1, length * 52),
-          ),
-        ),
-      );
-      add(snap ? "Disable snapping" : "Enable snapping", () => setSnap(!snap));
-    }
-    if (["camera", "effect", "music", "annotation"].includes(menu.track))
-      add("Hide this track", () =>
-        setHiddenTracks((t) => [...new Set([...t, menu.track])]),
-      );
-    add("Reset timeline view", () => {
-      setHiddenTracks([]);
-      setZoom(1);
-      setSnap(true);
-    });
-    add("Show all tracks", () => setHiddenTracks([]), !hiddenTracks.length);
-  }
+  const actions = menu
+    ? timelineCommands({
+        p,
+        menu,
+        time,
+        selected,
+        checked,
+        edit,
+        copied,
+        annotationStyle,
+        inspect,
+        navigate,
+        preview,
+        report,
+        seek,
+        viewportWidth: host.current?.clientWidth ?? 760,
+        setZoom,
+        setSnap,
+        snap,
+        setHiddenTracks,
+        hiddenTracks,
+      })
+    : [];
   return (
     <section
       className="timeline"
@@ -443,40 +263,6 @@ export function Timeline({
         />
       )}
       <header>
-        <div className="selection-tools" aria-label="Selection actions">
-          <strong>
-            {checked.size > 1
-              ? `${checked.size} moves selected`
-              : (p.moves[selected]?.san ?? "No move")}
-          </strong>
-          <button
-            disabled={!p.moves[selected]}
-            onClick={() => preview(selected)}
-          >
-            Preview
-          </button>
-          <button
-            disabled={!p.moves[selected]}
-            onClick={() => navigate("presets")}
-          >
-            Preset
-          </button>
-          <button
-            disabled={!p.moves[selected]}
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setMenu({
-                x: r.left,
-                y: r.bottom,
-                track: "move",
-                index: selected,
-                at: time,
-              });
-            }}
-          >
-            Edit / Apply…
-          </button>
-        </div>
         <div>
           <span className="eyebrow">SEQUENCE</span>
           <small>
@@ -610,6 +396,37 @@ export function Timeline({
           </label>
         </ControlGroup>
       </header>
+      <div className="selection-tools" aria-label="Selection actions">
+        <strong>
+          {checked.size > 1
+            ? `${checked.size} moves selected`
+            : (p.moves[selected]?.san ?? "No move")}
+        </strong>
+        <button disabled={!p.moves[selected]} onClick={() => preview(selected)}>
+          Preview
+        </button>
+        <button
+          disabled={!p.moves[selected]}
+          onClick={() => navigate("presets")}
+        >
+          Preset
+        </button>
+        <button
+          disabled={!p.moves[selected]}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setMenu({
+              x: r.left,
+              y: r.bottom,
+              track: "move",
+              index: selected,
+              at: time,
+            });
+          }}
+        >
+          Edit / Apply…
+        </button>
+      </div>
       <div className="timeline-body">
         <div className="track-labels">
           {[
@@ -652,13 +469,20 @@ export function Timeline({
             onDoubleClick={(e) => {
               if ((e.target as HTMLElement).closest("button,[role=slider]"))
                 return;
+              const lane =
+                e.currentTarget.querySelector<HTMLElement>(".music-track");
+              const laneRect = lane?.getBoundingClientRect();
               if (
                 p.beatsLocked ||
-                !(e.target as Element).closest(".music-track")
+                !laneRect ||
+                lane?.hidden ||
+                e.clientY < laneRect.top ||
+                e.clientY > laneRect.bottom
               )
                 return;
               const r = e.currentTarget.getBoundingClientRect(),
-                at = ((e.clientX - r.left) / r.width) * length;
+                raw = ((e.clientX - r.left) / r.width) * length,
+                at = snap && !e.altKey ? Math.round(raw * 20) / 20 : raw;
               edit("Add beat", (p) => {
                 p.beats.push({
                   id: crypto.randomUUID(),
@@ -862,7 +686,7 @@ export function Timeline({
       </div>
       <footer>
         Right-click a clip or track for options · Drag clip right edge to resize
-        · Alt bypasses snapping · Double-click empty space to add a beat
+        · Alt bypasses snapping · Double-click empty music lane to add a beat
       </footer>
     </section>
   );

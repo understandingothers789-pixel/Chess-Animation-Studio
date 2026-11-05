@@ -51,7 +51,13 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       `${label(kind)} applied to ${ids.length} moves${locked && ["timing", "everything"].includes(kind) ? `; timing preserved for ${locked} locked moves` : ""}. Undo is available.`,
     );
   };
-  const copies = settingsKinds.map((kind) => ({
+  const kinds: SettingsKind[] =
+    track === "camera"
+      ? ["camera"]
+      : track === "effect"
+        ? ["effects"]
+        : settingsKinds;
+  const copies = kinds.map((kind) => ({
     label: label(kind),
     run: () => {
       copied.current = {
@@ -62,7 +68,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       c.report(`${label(kind)} copied from ${m.san}.`);
     },
   }));
-  const pastes = settingsKinds.map((kind) => ({
+  const pastes = kinds.map((kind) => ({
     label: label(kind),
     disabled:
       !copied.current ||
@@ -77,7 +83,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
     ...(selected.length > 1 ? { "Selected moves": selected } : {}),
     ...moveGroups(p),
   };
-  const bulk = settingsKinds.map((kind) => ({
+  const bulk = kinds.map((kind) => ({
     label: label(kind),
     children: Object.entries(groups).map(([name, ids]) => ({
       label: `${name} · ${ids.length}${["timing", "everything"].includes(kind) ? ` (${p.moves.filter((m) => ids.includes(m.id) && m.effect.locked).length} timing locked)` : ""}`,
@@ -175,6 +181,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       },
       {
         label: "Beat spotlight",
+        disabled: m.effect.locked,
         checked: m.effect.jam.enabled,
         run: () =>
           edit("Toggle spotlight", (p) => {

@@ -27,6 +27,12 @@ export function TimelineMenu({
 }) {
   const [path, setPath] = useState<MenuAction[]>([]);
   const visible = path.length ? path[path.length - 1].children! : actions;
+  const scale =
+    Number(
+      getComputedStyle(
+        document.querySelector(".workspace") || document.body,
+      ).getPropertyValue("--ui-scale"),
+    ) || 1;
   const host = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: x, top: y });
   useLayoutEffect(() => {
@@ -78,7 +84,7 @@ export function TimelineMenu({
       className="timeline-context-menu"
       role="menu"
       aria-label={title}
-      style={position}
+      style={{ ...position, width: 280 * scale, fontSize: 13 * scale }}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         if (e.key === "ArrowLeft" && path.length) {

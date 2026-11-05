@@ -445,14 +445,23 @@ export class Scene {
     const px = ((clientX - rect.left) / rect.width) * c.w,
       py = (1 - (clientY - rect.top) / rect.height) * c.h;
     if (py < c.viewY || py > c.viewY + c.viewH) return null;
+    this.root.updateWorldMatrix(true, true);
+    this.cameras.camera.updateMatrixWorld(true);
     const ray = new T.Raycaster();
     ray.setFromCamera(
       new T.Vector2((px / c.w) * 2 - 1, ((py - c.viewY) / c.viewH) * 2 - 1),
       this.cameras.camera,
     );
-    const hit = ray.intersectObjects(this.board.squares)[0];
+    // Pick the board's geometric plane rather than render meshes, whose
+    // material/layer state can change during compositor passes.
+    const normal = new T.Vector3(0, 0, 1).applyNormalMatrix(
+      new T.Matrix3().getNormalMatrix(this.root.matrixWorld),
+    );
+    const origin = this.root.localToWorld(new T.Vector3());
+    const plane = new T.Plane().setFromNormalAndCoplanarPoint(normal, origin);
+    const hit = ray.ray.intersectPlane(plane, new T.Vector3());
     if (!hit) return null;
-    const point = this.root.worldToLocal(hit.point.clone());
+    const point = this.root.worldToLocal(hit);
     return worldToSquare(point.x, point.y);
   }
   rgba() {

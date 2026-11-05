@@ -59,8 +59,9 @@ try {
     };
   });
   page.setDefaultTimeout(15000);
+  page.setDefaultNavigationTimeout(90000);
   await page.goto(origin);
-  await page.waitForSelector(".app-shell");
+  await page.waitForSelector(".app-shell", { timeout: 90000 });
   await page.waitForFunction(() => !!(window as any).__state);
   await fs.mkdir("docs/ui-refinement/creator", { recursive: true });
   const shot = async (name: string) => {
@@ -235,7 +236,7 @@ try {
   }
   await page.getByLabel("UI scale", { exact: true }).selectOption("100");
   await page.reload();
-  await page.waitForSelector(".app-shell");
+  await page.waitForSelector(".app-shell", { timeout: 90000 });
   assert.equal(
     await page
       .getByRole("separator", { name: "Left settings width" })

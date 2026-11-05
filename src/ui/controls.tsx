@@ -251,11 +251,13 @@ export function Select<T extends string>({
 export function Toggle({
   label,
   mixed = false,
+  disabled = false,
   checked,
   onChange,
 }: {
   label: string;
   mixed?: boolean;
+  disabled?: boolean;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
@@ -266,6 +268,7 @@ export function Toggle({
         {mixed && <em className="mixed-value">Mixed</em>}
       </span>
       <input
+        disabled={disabled}
         aria-label={label}
         title={settingHelp(label)}
         aria-description={settingHelp(label)}

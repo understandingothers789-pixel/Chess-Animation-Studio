@@ -297,6 +297,7 @@ export function Preview({
             tabIndex={0}
             onContextMenu={(e) => {
               e.preventDefault();
+              if (playing) onToggle?.();
               const r = e.currentTarget.getBoundingClientRect();
               const cx = e.clientX || r.left + r.width / 2,
                 cy = e.clientY || r.top + r.height / 2;

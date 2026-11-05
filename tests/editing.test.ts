@@ -72,3 +72,79 @@ it("classifies real chess moves including castling, checks, captures and promoti
   expect(moveGroups(promo).Promotions).toHaveLength(1);
   expect(moveGroups(promo)["Pawn moves"]).toHaveLength(1);
 });
+
+import { moveCommands } from "../src/ui/commands/moveCommands";
+import type { Edit } from "../src/ui/state";
+it("applies movement to a counted chess group in one transaction without touching timing or cameras", () => {
+  const p = importPgn(blank(), "1. Nf3 Nf6 2. d4 d5 3. Nc3");
+  p.moves[0].effect = effect("hop");
+  p.moves[1].effect.locked = true;
+  const before = structuredClone(p);
+  let edits = 0;
+  const edit = Object.assign(
+    (_label: string, fn: (p: typeof before) => void) => {
+      edits++;
+      fn(p);
+    },
+    { begin: () => {}, end: () => {} },
+  ) as Edit;
+  const commands = moveCommands({
+    p,
+    index: 0,
+    track: "move",
+    checked: new Set(),
+    edit,
+    copied: { current: null },
+    inspect: () => {},
+    navigate: () => {},
+    preview: () => {},
+    report: () => {},
+  });
+  const apply = commands
+    .find((a) => a.label.startsWith("Apply source settings"))!
+    .children!.find((a) => a.label === "Movement")!
+    .children!.find((a) => a.label.startsWith("Knight moves"))!;
+  expect(apply.label).toContain("3");
+  apply.run!();
+  expect(edits).toBe(1);
+  const ids = moveGroups(before)["Knight moves"];
+  for (let i = 0; i < p.moves.length; i++) {
+    expect(p.moves[i].effect.duration).toBe(before.moves[i].effect.duration);
+    expect(p.moves[i].effect.cameras).toEqual(before.moves[i].effect.cameras);
+    expect(p.moves[i].effect.preset).toBe(
+      ids.includes(p.moves[i].id) ? "hop" : before.moves[i].effect.preset,
+    );
+  }
+});
+
+import { annotation } from "../src/core/annotations";
+import { annotationCommands } from "../src/ui/commands/annotationCommands";
+it("duplicates annotations with distinct timing, identity and selected editor target", () => {
+  const p = importPgn(blank(), "1. e4 e5"),
+    a = annotation("text", 1);
+  p.annotations.push(a);
+  let selected = "";
+  const edit = Object.assign(
+    (_label: string, fn: (draft: typeof p) => void) => fn(p),
+    { begin: () => {}, end: () => {} },
+  ) as Edit;
+  const actions = annotationCommands(
+    p,
+    a.id,
+    0,
+    1,
+    edit,
+    (_i, _s, id) => {
+      selected = id!;
+    },
+    () => {},
+    { current: null },
+  );
+  actions.find((a) => a.label === "Duplicate annotation")!.run!();
+  const copy = p.annotations[1];
+  expect(copy.id).not.toBe(a.id);
+  expect(copy.start).toBeGreaterThan(a.start);
+  expect(copy.color).toBe(a.color);
+  expect(copy.x).toBeGreaterThan(a.x);
+  expect(selected).toBe(copy.id);
+});

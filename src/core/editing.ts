@@ -33,6 +33,8 @@ export type SettingsClipboard = {
 };
 export function preserveLockedTiming(before: Effect, after: Effect) {
   if (!before.locked) return;
+  after.jam.enabled = before.jam.enabled;
+  after.jam.duration = before.jam.duration;
   for (const key of timingKeys)
     (after as any)[key] = structuredClone(before[key]);
 }

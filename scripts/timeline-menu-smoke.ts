@@ -330,6 +330,21 @@ try {
     (n: number) => (window as any).__state.project.beats.length === n + 1,
     countBeats,
   );
+  const beatControl = page.locator(".beat").last();
+  const beforeNudge = Number(await beatControl.getAttribute("aria-valuenow"));
+  const beforeNudgeTime = await page.evaluate(
+    () => (window as any).__state.time,
+  );
+  await beatControl.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(beatControl).toHaveAttribute(
+    "aria-valuenow",
+    String(beforeNudge + 0.01),
+  );
+  assert.equal(
+    await page.evaluate(() => (window as any).__state.time),
+    beforeNudgeTime,
+  );
   await page.locator(".beat").last().click({ button: "right" });
   await page.screenshot({ path: "test-results/timeline-menus/beat-menu.png" });
   await page.keyboard.press("Escape");
@@ -425,16 +440,42 @@ try {
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByLabel("UI scale", { exact: true }).selectOption("100");
-  await first.locator(".clip-select").focus();
-  await first.dispatchEvent("contextmenu", {
-    button: 2,
-    clientX: 1437,
-    clientY: 897,
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Inspector", exact: true }).click();
+  await page.locator(".camera-track").scrollIntoViewIfNeeded();
+  const edge = await page.locator(".camera-track button").evaluateAll((els) => {
+    const candidates = els
+      .map((e, i) => ({ i, r: e.getBoundingClientRect() }))
+      .filter(
+        ({ r }) =>
+          r.left < innerWidth - 20 &&
+          r.right > innerWidth - 250 &&
+          r.top > 0 &&
+          r.bottom < innerHeight,
+      );
+    const { r, i } = candidates[candidates.length - 1];
+    return {
+      index: i,
+      x: Math.min(innerWidth - 22, r.right - 5),
+      y: r.top + r.height / 2,
+    };
   });
+  const invoker = page.locator(".camera-track button").nth(edge.index);
+  await invoker.evaluate((e) =>
+    (e as HTMLElement).focus({ preventScroll: true }),
+  );
+  await page.mouse.click(edge.x, edge.y, { button: "right" });
   await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
   const corner = await menu.boundingBox();
   assert.ok(
     corner &&
+      corner.x + corner.width > 1420 &&
       corner.x + corner.width <= 1440 &&
       corner.y + corner.height <= 900,
   );
@@ -442,7 +483,7 @@ try {
     path: "test-results/timeline-menus/corner-submenu.png",
   });
   await page.keyboard.press("Escape");
-  await expect(first.locator(".clip-select")).toBeFocused();
+  await expect(invoker).toBeFocused();
   await page.getByRole("button", { name: "Full preview", exact: true }).click();
   await page.waitForFunction(() => !!document.fullscreenElement);
   const fullBox = await board.boundingBox();

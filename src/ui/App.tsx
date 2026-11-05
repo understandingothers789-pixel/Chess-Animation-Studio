@@ -440,7 +440,9 @@ export function App() {
         annotationFrom.current = null;
         setPicked(null);
       }
-      const buttonFocus = (e.target as HTMLElement).closest("button,summary");
+      const buttonFocus = (e.target as HTMLElement).closest(
+        "button,summary,[role=slider]",
+      );
       if (e.code === "Space" && !buttonFocus) {
         e.preventDefault();
         if (!loadingAudio) setPlaying((v) => !v);

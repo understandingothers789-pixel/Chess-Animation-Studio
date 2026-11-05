@@ -112,6 +112,18 @@ try {
   await expect(
     page.getByRole("slider", { name: "Horse sound volume", exact: true }),
   ).toBeInViewport();
+  const playhead = await page.evaluate(() => (window as any).__state.time);
+  await page.locator('.track-labels [data-track="music"]').click();
+  await page
+    .getByRole("menuitem", { name: "Add beat here", exact: true })
+    .click();
+  await page.waitForFunction(
+    (t: number) =>
+      (window as any).__state.project.beats.some(
+        (b: any) => Math.abs(b.time - t) < 0.001,
+      ),
+    playhead,
+  );
   await page.locator(".annotation-drawer > summary").click();
   await page.getByRole("button", { name: "+ text", exact: true }).click();
   await page

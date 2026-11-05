@@ -151,7 +151,7 @@ export function Timeline({
     const clip = target.closest<HTMLElement>("[data-move-index]");
     const r = host.current?.querySelector(".tracks")?.getBoundingClientRect();
     const at =
-      r && e.clientX
+      r && e.clientX && !target.closest(".track-labels")
         ? Math.max(
             0,
             Math.min(length, ((e.clientX - r.left) / r.width) * length),
@@ -411,8 +411,10 @@ export function Timeline({
             {
               intro: "Intro & title",
               move: "Move · " + (p.moves[menu.index]?.san ?? "Settings"),
-              camera: "Camera",
-              effect: "Badges & effects",
+              camera: "Camera · " + (p.moves[menu.index]?.san ?? "Settings"),
+              effect:
+                "Badges & effects · " +
+                (p.moves[menu.index]?.san ?? "Settings"),
               annotation: "Annotations",
               music: "Music & beats",
               timeline: "Timeline",

@@ -58,6 +58,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
         ? ["effects"]
         : settingsKinds;
   const copies = kinds.map((kind) => ({
+    id: `copy.${kind}`,
     label: label(kind),
     run: () => {
       copied.current = {
@@ -113,7 +114,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
         c.navigate("presets");
       },
     },
-    { label: "Copy", children: copies },
+    { label: "Copy", children: copies, separatorBefore: true },
     { label: "Paste to this move", children: pastes },
     {
       label: `Apply source settings to…${selected.length > 1 ? ` (${selected.length} selected)` : ""}`,
@@ -153,6 +154,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
     });
     actions.push({
       label: "Lock timing",
+      separatorBefore: true,
       checked: m.effect.locked,
       run: () =>
         edit("Toggle timing lock", (p) => {

@@ -208,6 +208,21 @@ export function App() {
     },
     [seek],
   );
+  const contextSelect = useCallback(
+    (index: number) => {
+      const move = latest.current.moves[index];
+      if (!move) return;
+      stop();
+      setSelected(index);
+      setIntroSelected(false);
+      setChecked((old) => {
+        if (old.has(move.id)) return old;
+        selectionAnchor.current = index;
+        return new Set([move.id]);
+      });
+    },
+    [stop],
+  );
   useEffect(() => {
     audio.current = new AudioPlayer();
     run(async () => {
@@ -430,7 +445,7 @@ export function App() {
         e.preventDefault();
         if (!loadingAudio) setPlaying((v) => !v);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         stop();
         e.shiftKey ? redo() : undo();
@@ -1120,6 +1135,7 @@ export function App() {
             onChange={(timeline) => workspace.patch({ timeline })}
           />
           <Timeline
+            contextSelect={contextSelect}
             clipboard={clipboard}
             report={message}
             preview={(index) => {
@@ -1169,9 +1185,7 @@ export function App() {
                   }
                 });
               } else {
-                setSelected(index);
-                setIntroSelected(false);
-                if (!checked.has(p.moves[index]?.id)) select(index);
+                contextSelect(index);
                 setInspectorRequest({ section, version: Date.now() });
               }
             }}

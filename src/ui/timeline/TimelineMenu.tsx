@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 export type MenuAction = {
   label: string;
   id?: string;
+  separatorBefore?: boolean;
+  icon?: string;
   run?: () => void;
   children?: MenuAction[];
   checked?: boolean;
@@ -34,6 +36,11 @@ export function TimelineMenu({
       ).getPropertyValue("--ui-scale"),
     ) || 1;
   const host = useRef<HTMLDivElement>(null);
+  const returnLabel = useRef<string | null>(null);
+  const back = () => {
+    returnLabel.current = path[path.length - 1]?.label ?? null;
+    setPath((p) => p.slice(0, -1));
+  };
   const [position, setPosition] = useState({ left: x, top: y });
   useLayoutEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -65,7 +72,12 @@ export function TimelineMenu({
         document.activeElement === document.body ||
         node.contains(document.activeElement)
       )
-        previous?.focus();
+        if (previous?.isConnected && previous.getClientRects().length)
+          previous.focus();
+        else
+          document
+            .querySelector<HTMLElement>(".track-labels button:not([hidden])")
+            ?.focus();
     };
   }, [x, y]);
   useLayoutEffect(() => {
@@ -74,9 +86,16 @@ export function TimelineMenu({
       left: Math.max(8, Math.min(x, innerWidth - r.width - 8)),
       top: Math.max(8, Math.min(y, innerHeight - r.height - 8)),
     });
-    host.current
-      ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
-      ?.focus();
+    const buttons = Array.from(
+      host.current!.querySelectorAll<HTMLButtonElement>(
+        "button[data-command]:not(:disabled)",
+      ),
+    );
+    const target =
+      buttons.find((b) => b.dataset.command === returnLabel.current) ??
+      buttons[0];
+    returnLabel.current = null;
+    target?.focus();
   }, [path]);
   return createPortal(
     <div
@@ -89,7 +108,7 @@ export function TimelineMenu({
       onKeyDown={(e) => {
         if (e.key === "ArrowLeft" && path.length) {
           e.preventDefault();
-          setPath((p) => p.slice(0, -1));
+          back();
           return;
         }
         if (e.key === "ArrowRight") {
@@ -128,7 +147,7 @@ export function TimelineMenu({
         {path.length ? " / " + path[path.length - 1].label : ""}
       </div>
       {path.length > 0 && (
-        <button role="menuitem" onClick={() => setPath((p) => p.slice(0, -1))}>
+        <button role="menuitem" onClick={back}>
           ← Back
         </button>
       )}
@@ -139,9 +158,12 @@ export function TimelineMenu({
           role={a.checked === undefined ? "menuitem" : "menuitemcheckbox"}
           aria-checked={a.checked}
           aria-haspopup={a.children ? "menu" : undefined}
-          key={a.label}
+          key={a.id ?? a.label}
           disabled={a.disabled}
-          className={a.danger ? "danger" : ""}
+          className={[
+            a.danger ? "danger" : "",
+            a.separatorBefore ? "menu-separator" : "",
+          ].join(" ")}
           onClick={() => {
             if (a.children) setPath((p) => [...p, a]);
             else {
@@ -155,6 +177,7 @@ export function TimelineMenu({
         >
           <span>
             {a.checked === undefined ? "" : a.checked ? "✓ " : "○ "}
+            {a.icon && <span aria-hidden="true">{a.icon} </span>}
             {a.label}
           </span>
           <small>{a.children ? "›" : a.shortcut}</small>
@@ -162,6 +185,6 @@ export function TimelineMenu({
       ))}
       <small>↑ ↓ Navigate · Enter Choose · Esc Close</small>
     </div>,
-    document.body,
+    document.fullscreenElement || document.body,
   );
 }

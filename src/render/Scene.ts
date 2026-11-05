@@ -442,6 +442,13 @@ export class Scene {
     const c = this.current;
     if (!c) return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    )
+      return null;
     const px = ((clientX - rect.left) / rect.width) * c.w,
       py = (1 - (clientY - rect.top) / rect.height) * c.h;
     if (py < c.viewY || py > c.viewY + c.viewH) return null;

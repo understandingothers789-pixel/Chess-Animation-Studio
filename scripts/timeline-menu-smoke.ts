@@ -266,8 +266,23 @@ try {
   });
   await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
   await page.screenshot({ path: "test-results/timeline-menus/copy-menu.png" });
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    page.getByRole("menuitem", { name: "Copy", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("menuitem", { name: "Movement", exact: true }),
+  ).toBeFocused();
   await page.getByRole("menuitem", { name: "Movement", exact: true }).click();
+  const beforeContextTime = await page.evaluate(
+    () => (window as any).__state.time,
+  );
   await page.locator(".move-clip").nth(3).click({ button: "right" });
+  assert.equal(
+    await page.evaluate(() => (window as any).__state.time),
+    beforeContextTime,
+  );
   assert.equal(await page.locator(".move-clip.checked").count(), 1);
   await page
     .getByRole("menuitem", { name: "Paste to this move", exact: true })
@@ -327,6 +342,59 @@ try {
   });
   await expect(page.getByRole("menu", { name: /Square/ })).toBeVisible();
   await page.screenshot({ path: "test-results/timeline-menus/board-menu.png" });
+  const square = (await menu.getAttribute("aria-label"))!.replace(
+    "Square ",
+    "",
+  );
+  const beforeBoard = await page.evaluate(() =>
+    JSON.stringify((window as any).__state.project),
+  );
+  await page
+    .getByRole("menuitem", {
+      name: "Highlight square / add circle",
+      exact: true,
+    })
+    .click();
+  await page.waitForFunction(
+    (sq: string) =>
+      (window as any).__state.project.annotations.some(
+        (a: any) => a.kind === "circle" && a.from === sq,
+      ),
+    square,
+  );
+  const afterBoard = await page.evaluate(() =>
+    JSON.stringify((window as any).__state.project),
+  );
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction(
+    (p: string) => JSON.stringify((window as any).__state.project) === p,
+    beforeBoard,
+  );
+  await page.keyboard.press("Control+Shift+Z");
+  await page.waitForFunction(
+    (p: string) => JSON.stringify((window as any).__state.project) === p,
+    afterBoard,
+  );
+  await page.keyboard.press("Control+z");
+  await board.click({
+    button: "right",
+    position: { x: box!.width / 2, y: box!.height / 2 },
+  });
+  await page.getByRole("menuitem", { name: /^Draw arrow from/ }).click();
+  await board.click({ position: { x: box!.width * 0.6, y: box!.height / 2 } });
+  await page.waitForFunction(
+    (sq: string) =>
+      (window as any).__state.project.annotations.some(
+        (a: any) => a.kind === "arrow" && a.from === sq && a.to !== sq,
+      ),
+    square,
+  );
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction(
+    (p: string) => JSON.stringify((window as any).__state.project) === p,
+    beforeBoard,
+  );
+
   await page.keyboard.press("Escape");
   for (const [w, h] of [
     [1100, 768],
@@ -355,6 +423,48 @@ try {
       await page.keyboard.press("Escape");
     }
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByLabel("UI scale", { exact: true }).selectOption("100");
+  await first.locator(".clip-select").focus();
+  await first.dispatchEvent("contextmenu", {
+    button: 2,
+    clientX: 1437,
+    clientY: 897,
+  });
+  await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
+  const corner = await menu.boundingBox();
+  assert.ok(
+    corner &&
+      corner.x + corner.width <= 1440 &&
+      corner.y + corner.height <= 900,
+  );
+  await page.screenshot({
+    path: "test-results/timeline-menus/corner-submenu.png",
+  });
+  await page.keyboard.press("Escape");
+  await expect(first.locator(".clip-select")).toBeFocused();
+  await page.getByRole("button", { name: "Full preview", exact: true }).click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  const fullBox = await board.boundingBox();
+  await board.click({
+    button: "right",
+    position: { x: fullBox!.width / 2, y: fullBox!.height / 2 },
+  });
+  await expect(menu).toBeVisible();
+  assert.ok(
+    await page.evaluate(() =>
+      document.fullscreenElement?.contains(
+        document.querySelector('[role="menu"]'),
+      ),
+    ),
+  );
+  await page.screenshot({
+    path: "test-results/timeline-menus/fullscreen-board-menu.png",
+  });
+  await page.keyboard.press("Escape");
+  await page.evaluate(async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+  });
   const picks = await page.evaluate(async () => {
     const scenePath = "/src/render/Scene.ts",
       threePath = "/node_modules/three/build/three.module.js",

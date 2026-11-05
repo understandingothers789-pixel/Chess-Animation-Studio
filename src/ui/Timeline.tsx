@@ -22,6 +22,7 @@ export function Timeline({
   introSelected,
   selectIntro,
   select,
+  contextSelect,
   seek,
   edit,
   navigate,
@@ -40,6 +41,7 @@ export function Timeline({
     i: number,
     modifiers?: { ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean },
   ) => void;
+  contextSelect: (index: number) => void;
   seek: (t: number) => void;
   edit: Edit;
   clipboard: { current: SettingsClipboard | null };
@@ -146,6 +148,13 @@ export function Timeline({
       );
     }
   };
+  const activeIndex =
+    checked.size && !checked.has(p.moves[selected]?.id)
+      ? Math.max(
+          0,
+          p.moves.findIndex((m) => checked.has(m.id)),
+        )
+      : selected;
   const sourceLength = p.music.sourceDuration || length,
     wave = p.waveform
       .map((v, i) => {
@@ -166,23 +175,30 @@ export function Timeline({
       (target.closest("[data-intro]") ? "intro" : trackOverride) ||
       target.closest<HTMLElement>("[data-track]")?.dataset.track ||
       "timeline";
-    if (target.closest(".track-labels")) track = "header:" + track;
+    if (target.closest(".track-labels") && track !== "timeline")
+      track = "header:" + track;
     const clip = target.closest<HTMLElement>("[data-move-index]");
+    if (!clip && ["move", "camera", "effect"].includes(track))
+      track = "header:" + track;
     const r = host.current?.querySelector(".tracks")?.getBoundingClientRect();
-    const at =
+    const rawAt =
       r && e.clientX && !target.closest(".track-labels")
         ? Math.max(
             0,
             Math.min(length, ((e.clientX - r.left) / r.width) * length),
           )
         : time;
+    const at =
+      track === "music" && snap && !e.altKey
+        ? Math.min(length, Math.max(0, Math.round(rawAt * 20) / 20))
+        : rawAt;
     const index = clip ? Number(clip.dataset.moveIndex) : selected;
     if (
       clip &&
       (index !== selected || introSelected || checked.size > 0) &&
       !checked.has(p.moves[index]?.id)
     )
-      select(index);
+      contextSelect(index);
     const rect = target.getBoundingClientRect();
     setMenu({
       x: e.clientX || rect.left,
@@ -402,7 +418,10 @@ export function Timeline({
             ? `${checked.size} moves selected`
             : (p.moves[selected]?.san ?? "No move")}
         </strong>
-        <button disabled={!p.moves[selected]} onClick={() => preview(selected)}>
+        <button
+          disabled={!p.moves[selected]}
+          onClick={() => preview(activeIndex)}
+        >
           Preview
         </button>
         <button
@@ -419,7 +438,7 @@ export function Timeline({
               x: r.left,
               y: r.bottom,
               track: "move",
-              index: selected,
+              index: activeIndex,
               at: time,
             });
           }}

@@ -557,3 +557,9 @@
 .timeline-context-menu > small {
   font-size: 0.85em;
 }
+.timeline-context-menu button.menu-separator {
+  border-top: 1px solid #44583e;
+  border-radius: 0 0 5px 5px;
+  margin-top: 5px;
+  padding-top: 10px;
+}

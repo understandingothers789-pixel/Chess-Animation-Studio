@@ -299,8 +299,10 @@ export function Preview({
               e.preventDefault();
               if (playing) onToggle?.();
               const r = e.currentTarget.getBoundingClientRect();
-              const cx = e.clientX || r.left + r.width / 2,
-                cy = e.clientY || r.top + r.height / 2;
+              const keyboard =
+                e.button !== 2 && e.clientX === 0 && e.clientY === 0;
+              const cx = keyboard ? r.left + r.width / 2 : e.clientX,
+                cy = keyboard ? r.top + r.height / 2 : e.clientY;
               const square = scene.current?.pick(cx, cy);
               if (square)
                 setMenu({

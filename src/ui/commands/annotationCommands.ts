@@ -62,7 +62,9 @@ export function annotationCommands(
     },
     {
       label: "Duplicate annotation",
+      disabled: length < 0.05,
       run: () => {
+        if (length < 0.05) return;
         const copy = structuredClone(a);
         copy.id = crypto.randomUUID();
         copy.start = Math.min(Math.max(0, length - 0.05), a.start + 0.15);

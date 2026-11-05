@@ -73,7 +73,11 @@ export function MoveClip({
         aria-valuemax={30}
         aria-valuenow={move.effect.duration}
         aria-valuetext={`${move.effect.duration.toFixed(2)} seconds`}
-        title="Drag to change move duration."
+        title={
+          move.effect.locked
+            ? "Timing locked. Unlock timing to resize this move."
+            : "Drag to change move duration."
+        }
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => {
           if (e.button !== 0 || move.effect.locked) return;

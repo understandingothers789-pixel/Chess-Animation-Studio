@@ -1,3 +1,6 @@
+import { TimelineMenu, type MenuAction } from "./timeline/TimelineMenu";
+import { buildGame } from "../core/chess";
+import { segments } from "../core/timeline";
 import { ViewportTools, initialViewport } from "./preview/ViewportTools";
 import { useEffect, useRef, useState } from "react";
 import { Scene, ContextLostError } from "../render/Scene";
@@ -11,16 +14,30 @@ export function Preview({
   onCompositionPoint,
   playing,
   onToggle,
+  onContextAnnotation,
 }: {
   project: Project;
   time: number;
   assets: Record<string, string>;
   onSquare: (square: string) => void;
   onError: (message: string) => void;
+  onContextAnnotation?: (
+    square: string,
+    kind: "arrow" | "circle" | "text",
+    x: number,
+    y: number,
+  ) => void;
   playing?: boolean;
   onToggle?: () => void;
   onCompositionPoint?: (x: number, y: number) => void;
 }) {
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    square: string;
+    px: number;
+    py: number;
+  } | null>(null);
   const [view, setView] = useState(initialViewport);
   const panDrag = useRef<{
     x: number;
@@ -159,8 +176,60 @@ export function Preview({
       active = false;
     };
   }, [assets, ready, retry]);
+  const saveFrame = () => {
+    if (!scene.current || !ready) return;
+    const [w, h] = sizes[project.format];
+    scene.current.render(project, time, w, h);
+    const link = document.createElement("a");
+    link.download = `${project.title}-frame.png`;
+    link.href = canvas.current!.toDataURL("image/png");
+    link.click();
+  };
+  const boardActions: MenuAction[] = menu
+    ? [
+        {
+          label: `Draw arrow from ${menu.square}…`,
+          run: () =>
+            onContextAnnotation?.(menu.square, "arrow", menu.px, menu.py),
+        },
+        {
+          label: "Highlight square / add circle",
+          run: () =>
+            onContextAnnotation?.(menu.square, "circle", menu.px, menu.py),
+        },
+        {
+          label: "Add text callout…",
+          run: () =>
+            onContextAnnotation?.(menu.square, "text", menu.px, menu.py),
+        },
+        {
+          label: "Copy position FEN",
+          run: () => {
+            const game = buildGame(project),
+              seq = segments(project);
+            let fen = project.fen;
+            seq.forEach((s, i) => {
+              if (s.land <= time) fen = game.steps[i].fen;
+            });
+            void navigator.clipboard
+              .writeText(fen)
+              .catch(() => onError("Could not copy FEN to clipboard."));
+          },
+        },
+        { label: "Capture current frame", run: saveFrame },
+      ]
+    : [];
   return (
     <div className="preview-shell" ref={shell}>
+      {menu && (
+        <TimelineMenu
+          x={menu.x}
+          y={menu.y}
+          title={`Square ${menu.square}`}
+          actions={boardActions}
+          close={() => setMenu(null)}
+        />
+      )}
       <ViewportTools
         fullscreen={fullscreen}
         playing={playing}
@@ -172,15 +241,7 @@ export function Preview({
           if (document.fullscreenElement) void document.exitFullscreen();
           else void shell.current?.requestFullscreen();
         }}
-        png={() => {
-          if (!scene.current || !ready) return;
-          const [w, h] = sizes[project.format];
-          scene.current.render(project, time, w, h);
-          const link = document.createElement("a");
-          link.download = `${project.title.replace(/[^a-z0-9]/gi, "-")}-frame.png`;
-          link.href = canvas.current!.toDataURL("image/png");
-          link.click();
-        }}
+        png={saveFrame}
       />
       <div
         className="preview-host"
@@ -198,7 +259,7 @@ export function Preview({
           }
         }}
         onPointerDown={(e) => {
-          if (view.pan || e.button === 1) {
+          if ((view.pan && e.button === 0) || e.button === 1) {
             e.preventDefault();
             e.currentTarget.setPointerCapture(e.pointerId);
             panDrag.current = {
@@ -233,6 +294,22 @@ export function Preview({
           <canvas
             aria-label="Chess composition preview"
             ref={canvas}
+            tabIndex={0}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              const r = e.currentTarget.getBoundingClientRect();
+              const cx = e.clientX || r.left + r.width / 2,
+                cy = e.clientY || r.top + r.height / 2;
+              const square = scene.current?.pick(cx, cy);
+              if (square)
+                setMenu({
+                  x: cx,
+                  y: cy,
+                  square,
+                  px: (cx - r.left) / r.width,
+                  py: (cy - r.top) / r.height,
+                });
+            }}
             onClick={(e) => {
               if (e.altKey) {
                 const r = e.currentTarget.getBoundingClientRect();

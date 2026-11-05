@@ -1,3 +1,7 @@
+import {
+  annotationCommands,
+  type AnnotationStyle,
+} from "./commands/annotationCommands";
 import { moveCommands } from "./commands/moveCommands";
 import type { SettingsClipboard } from "../core/editing";
 import { TimelineMenu, type MenuAction } from "./timeline/TimelineMenu";
@@ -21,6 +25,7 @@ export function Timeline({
   seek,
   edit,
   navigate,
+  clipboard,
   preview,
   report,
   inspect,
@@ -37,6 +42,7 @@ export function Timeline({
   ) => void;
   seek: (t: number) => void;
   edit: Edit;
+  clipboard: { current: SettingsClipboard | null };
   navigate: (category: string, section?: string) => void;
   preview: (index: number) => void;
   report: (message: string) => void;
@@ -52,9 +58,19 @@ export function Timeline({
   };
   const [menu, setMenu] = useState<Context | null>(null);
   useEffect(() => {
-    if (menu?.id && ((menu.track === "annotation" && !p.annotations.some(a=>a.id===menu.id)) || (menu.track === "music" && !p.beats.some(b=>b.id===menu.id)))) setMenu(null);
+    if (
+      menu?.id &&
+      ((menu.track === "annotation" &&
+        !p.annotations.some((a) => a.id === menu.id)) ||
+        (menu.track === "music" && !p.beats.some((b) => b.id === menu.id)))
+    )
+      setMenu(null);
   }, [p.annotations, p.beats]);
-  const copied = useRef<SettingsClipboard | null>(null);
+  useEffect(() => {
+    setMenu(null);
+  }, [p]);
+  const copied = clipboard;
+  const annotationStyle = useRef<AnnotationStyle | null>(null);
   const [zoom, setZoom] = useState(() => {
     const value = Number(localStorage.getItem("studio.timeline.zoom") || "1");
     return Number.isFinite(value) ? Math.max(0.02, Math.min(6, value)) : 1;
@@ -211,6 +227,14 @@ export function Timeline({
         add("Hide track", () =>
           setHiddenTracks((t) => [...new Set([...t, track])]),
         );
+      if (track === "music") {
+        add("Dark-square pulse settings…", () =>
+          navigate("music", "Dark-square beat pulse"),
+        );
+        add("Knight horse sound settings…", () =>
+          navigate("music", "Knight horse sound"),
+        );
+      }
       if (track === "music")
         add(
           "Add beat at playhead",
@@ -244,40 +268,18 @@ export function Timeline({
         }),
       );
     } else if (menu.track === "annotation") {
-      add("Edit annotations…", () =>
-        inspect(menu.index, "annotations", menu.id),
+      actions.push(
+        ...annotationCommands(
+          p,
+          menu.id,
+          menu.index,
+          time,
+          edit,
+          inspect,
+          seek,
+          annotationStyle,
+        ),
       );
-      if (menu.id) {
-        add("Duplicate annotation", () => {
-          const id = crypto.randomUUID();
-          edit("Duplicate annotation", (p) => {
-            const a = p.annotations.find((a) => a.id === menu.id);
-            if (a) {
-              const span = Math.min(a.end - a.start, length);
-              const start = Math.max(
-                0,
-                Math.min(length - span, a.start + 0.15),
-              );
-              p.annotations.push({
-                ...structuredClone(a),
-                id,
-                start,
-                end: start + span,
-              });
-            }
-          });
-          inspect(menu.index, "annotations", id);
-        });
-        add(
-          "Delete annotation",
-          () =>
-            edit("Delete annotation", (p) => {
-              p.annotations = p.annotations.filter((a) => a.id !== menu.id);
-            }),
-          false,
-          true,
-        );
-      }
     } else if (menu.track === "music") {
       add("Music levels & trim…", () => navigate("music", "Music"));
       add("Dark-square pulse settings…", () =>
@@ -328,6 +330,33 @@ export function Timeline({
           p.beatsLocked = !p.beatsLocked;
         }),
       );
+      if (menu.id) {
+        const beat = p.beats.find((b) => b.id === menu.id);
+        if (beat) {
+          add("Move playhead here", () => seek(beat.time));
+          add(
+            "Set beat to playhead",
+            () =>
+              edit("Move beat", (p) => {
+                const b = p.beats.find((b) => b.id === menu.id)!;
+                b.time = time;
+                if (b.sourceTime !== undefined)
+                  b.sourceTime = time + p.music.trimStart - p.music.offset;
+              }),
+            p.beatsLocked,
+          );
+          actions.push({
+            label: "Beat enabled",
+            checked: beat.enabled,
+            disabled: p.beatsLocked,
+            run: () =>
+              edit("Toggle beat", (p) => {
+                const b = p.beats.find((b) => b.id === menu.id)!;
+                b.enabled = !b.enabled;
+              }),
+          });
+        }
+      }
       if (menu.id) {
         add(
           "Toggle beat accent",
@@ -391,17 +420,63 @@ export function Timeline({
               effect:
                 "Badges & effects · " +
                 (p.moves[menu.index]?.san ?? "Settings"),
-              annotation: "Annotations",
+              annotation:
+                "Annotation · " +
+                (p.annotations.find((a) => a.id === menu.id)?.kind ?? "Track"),
               music: "Music & beats",
               timeline: "Timeline",
-            }[menu.track] || "Timeline"
+            }[menu.track] ||
+            (menu.track.startsWith("header:")
+              ? menu.track.slice(7) + " track"
+              : "Timeline")
           }
-          execute={run => { edit.begin(); try { run(); } finally { edit.end(); } }}
+          execute={(run) => {
+            edit.begin();
+            try {
+              run();
+            } finally {
+              edit.end();
+            }
+          }}
           actions={actions}
           close={() => setMenu(null)}
         />
       )}
       <header>
+        <div className="selection-tools" aria-label="Selection actions">
+          <strong>
+            {checked.size > 1
+              ? `${checked.size} moves selected`
+              : (p.moves[selected]?.san ?? "No move")}
+          </strong>
+          <button
+            disabled={!p.moves[selected]}
+            onClick={() => preview(selected)}
+          >
+            Preview
+          </button>
+          <button
+            disabled={!p.moves[selected]}
+            onClick={() => navigate("presets")}
+          >
+            Preset
+          </button>
+          <button
+            disabled={!p.moves[selected]}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setMenu({
+                x: r.left,
+                y: r.bottom,
+                track: "move",
+                index: selected,
+                at: time,
+              });
+            }}
+          >
+            Edit / Apply…
+          </button>
+        </div>
         <div>
           <span className="eyebrow">SEQUENCE</span>
           <small>

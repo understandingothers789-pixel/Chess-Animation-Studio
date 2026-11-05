@@ -1,3 +1,4 @@
+import { pasteSettings, type SettingsClipboard } from "../core/editing";
 import { Transport } from "./transport/Transport";
 import { ExportDialog } from "./export/ExportDialog";
 import { AnnotationEditor } from "./annotations/AnnotationEditor";
@@ -139,7 +140,7 @@ export function App() {
     timeRef = useRef(time),
     audio = useRef<AudioPlayer | null>(null),
     saved = useRef(p),
-    clipboard = useRef<Effect | null>(null),
+    clipboard = useRef<SettingsClipboard | null>(null),
     assetKeys = useRef(new Map<string, string>());
   const [assetRevision, setAssetRevision] = useState(0);
   const fingerprints = useRef(new Map<string, string | null>());
@@ -419,6 +420,11 @@ export function App() {
         )
       )
         return;
+      if (e.key === "Escape") {
+        setDrawing(null);
+        annotationFrom.current = null;
+        setPicked(null);
+      }
       const buttonFocus = (e.target as HTMLElement).closest("button,summary");
       if (e.code === "Space" && !buttonFocus) {
         e.preventDefault();
@@ -1025,6 +1031,34 @@ export function App() {
                     );
                   });
               }}
+              onContextAnnotation={(sq, kind, x, y) => {
+                stop();
+                setPicked(null);
+                workspace.patch({ hideRight: false });
+                const drawer =
+                  document.querySelector<HTMLDetailsElement>(
+                    ".annotation-drawer",
+                  );
+                if (drawer) drawer.open = true;
+                if (kind === "arrow") {
+                  setDrawing("arrow");
+                  setAnnotationId(null);
+                  annotationFrom.current = sq;
+                  message(`Arrow from ${sq}: click destination; Esc cancels.`);
+                } else {
+                  setDrawing(null);
+                  annotationFrom.current = null;
+                  const a = annotation(kind, time);
+                  a.from = sq;
+                  a.to = sq;
+                  a.x = x;
+                  a.y = y;
+                  edit("Add board annotation", (p) => {
+                    p.annotations.push(a);
+                  });
+                  setAnnotationId(a.id);
+                }
+              }}
               onSquare={(sq) => {
                 if (!drawing) {
                   square(sq);
@@ -1086,6 +1120,7 @@ export function App() {
             onChange={(timeline) => workspace.patch({ timeline })}
           />
           <Timeline
+            clipboard={clipboard}
             report={message}
             preview={(index) => {
               setSelected(index);
@@ -1210,9 +1245,11 @@ export function App() {
                 onGlobalEffects={() => setTab("effects")}
                 onCopy={() => {
                   if (p.moves[selected])
-                    clipboard.current = structuredClone(
-                      p.moves[selected].effect,
-                    );
+                    clipboard.current = {
+                      kind: "everything",
+                      source: structuredClone(p.moves[selected].effect),
+                      format: p.format,
+                    };
                   message("Move effect copied.");
                 }}
                 onPaste={() => {
@@ -1223,7 +1260,11 @@ export function App() {
                           ? checked.has(m.id)
                           : m.id === p.moves[selected]?.id,
                       ))
-                        m.effect = structuredClone(clipboard.current!);
+                        m.effect = pasteSettings(
+                          m.effect,
+                          clipboard.current!,
+                          p.format,
+                        );
                     });
                 }}
               />

@@ -80,7 +80,10 @@ export function pasteSettings(
   preserveLockedTiming(target, next);
   return effectSchema.parse(next);
 }
+const groupCache = new WeakMap<Project, Record<string, string[]>>();
 export function moveGroups(p: Project): Record<string, string[]> {
+  const cached = groupCache.get(p);
+  if (cached) return cached;
   const groups: Record<string, string[]> = {
     "All moves": [],
     "Pawn moves": [],
@@ -115,5 +118,6 @@ export function moveGroups(p: Project): Record<string, string[]> {
     if (result.flags.includes("k") || result.flags.includes("q"))
       groups.Castling.push(m.id);
   }
+  groupCache.set(p, groups);
   return groups;
 }

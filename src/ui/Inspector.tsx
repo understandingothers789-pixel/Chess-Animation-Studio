@@ -55,8 +55,16 @@ export function Inspector({
         ? "Move badge"
         : requestedTab.section === "spotlight"
           ? "Beat spotlight transition"
-          : null;
-    setTab(title ? "effects" : requestedTab.section);
+          : requestedTab.section === "move"
+            ? "Movement"
+            : requestedTab.section === "camera"
+              ? `Camera · ${project.format}`
+              : null;
+    setTab(
+      ["badge", "spotlight"].includes(requestedTab.section)
+        ? "effects"
+        : requestedTab.section,
+    );
     if (title)
       requestAnimationFrame(() => {
         const details = Array.from(
@@ -239,6 +247,12 @@ export function Inspector({
         ))}
       </nav>
       <div className="inspector-content">
+        {targets(project).some((m) => m.effect.locked) && (
+          <p className="hint">
+            🔒 {targets(project).filter((m) => m.effect.locked).length} timing
+            locked. Timing edits affect unlocked moves only.
+          </p>
+        )}
         <p className="inspector-guide">
           {
             (

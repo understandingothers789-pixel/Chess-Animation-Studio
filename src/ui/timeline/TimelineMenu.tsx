@@ -63,6 +63,11 @@ export function TimelineMenu({
     };
   }, [x, y]);
   useLayoutEffect(() => {
+    const r = host.current!.getBoundingClientRect();
+    setPosition({
+      left: Math.max(8, Math.min(x, innerWidth - r.width - 8)),
+      top: Math.max(8, Math.min(y, innerHeight - r.height - 8)),
+    });
     host.current
       ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
       ?.focus();
@@ -123,6 +128,7 @@ export function TimelineMenu({
       )}
       {visible.map((a) => (
         <button
+          aria-label={a.label}
           data-command={a.label}
           role={a.checked === undefined ? "menuitem" : "menuitemcheckbox"}
           aria-checked={a.checked}
@@ -134,7 +140,10 @@ export function TimelineMenu({
             if (a.children) setPath((p) => [...p, a]);
             else {
               close();
-              if(a.run) { if(execute) execute(a.run); else a.run(); }
+              if (a.run) {
+                if (execute) execute(a.run);
+                else a.run();
+              }
             }
           }}
         >

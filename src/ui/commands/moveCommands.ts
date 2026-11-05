@@ -30,7 +30,12 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
   if (!m) return [];
   const one = [m.id],
     selected = p.moves.filter((m) => c.checked.has(m.id)).map((m) => m.id);
-  const apply = (kind: SettingsKind, ids: string[], source: Effect) => {
+  const apply = (
+    kind: SettingsKind,
+    ids: string[],
+    source: Effect,
+    sourceFormat = p.format,
+  ) => {
     const locked = p.moves.filter(
       (m) => ids.includes(m.id) && m.effect.locked,
     ).length;
@@ -38,7 +43,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       for (const move of draft.moves.filter((m) => ids.includes(m.id)))
         move.effect = pasteSettings(
           move.effect,
-          { kind, source, format: p.format },
+          { kind, source, format: sourceFormat },
           p.format,
         );
     });
@@ -63,7 +68,8 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       !copied.current ||
       (copied.current.kind !== "everything" && copied.current.kind !== kind),
     run: () => {
-      if (copied.current) apply(kind, one, copied.current.source);
+      if (copied.current)
+        apply(kind, one, copied.current.source, copied.current.format);
     },
   }));
   const groups = {
@@ -84,10 +90,14 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
     {
       label:
         track === "camera"
-          ? `Edit camera · ${p.format}…`
+          ? `Edit camera · ${p.format}${selected.length > 1 ? ` · ${selected.length} selected` : ""}…`
           : track === "effect"
-            ? "Edit badges & move effects…"
-            : "Edit movement & timing…",
+            ? selected.length > 1
+              ? `Edit effects · ${selected.length} selected…`
+              : "Edit badges & move effects…"
+            : selected.length > 1
+              ? `Edit movement · ${selected.length} selected…`
+              : "Edit movement & timing…",
       run: () => c.inspect(index, track === "effect" ? "effects" : track),
     },
     {

@@ -485,12 +485,20 @@ try {
   await page.keyboard.press("Escape");
   await expect(invoker).toBeFocused();
   await page.getByRole("button", { name: "Full preview", exact: true }).click();
-  await page.waitForFunction(() => !!document.fullscreenElement);
-  const fullBox = await board.boundingBox();
-  await board.click({
-    button: "right",
-    position: { x: fullBox!.width / 2, y: fullBox!.height / 2 },
-  });
+  await page.waitForFunction(
+    () =>
+      !!document.fullscreenElement &&
+      (document.querySelector(".preview-host canvas")?.getBoundingClientRect()
+        .width ?? 0) >
+        innerWidth * 0.8,
+  );
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await board.click({ button: "right" });
   await expect(menu).toBeVisible();
   assert.ok(
     await page.evaluate(() =>

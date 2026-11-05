@@ -148,3 +148,29 @@ it("duplicates annotations with distinct timing, identity and selected editor ta
   expect(copy.x).toBeGreaterThan(a.x);
   expect(selected).toBe(copy.id);
 });
+
+it("does not retarget a stale move command onto a different move at the same array index", () => {
+  const p = importPgn(blank(), "1. e4 e5");
+  p.moves[1].effect.duration = 9;
+  const edit = Object.assign(
+    (_label: string, fn: (draft: typeof p) => void) => fn(p),
+    { begin: () => {}, end: () => {} },
+  ) as Edit;
+  const commands = moveCommands({
+    p,
+    index: 0,
+    track: "move",
+    checked: new Set(),
+    edit,
+    copied: { current: null },
+    inspect: () => {},
+    navigate: () => {},
+    preview: () => {},
+    report: () => {},
+  });
+  p.moves.shift();
+  commands
+    .find((a) => a.label === "Speed / Duration")!
+    .children!.find((a) => a.label === "Reset duration")!.run!();
+  expect(p.moves[0].effect.duration).toBe(9);
+});

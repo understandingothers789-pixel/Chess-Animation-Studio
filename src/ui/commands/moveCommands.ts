@@ -28,6 +28,15 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
   const { p, index, track, edit, copied } = c,
     m = p.moves[index];
   if (!m) return [];
+  const changeSource = (
+    label: string,
+    fn: (effect: Effect, draft: Project) => void,
+  ) =>
+    edit(label, (draft) => {
+      if (draft.id !== p.id) return;
+      const target = draft.moves.find((move) => move.id === m.id);
+      if (target) fn(target.effect, draft);
+    });
   const one = [m.id],
     selected = p.moves.filter((m) => c.checked.has(m.id)).map((m) => m.id);
   const apply = (
@@ -129,8 +138,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
           label: `${Math.round(Math.abs(speed) * 100)}% ${speed > 0 ? "faster" : "slower"}`,
           disabled: m.effect.locked,
           run: () =>
-            edit("Change move speed", (p) => {
-              const e = p.moves[index].effect;
+            changeSource("Change move speed", (e) => {
               e.duration = Math.max(
                 0.2,
                 Math.min(30, e.duration / (1 + speed)),
@@ -146,8 +154,8 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
           label: "Reset duration",
           disabled: m.effect.locked,
           run: () =>
-            edit("Reset duration", (p) => {
-              p.moves[index].effect.duration = effect(m.effect.preset).duration;
+            changeSource("Reset duration", (e) => {
+              e.duration = effect(m.effect.preset).duration;
             }),
         },
       ],
@@ -157,8 +165,8 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       separatorBefore: true,
       checked: m.effect.locked,
       run: () =>
-        edit("Toggle timing lock", (p) => {
-          p.moves[index].effect.locked = !p.moves[index].effect.locked;
+        changeSource("Toggle timing lock", (e) => {
+          e.locked = !e.locked;
         }),
     });
     actions.push({
@@ -170,8 +178,8 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
     actions.push({
       label: `Reset camera · ${p.format}`,
       run: () =>
-        edit("Reset camera", (p) => {
-          delete p.moves[index].effect.cameras[p.format];
+        changeSource("Reset camera", (e) => {
+          delete e.cameras[p.format];
         }),
     });
   if (track === "effect")
@@ -186,18 +194,16 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
         disabled: m.effect.locked,
         checked: m.effect.jam.enabled,
         run: () =>
-          edit("Toggle spotlight", (p) => {
-            p.moves[index].effect.jam.enabled =
-              !p.moves[index].effect.jam.enabled;
+          changeSource("Toggle spotlight", (e) => {
+            e.jam.enabled = !e.jam.enabled;
           }),
       },
       {
         label: "Move lighting",
         checked: m.effect.light.enabled,
         run: () =>
-          edit("Toggle move lighting", (p) => {
-            p.moves[index].effect.light.enabled =
-              !p.moves[index].effect.light.enabled;
+          changeSource("Toggle move lighting", (e) => {
+            e.light.enabled = !e.light.enabled;
           }),
       },
       {

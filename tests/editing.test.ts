@@ -174,3 +174,39 @@ it("does not retarget a stale move command onto a different move at the same arr
     .children!.find((a) => a.label === "Reset duration")!.run!();
   expect(p.moves[0].effect.duration).toBe(9);
 });
+
+it("reports preserved spotlight timing when applying visual effects to locked targets", () => {
+  const p = importPgn(blank(), "1. e4 e5");
+  p.moves[0].effect.jam.enabled = true;
+  p.moves[0].effect.jam.duration = 4;
+  p.moves[1].effect.locked = true;
+  const before = structuredClone(p.moves[1].effect);
+  let report = "";
+  const edit = Object.assign(
+    (_label: string, fn: (draft: typeof p) => void) => fn(p),
+    { begin: () => {}, end: () => {} },
+  ) as Edit;
+  const commands = moveCommands({
+    p,
+    index: 0,
+    track: "effect",
+    checked: new Set(),
+    edit,
+    copied: { current: null },
+    inspect: () => {},
+    navigate: () => {},
+    preview: () => {},
+    report: (s) => {
+      report = s;
+    },
+  });
+  const group = commands
+    .find((a) => a.label.startsWith("Apply source settings"))!
+    .children!.find((a) => a.label === "Effects")!
+    .children!.find((a) => a.label.startsWith("All moves"))!;
+  expect(group.label).toContain("1 timing locked");
+  group.run!();
+  expect(p.moves[1].effect.jam.enabled).toBe(before.jam.enabled);
+  expect(p.moves[1].effect.jam.duration).toBe(before.jam.duration);
+  expect(report).toContain("1 locked moves");
+});

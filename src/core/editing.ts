@@ -18,6 +18,8 @@ export type SettingsKind =
   | "effects"
   | "timing"
   | "everything";
+export const settingsAffectTiming = (kind: SettingsKind) =>
+  ["timing", "effects", "everything"].includes(kind);
 export const settingsKinds: SettingsKind[] = [
   "movement",
   "camera",

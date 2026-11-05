@@ -3,6 +3,7 @@ import {
   moveGroups,
   pasteSettings,
   settingsKinds,
+  settingsAffectTiming,
   type SettingsClipboard,
   type SettingsKind,
 } from "../../core/editing";
@@ -57,7 +58,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
         );
     });
     c.report(
-      `${label(kind)} applied to ${ids.length} moves${locked && ["timing", "everything"].includes(kind) ? `; timing preserved for ${locked} locked moves` : ""}. Undo is available.`,
+      `${label(kind)} applied to ${ids.length} moves${locked && settingsAffectTiming(kind) ? `; timing preserved for ${locked} locked moves` : ""}. Undo is available.`,
     );
   };
   const kinds: SettingsKind[] =
@@ -96,7 +97,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
   const bulk = kinds.map((kind) => ({
     label: label(kind),
     children: Object.entries(groups).map(([name, ids]) => ({
-      label: `${name} · ${ids.length}${["timing", "everything"].includes(kind) ? ` (${p.moves.filter((m) => ids.includes(m.id) && m.effect.locked).length} timing locked)` : ""}`,
+      label: `${name} · ${ids.length}${settingsAffectTiming(kind) ? ` (${p.moves.filter((m) => ids.includes(m.id) && m.effect.locked).length} timing locked)` : ""}`,
       disabled: !ids.length,
       run: () => apply(kind, ids, m.effect),
     })),

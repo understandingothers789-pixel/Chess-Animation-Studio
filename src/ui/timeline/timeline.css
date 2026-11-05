@@ -422,3 +422,94 @@
     text-overflow: ellipsis;
   }
 }
+
+/* Track headers double as visible menu launchers. */
+.track-labels > button {
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid #354a3633;
+  border-radius: 0;
+  padding: 0 8px;
+  font-size: var(--text-meta);
+  color: #b5c8ac;
+  background: transparent;
+  text-align: left;
+}
+.track-labels > button:nth-child(2) {
+  height: 56px;
+}
+.track-labels > button:last-child {
+  height: 48px;
+}
+.track-labels > button > span {
+  height: auto;
+  padding: 0;
+  border: 0;
+}
+.track-labels > button:hover,
+.track-labels > button:focus-visible {
+  background: #304938;
+  color: #fff;
+}
+.track-labels > button[hidden] {
+  display: none;
+}
+.timeline-context-menu {
+  position: fixed;
+  z-index: 10000;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  background: #19271f;
+  color: #eef4eb;
+  border: 1px solid #617563;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px #0009;
+  padding: 6px;
+}
+.context-menu-title {
+  padding: 8px 10px;
+  color: #c1d0ba;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 1px solid #44583e;
+  margin-bottom: 4px;
+}
+.timeline-context-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  border-radius: 5px;
+  color: inherit;
+  font-size: 13px;
+}
+.timeline-context-menu button:hover,
+.timeline-context-menu button:focus-visible {
+  background: #3c5742;
+  outline: 2px solid #9db98b;
+  outline-offset: -2px;
+}
+.timeline-context-menu button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.timeline-context-menu button.danger {
+  color: #ffb4a6;
+}
+.timeline-context-menu small {
+  display: block;
+  padding: 8px 10px 4px;
+  color: #a2b59c;
+  font-size: 11px;
+  border-top: 1px solid #44583e;
+  margin-top: 4px;
+}

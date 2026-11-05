@@ -78,6 +78,10 @@ export function App() {
   } = useProject();
   const workspace = useWorkspace();
   const layout = workspace.layout;
+  const [inspectorRequest, setInspectorRequest] = useState<{
+    section: string;
+    version: number;
+  } | null>(null);
   const [annotationId, setAnnotationId] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<"arrow" | "circle" | null>(null);
   const annotationFrom = useRef<string | null>(null);
@@ -1082,6 +1086,53 @@ export function App() {
             onChange={(timeline) => workspace.patch({ timeline })}
           />
           <Timeline
+            navigate={(category, section) => {
+              setTab(category);
+              workspace.patch({ hideLeft: false });
+              if (section)
+                requestAnimationFrame(() => {
+                  const panel = document.querySelector(
+                    `[data-category="${category}"]`,
+                  );
+                  const details = Array.from(
+                    panel?.querySelectorAll<HTMLDetailsElement>(
+                      "details.section",
+                    ) ?? [],
+                  ).find(
+                    (d) =>
+                      d.querySelector("summary > span")?.textContent ===
+                      section,
+                  );
+                  if (details) {
+                    details.open = true;
+                    details.scrollIntoView({
+                      block: "start",
+                      behavior: "smooth",
+                    });
+                  }
+                });
+            }}
+            inspect={(index, section, annotation) => {
+              workspace.patch({ hideRight: false });
+              if (section === "intro") {
+                selectIntro();
+              } else if (section === "annotations") {
+                if (annotation) setAnnotationId(annotation);
+                requestAnimationFrame(() => {
+                  const drawer =
+                    document.querySelector<HTMLDetailsElement>(
+                      ".annotation-drawer",
+                    );
+                  if (drawer) {
+                    drawer.open = true;
+                    drawer.scrollIntoView({ block: "nearest" });
+                  }
+                });
+              } else {
+                select(index);
+                setInspectorRequest({ section, version: Date.now() });
+              }
+            }}
             project={p}
             time={time}
             selected={selected}
@@ -1140,6 +1191,7 @@ export function App() {
           <div hidden={introSelected} className="inspector-slot">
             <SettingsScope.Provider value="move-inspector">
               <Inspector
+                requestedTab={inspectorRequest}
                 project={p}
                 checked={checked}
                 index={selected}

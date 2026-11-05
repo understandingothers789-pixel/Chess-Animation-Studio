@@ -1,10 +1,11 @@
+import { TimelineMenu, type MenuAction } from "./timeline/TimelineMenu";
 import { ControlGroup } from "./timeline/ControlGroup";
 import { MoveClip } from "./timeline/MoveClip";
 import { AnnotationRegion } from "./timeline/AnnotationRegion";
 import { settingHelp } from "./help";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { segments, duration } from "../core/timeline";
-import type { Project } from "../core/project";
+import { type Project, type Effect } from "../core/project";
 import type { Edit } from "./state";
 import { clock } from "./controls";
 export function Timeline({
@@ -17,6 +18,8 @@ export function Timeline({
   select,
   seek,
   edit,
+  navigate,
+  inspect,
 }: {
   project: Project;
   time: number;
@@ -30,10 +33,52 @@ export function Timeline({
   ) => void;
   seek: (t: number) => void;
   edit: Edit;
+  navigate: (category: string, section?: string) => void;
+  inspect: (index: number, section: string, annotation?: string) => void;
 }) {
-  const [zoom, setZoom] = useState(1);
-  const [hiddenTracks, setHiddenTracks] = useState<string[]>([]);
-  const [snap, setSnap] = useState(true);
+  type Context = {
+    x: number;
+    y: number;
+    track: string;
+    index: number;
+    id?: string;
+    at: number;
+  };
+  const [menu, setMenu] = useState<Context | null>(null);
+  const copied = useRef<Effect | null>(null);
+  const [zoom, setZoom] = useState(() => {
+    const value = Number(localStorage.getItem("studio.timeline.zoom") || "1");
+    return Number.isFinite(value) ? Math.max(0.02, Math.min(6, value)) : 1;
+  });
+  useEffect(() => {
+    localStorage.setItem("studio.timeline.zoom", String(zoom));
+  }, [zoom]);
+  const [hiddenTracks, setHiddenTracks] = useState<string[]>(() => {
+    try {
+      const value = JSON.parse(
+        localStorage.getItem("studio.timeline.tracks") || "[]",
+      );
+      return Array.isArray(value)
+        ? value.filter((v) =>
+            ["camera", "effect", "music", "annotation"].includes(v),
+          )
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    localStorage.setItem(
+      "studio.timeline.tracks",
+      JSON.stringify(hiddenTracks),
+    );
+  }, [hiddenTracks]);
+  const [snap, setSnap] = useState(
+    () => localStorage.getItem("studio.timeline.snap") !== "false",
+  );
+  useEffect(() => {
+    localStorage.setItem("studio.timeline.snap", String(snap));
+  }, [snap]);
   const host = useRef<HTMLDivElement>(null),
     length = duration(p),
     seq = segments(p),
@@ -96,8 +141,287 @@ export function Timeline({
           (!p.music.trimEnd ||
             v.x < x(p.music.trimEnd - p.music.trimStart + p.music.offset)),
       );
+  const openMenu = (e: React.MouseEvent, trackOverride?: string) => {
+    e.preventDefault();
+    const target = e.target as HTMLElement;
+    const track =
+      (target.closest("[data-intro]") ? "intro" : trackOverride) ||
+      target.closest<HTMLElement>("[data-track]")?.dataset.track ||
+      "timeline";
+    const clip = target.closest<HTMLElement>("[data-move-index]");
+    const r = host.current?.querySelector(".tracks")?.getBoundingClientRect();
+    const at =
+      r && e.clientX
+        ? Math.max(
+            0,
+            Math.min(length, ((e.clientX - r.left) / r.width) * length),
+          )
+        : time;
+    const index = clip ? Number(clip.dataset.moveIndex) : selected;
+    if (
+      clip &&
+      (index !== selected || introSelected) &&
+      !checked.has(p.moves[index]?.id)
+    )
+      select(index);
+    const rect = target.getBoundingClientRect();
+    setMenu({
+      x: e.clientX || rect.left,
+      y: e.clientY || rect.bottom,
+      track,
+      index,
+      at,
+      id:
+        target.closest<HTMLElement>("[data-annotation-id],[data-beat-id]")
+          ?.dataset.annotationId ||
+        target.closest<HTMLElement>("[data-beat-id]")?.dataset.beatId,
+    });
+  };
+  const actions: MenuAction[] = [];
+  const add = (
+    label: string,
+    run: () => void,
+    disabled = false,
+    danger = false,
+  ) => actions.push({ label, run, disabled, danger });
+  if (menu) {
+    const m = p.moves[menu.index];
+    if (menu.track === "intro") {
+      add("Edit intro & title…", () => inspect(menu.index, "intro"));
+      add("Go to intro start", () => seek(0));
+    } else if (["move", "camera", "effect"].includes(menu.track)) {
+      add(
+        menu.track === "camera"
+          ? "Edit this move’s camera…"
+          : menu.track === "effect"
+            ? "Edit badges & move effects…"
+            : "Edit movement & timing…",
+        () =>
+          inspect(menu.index, menu.track === "effect" ? "effects" : menu.track),
+        !m,
+      );
+      add("Go to clip start", () => seek(seq[menu.index].start), !m);
+      if (menu.track === "move") {
+        add(
+          "Make move 25% slower",
+          () =>
+            edit("Slow move", (p) => {
+              const e = p.moves[menu.index].effect;
+              e.duration = Math.min(30, e.duration * 1.25);
+            }),
+          !m || m.effect.locked,
+        );
+        add(
+          "Make move 25% faster",
+          () =>
+            edit("Speed move", (p) => {
+              const e = p.moves[menu.index].effect;
+              e.duration = Math.max(0.2, e.duration / 1.25);
+            }),
+          !m || m.effect.locked,
+        );
+        add(
+          "Copy move settings",
+          () => {
+            copied.current = structuredClone(m.effect);
+          },
+          !m,
+        );
+        add(
+          "Paste move settings",
+          () =>
+            edit("Paste move settings", (p) => {
+              p.moves[menu.index].effect = structuredClone(copied.current!);
+            }),
+          !m || !copied.current,
+        );
+        add(
+          m?.effect.locked ? "Unlock timing" : "Lock timing",
+          () =>
+            edit("Toggle timing lock", (p) => {
+              p.moves[menu.index].effect.locked =
+                !p.moves[menu.index].effect.locked;
+            }),
+          !m,
+        );
+      }
+      if (menu.track === "camera")
+        add(
+          "Reset this camera",
+          () =>
+            edit("Reset move camera", (p) => {
+              delete p.moves[menu.index].effect.cameras[p.format];
+            }),
+          !m,
+        );
+      if (menu.track === "effect") {
+        add("Edit badge…", () => inspect(menu.index, "badge"), !m);
+        add("Edit beat spotlight…", () => inspect(menu.index, "spotlight"), !m);
+        add(
+          m?.effect.jam.enabled
+            ? "Disable beat spotlight"
+            : "Enable beat spotlight",
+          () =>
+            edit("Toggle beat spotlight", (p) => {
+              p.moves[menu.index].effect.jam.enabled =
+                !p.moves[menu.index].effect.jam.enabled;
+            }),
+          !m,
+        );
+        add(
+          "Remove badge",
+          () =>
+            edit("Remove badge", (p) => {
+              p.moves[menu.index].effect.badge.manual = "none";
+            }),
+          !m,
+        );
+      }
+    } else if (menu.track === "annotation") {
+      add("Edit annotations…", () =>
+        inspect(menu.index, "annotations", menu.id),
+      );
+      if (menu.id) {
+        add("Duplicate annotation", () =>
+          edit("Duplicate annotation", (p) => {
+            const a = p.annotations.find((a) => a.id === menu.id);
+            if (a)
+              p.annotations.push({
+                ...structuredClone(a),
+                id: crypto.randomUUID(),
+              });
+          }),
+        );
+        add(
+          "Delete annotation",
+          () =>
+            edit("Delete annotation", (p) => {
+              p.annotations = p.annotations.filter((a) => a.id !== menu.id);
+            }),
+          false,
+          true,
+        );
+      }
+    } else if (menu.track === "music") {
+      add("Music levels & trim…", () => navigate("music", "Music"));
+      add("Dark-square pulse settings…", () =>
+        navigate("music", "Dark-square beat pulse"),
+      );
+      add("Knight horse sound settings…", () =>
+        navigate("music", "Knight horse sound"),
+      );
+      add(p.music.muted ? "Unmute music" : "Mute music", () =>
+        edit("Toggle music mute", (p) => {
+          p.music.muted = !p.music.muted;
+        }),
+      );
+      add(
+        p.pulse.enabled
+          ? "Disable dark-square beat pulse"
+          : "Enable dark-square beat pulse",
+        () =>
+          edit("Toggle beat pulse", (p) => {
+            p.pulse.enabled = !p.pulse.enabled;
+          }),
+      );
+      add(
+        p.audio.knightHorse
+          ? "Disable knight horse sound"
+          : "Enable knight horse sound",
+        () =>
+          edit("Toggle horse cue", (p) => {
+            p.audio.knightHorse = !p.audio.knightHorse;
+          }),
+      );
+      add(
+        "Add beat here",
+        () =>
+          edit("Add beat", (p) => {
+            p.beats.push({
+              id: crypto.randomUUID(),
+              time: menu.at,
+              enabled: true,
+              accent: false,
+            });
+            p.beats.sort((a, b) => a.time - b.time);
+          }),
+        p.beatsLocked,
+      );
+      add(p.beatsLocked ? "Unlock beat markers" : "Lock beat markers", () =>
+        edit("Toggle beat lock", (p) => {
+          p.beatsLocked = !p.beatsLocked;
+        }),
+      );
+      if (menu.id) {
+        add(
+          "Toggle beat accent",
+          () =>
+            edit("Toggle beat accent", (p) => {
+              const b = p.beats.find((b) => b.id === menu.id);
+              if (b) b.accent = !b.accent;
+            }),
+          p.beatsLocked,
+        );
+        add(
+          "Delete beat",
+          () =>
+            edit("Delete beat", (p) => {
+              p.beats = p.beats.filter((b) => b.id !== menu.id);
+            }),
+          p.beatsLocked,
+          true,
+        );
+      }
+    } else {
+      add("Fit timeline to window", () =>
+        setZoom(
+          Math.max(
+            0.02,
+            (host.current?.clientWidth ?? 760) / Math.max(1, length * 52),
+          ),
+        ),
+      );
+      add(snap ? "Disable snapping" : "Enable snapping", () => setSnap(!snap));
+    }
+    if (["camera", "effect", "music", "annotation"].includes(menu.track))
+      add("Hide this track", () =>
+        setHiddenTracks((t) => [...new Set([...t, menu.track])]),
+      );
+    add("Reset timeline view", () => {
+      setHiddenTracks([]);
+      setZoom(1);
+      setSnap(true);
+    });
+    add("Show all tracks", () => setHiddenTracks([]), !hiddenTracks.length);
+  }
   return (
-    <section className="timeline">
+    <section
+      className="timeline"
+      onContextMenu={openMenu}
+      onKeyDown={(e) => {
+        if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))
+          openMenu(e as unknown as React.MouseEvent);
+      }}
+    >
+      {menu && (
+        <TimelineMenu
+          x={menu.x}
+          y={menu.y}
+          title={
+            {
+              intro: "Intro & title",
+              move: "Move · " + (p.moves[menu.index]?.san ?? "Settings"),
+              camera: "Camera",
+              effect: "Badges & effects",
+              annotation: "Annotations",
+              music: "Music & beats",
+              timeline: "Timeline",
+            }[menu.track] || "Timeline"
+          }
+          actions={actions}
+          close={() => setMenu(null)}
+        />
+      )}
       <header>
         <div>
           <span className="eyebrow">SEQUENCE</span>
@@ -167,7 +491,7 @@ export function Timeline({
             }}
           >
             <option value="">Tracks…</option>
-            {["camera", "effect", "music"].map((t) => (
+            {["camera", "effect", "annotation", "music"].map((t) => (
               <option key={t} value={t}>
                 {hiddenTracks.includes(t) ? "Show" : "Hide"} {t}
               </option>
@@ -234,19 +558,33 @@ export function Timeline({
       </header>
       <div className="timeline-body">
         <div className="track-labels">
-          <span>TIME</span>
-          <span>MOVES</span>
-          <span hidden={hiddenTracks.includes("camera")}>CAMERA</span>
-          <span hidden={hiddenTracks.includes("effect")}>BADGES / FX</span>
-          <span>ANNOTATIONS</span>
-          <span hidden={hiddenTracks.includes("music")}>MUSIC / BEATS</span>
+          {[
+            ["timeline", "TIME"],
+            ["move", "MOVES"],
+            ["camera", "CAMERA"],
+            ["effect", "BADGES / FX"],
+            ["annotation", "ANNOTATIONS"],
+            ["music", "MUSIC / BEATS"],
+          ].map(([track, label]) => (
+            <button
+              key={track}
+              data-track={track}
+              hidden={hiddenTracks.includes(track)}
+              title={`Open ${label.toLowerCase()} menu`}
+              onClick={(e) => openMenu(e, track)}
+            >
+              {label}
+              <span aria-hidden="true">⋯</span>
+            </button>
+          ))}
         </div>
         <div className="timeline-scroll" ref={host}>
           <div
             className="tracks"
             style={{ width }}
             onPointerDown={(e) => {
-              if ((e.target as HTMLElement).closest("button")) return;
+              if (e.button !== 0 || (e.target as HTMLElement).closest("button"))
+                return;
               e.currentTarget.setPointerCapture(e.pointerId);
               pointer(e);
             }}
@@ -285,9 +623,10 @@ export function Timeline({
                 </span>
               ))}
             </div>
-            <div className="move-track">
+            <div data-track="move" className="move-track">
               {p.lead > 0 && (
                 <button
+                  data-intro
                   aria-label="Select intro clip"
                   title="Edit the opener before the first move"
                   className={introSelected ? "selected" : "intro-clip"}
@@ -318,11 +657,13 @@ export function Timeline({
               ))}
             </div>
             <div
+              data-track="camera"
               className="camera-track"
               hidden={hiddenTracks.includes("camera")}
             >
               {seq.map((s, i) => (
                 <button
+                  data-move-index={i}
                   key={i}
                   className={
                     !introSelected && selected === i
@@ -343,11 +684,13 @@ export function Timeline({
               ))}
             </div>
             <div
+              data-track="effect"
               className="effect-track"
               hidden={hiddenTracks.includes("effect")}
             >
               {seq.map((s, i) => (
                 <button
+                  data-move-index={i}
                   key={i}
                   className={
                     !introSelected && selected === i
@@ -373,7 +716,11 @@ export function Timeline({
                 </button>
               ))}
             </div>
-            <div className="annotation-track">
+            <div
+              data-track="annotation"
+              className="annotation-track"
+              hidden={hiddenTracks.includes("annotation")}
+            >
               {p.annotations.map((a) => (
                 <AnnotationRegion
                   key={a.id}
@@ -386,6 +733,7 @@ export function Timeline({
               ))}
             </div>
             <div
+              data-track="music"
               className="music-track"
               hidden={hiddenTracks.includes("music")}
             >
@@ -403,6 +751,7 @@ export function Timeline({
               </svg>
               {p.beats.map((b) => (
                 <div
+                  data-beat-id={b.id}
                   role="slider"
                   title="Drag this beat marker to correct its project time. Arrow keys move it by 0.01 seconds."
                   aria-label={"Beat " + b.time.toFixed(2)}
@@ -416,6 +765,7 @@ export function Timeline({
                   }
                   style={{ left: x(b.time) }}
                   onPointerDown={(e) => {
+                    if (e.button !== 0) return;
                     e.stopPropagation();
                     if (p.beatsLocked) return;
                     edit.begin();
@@ -453,8 +803,8 @@ export function Timeline({
         </div>
       </div>
       <footer>
-        Drag clip right edge to resize · Alt bypasses snapping · Double-click
-        empty space to add a beat
+        Right-click a clip or track for options · Drag clip right edge to resize
+        · Alt bypasses snapping · Double-click empty space to add a beat
       </footer>
     </section>
   );

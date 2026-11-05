@@ -46,6 +46,7 @@ export function MoveClip({
   };
   return (
     <div
+      data-move-index={index}
       className={`move-clip ${selected ? "selected" : ""} ${checked ? "checked" : ""} ${resizing ? "resizing" : ""}`}
       style={{ left, width }}
     >

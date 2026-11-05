@@ -1,7 +1,7 @@
 import { KeyframePanel } from "./keyframes/KeyframePanel";
 import { CurveEditor } from "./keyframes/CurveEditor";
 import { settingHelp } from "./help";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   effect,
   moveLightDefaults,
@@ -20,6 +20,7 @@ import { Section, Range, Select, Toggle, Color, ScrubNumber } from "./controls";
 import { presetLabels } from "./presets/catalog";
 export function Inspector({
   project,
+  requestedTab,
   index,
   checked,
   edit,
@@ -32,6 +33,7 @@ export function Inspector({
   seek,
 }: {
   project: Project;
+  requestedTab?: { section: string; version: number } | null;
   index: number;
   checked: Set<string>;
   edit: Edit;
@@ -46,6 +48,28 @@ export function Inspector({
   const [tab, setTab] = useState("move"),
     [channel, setChannel] = useState<Channel>("rz"),
     [presetName, setPresetName] = useState("");
+  useEffect(() => {
+    if (!requestedTab) return;
+    const title =
+      requestedTab.section === "badge"
+        ? "Move badge"
+        : requestedTab.section === "spotlight"
+          ? "Beat spotlight transition"
+          : null;
+    setTab(title ? "effects" : requestedTab.section);
+    if (title)
+      requestAnimationFrame(() => {
+        const details = Array.from(
+          document.querySelectorAll<HTMLDetailsElement>(
+            ".inspector details.section",
+          ),
+        ).find((d) => d.querySelector("summary > span")?.textContent === title);
+        if (details) {
+          details.open = true;
+          details.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+      });
+  }, [requestedTab]);
   const move = project.moves[index];
   if (!move)
     return (

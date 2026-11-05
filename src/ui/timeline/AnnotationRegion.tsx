@@ -21,6 +21,7 @@ export function AnnotationRegion({
     mode: "start" | "end" | "move";
   } | null>(null);
   const begin = (e: React.PointerEvent, mode: "start" | "end" | "move") => {
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     edit.begin();
@@ -48,6 +49,7 @@ export function AnnotationRegion({
   };
   return (
     <button
+      data-annotation-id={a.id}
       style={{
         left: a.start * pixels,
         width: Math.max(24, (a.end - a.start) * pixels),

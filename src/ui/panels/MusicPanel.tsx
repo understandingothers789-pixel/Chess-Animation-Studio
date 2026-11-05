@@ -1,3 +1,4 @@
+import { RainbowControls } from "./RainbowControls";
 import { settingHelp } from "../help";
 import { useState } from "react";
 import {
@@ -163,6 +164,63 @@ export function MusicPanel(q: PanelProps) {
           Beat detection follows audio transients. Correct markers manually for
           syncopated or quiet music.
         </p>
+      </Section>
+      <Section
+        title="Dark-square beat pulse"
+        status={p.pulse.enabled ? "Enabled" : "Off"}
+        onReset={() =>
+          edit("Reset pulse", (p) => {
+            p.pulse = blank().pulse;
+          })
+        }
+      >
+        <Toggle
+          label="Pulse dark squares"
+          checked={p.pulse.enabled}
+          onChange={(v) =>
+            edit("Beat pulse", (p) => {
+              p.pulse.enabled = v;
+            })
+          }
+        />
+        <Toggle
+          label="Accents only"
+          checked={p.pulse.accentsOnly}
+          onChange={(v) =>
+            edit("Pulse accents", (p) => {
+              p.pulse.accentsOnly = v;
+            })
+          }
+        />
+        <RainbowControls
+          label="Pulse"
+          settings={p.pulse.rainbow}
+          edit={(fn) => edit("Pulse rainbow", (p) => fn(p.pulse.rainbow))}
+        />
+        <Color
+          label="Pulse color"
+          value={p.pulse.color}
+          onChange={(v) =>
+            edit("Pulse color", (p) => {
+              p.pulse.color = v;
+            })
+          }
+        />
+        {(["intensity", "attack", "decay"] as const).map((k) => (
+          <Range
+            key={k}
+            label={"Pulse " + k}
+            value={p.pulse[k]}
+            resetValue={blank().pulse[k]}
+            min={k === "intensity" ? 0 : k === "attack" ? 0.01 : 0.05}
+            max={k === "attack" ? 0.4 : 1}
+            onChange={(v) =>
+              edit("Pulse " + k, (p) => {
+                p.pulse[k] = v;
+              })
+            }
+          />
+        ))}
       </Section>
       <Section title="Land moves on beats">
         <Select

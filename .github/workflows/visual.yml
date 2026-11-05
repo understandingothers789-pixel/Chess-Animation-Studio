@@ -25,6 +25,7 @@ jobs:
           export CHROMIUM_PATH=$(node --input-type=module -e "import {chromium} from '@playwright/test'; console.log(chromium.executablePath())")
           git worktree add --detach "$RUNNER_TEMP/visual-reference" 9fcf3f54913ac1a27560a61e0db8e80abb998dd5
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
+          npm run test:timeline
           npm run test:render -- final
           golden_ref=$(cat docs/cinematic-goldens/source-ref)
           [[ "$golden_ref" =~ ^[0-9a-f]{40}$ ]]
@@ -37,5 +38,6 @@ jobs:
         with:
           name: Chromium-visual-evidence
           path: |
+            test-results/timeline-menus/
             test-results/render-final/
             test-results/phase4-candidate/

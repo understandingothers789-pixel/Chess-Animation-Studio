@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.26
+# Chess Animation Studio · 0.2.27
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
@@ -6,7 +6,11 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 The editor usability refinements are documented in [the UI report](docs/ui-refinement/REPORT.md).
 
+Right-click a timeline clip, or click the **⋯** on its track header, to open its editing menu. **Shift+F10** opens the menu for a focused clip; arrow keys navigate it and **Esc** closes it. Music, beat-driven board pulses, and knight horse sounds are grouped in **Music**. Track visibility, timeline zoom, and snapping are saved automatically; choose **Reset timeline view** to restore defaults.
+
 ## Windows downloads
+
+**[Download 0.2.27 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41951143203/artifacts/13380609473).** Adds contextual timeline menus, direct settings shortcuts, move and annotation editing actions, and saved track visibility, zoom, and snapping preferences. Groups music-driven board pulses and knight horse sound controls in Music. The visual gate, timeline interaction tests, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.26 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41765964452/artifacts/13293088329).** Restores beat driven dark square pulses by detecting markers for newly imported music, and adds horse sound volume, timing offset, and length controls for knight moves. Also fixes music stopping when unrelated audio assets are missing. The visual gate, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

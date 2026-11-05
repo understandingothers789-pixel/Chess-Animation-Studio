@@ -22,6 +22,10 @@ jobs:
       - name: Compare candidate against verified Phase II
         shell: bash
         run: |
+          set -o pipefail
+          context_log="$RUNNER_TEMP/context-validation.log"
+          exec > >(tee "$context_log") 2>&1
+          trap 'context_status=$?; python .github/scripts/report-context-failure.py "$context_log"; exit "$context_status"' ERR
           export CHROMIUM_PATH=$(node --input-type=module -e "import {chromium} from '@playwright/test'; console.log(chromium.executablePath())")
           git worktree add --detach "$RUNNER_TEMP/visual-reference" 9fcf3f54913ac1a27560a61e0db8e80abb998dd5
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
@@ -38,6 +42,7 @@ jobs:
         with:
           name: Chromium-visual-evidence
           path: |
+            test-results/context-validation.log
             test-results/timeline-menus/
             test-results/render-final/
             test-results/phase4-candidate/

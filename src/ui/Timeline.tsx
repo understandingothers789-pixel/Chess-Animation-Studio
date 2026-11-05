@@ -1,3 +1,5 @@
+import { moveCommands } from "./commands/moveCommands";
+import type { SettingsClipboard } from "../core/editing";
 import { TimelineMenu, type MenuAction } from "./timeline/TimelineMenu";
 import { ControlGroup } from "./timeline/ControlGroup";
 import { MoveClip } from "./timeline/MoveClip";
@@ -19,6 +21,8 @@ export function Timeline({
   seek,
   edit,
   navigate,
+  preview,
+  report,
   inspect,
 }: {
   project: Project;
@@ -34,6 +38,8 @@ export function Timeline({
   seek: (t: number) => void;
   edit: Edit;
   navigate: (category: string, section?: string) => void;
+  preview: (index: number) => void;
+  report: (message: string) => void;
   inspect: (index: number, section: string, annotation?: string) => void;
 }) {
   type Context = {
@@ -45,7 +51,10 @@ export function Timeline({
     at: number;
   };
   const [menu, setMenu] = useState<Context | null>(null);
-  const copied = useRef<Effect | null>(null);
+  useEffect(() => {
+    if (menu?.id && ((menu.track === "annotation" && !p.annotations.some(a=>a.id===menu.id)) || (menu.track === "music" && !p.beats.some(b=>b.id===menu.id)))) setMenu(null);
+  }, [p.annotations, p.beats]);
+  const copied = useRef<SettingsClipboard | null>(null);
   const [zoom, setZoom] = useState(() => {
     const value = Number(localStorage.getItem("studio.timeline.zoom") || "1");
     return Number.isFinite(value) ? Math.max(0.02, Math.min(6, value)) : 1;
@@ -144,10 +153,11 @@ export function Timeline({
   const openMenu = (e: React.MouseEvent, trackOverride?: string) => {
     e.preventDefault();
     const target = e.target as HTMLElement;
-    const track =
+    let track =
       (target.closest("[data-intro]") ? "intro" : trackOverride) ||
       target.closest<HTMLElement>("[data-track]")?.dataset.track ||
       "timeline";
+    if (target.closest(".track-labels")) track = "header:" + track;
     const clip = target.closest<HTMLElement>("[data-move-index]");
     const r = host.current?.querySelector(".tracks")?.getBoundingClientRect();
     const at =
@@ -160,7 +170,7 @@ export function Timeline({
     const index = clip ? Number(clip.dataset.moveIndex) : selected;
     if (
       clip &&
-      (index !== selected || introSelected) &&
+      (index !== selected || introSelected || checked.size > 0) &&
       !checked.has(p.moves[index]?.id)
     )
       select(index);
@@ -186,112 +196,78 @@ export function Timeline({
   ) => actions.push({ label, run, disabled, danger });
   if (menu) {
     const m = p.moves[menu.index];
-    if (menu.track === "intro") {
+    if (menu.track.startsWith("header:")) {
+      const track = menu.track.slice(7);
+      add("Open track settings…", () =>
+        track === "music"
+          ? navigate("music")
+          : ["camera", "effect", "move"].includes(track)
+            ? inspect(selected, track === "effect" ? "effects" : track)
+            : track === "annotation"
+              ? inspect(selected, "annotations")
+              : navigate("game"),
+      );
+      if (["camera", "effect", "music", "annotation"].includes(track))
+        add("Hide track", () =>
+          setHiddenTracks((t) => [...new Set([...t, track])]),
+        );
+      if (track === "music")
+        add(
+          "Add beat at playhead",
+          () =>
+            edit("Add beat", (p) => {
+              p.beats.push({
+                id: crypto.randomUUID(),
+                time,
+                enabled: true,
+                accent: false,
+              });
+            }),
+          p.beatsLocked,
+        );
+    } else if (menu.track === "intro") {
       add("Edit intro & title…", () => inspect(menu.index, "intro"));
       add("Go to intro start", () => seek(0));
     } else if (["move", "camera", "effect"].includes(menu.track)) {
-      add(
-        menu.track === "camera"
-          ? "Edit this move’s camera…"
-          : menu.track === "effect"
-            ? "Edit badges & move effects…"
-            : "Edit movement & timing…",
-        () =>
-          inspect(menu.index, menu.track === "effect" ? "effects" : menu.track),
-        !m,
+      actions.push(
+        ...moveCommands({
+          p,
+          index: menu.index,
+          track: menu.track,
+          checked,
+          edit,
+          copied,
+          inspect,
+          navigate,
+          preview,
+          report,
+        }),
       );
-      add("Go to clip start", () => seek(seq[menu.index].start), !m);
-      if (menu.track === "move") {
-        add(
-          "Make move 25% slower",
-          () =>
-            edit("Slow move", (p) => {
-              const e = p.moves[menu.index].effect;
-              e.duration = Math.min(30, e.duration * 1.25);
-            }),
-          !m || m.effect.locked,
-        );
-        add(
-          "Make move 25% faster",
-          () =>
-            edit("Speed move", (p) => {
-              const e = p.moves[menu.index].effect;
-              e.duration = Math.max(0.2, e.duration / 1.25);
-            }),
-          !m || m.effect.locked,
-        );
-        add(
-          "Copy move settings",
-          () => {
-            copied.current = structuredClone(m.effect);
-          },
-          !m,
-        );
-        add(
-          "Paste move settings",
-          () =>
-            edit("Paste move settings", (p) => {
-              p.moves[menu.index].effect = structuredClone(copied.current!);
-            }),
-          !m || !copied.current,
-        );
-        add(
-          m?.effect.locked ? "Unlock timing" : "Lock timing",
-          () =>
-            edit("Toggle timing lock", (p) => {
-              p.moves[menu.index].effect.locked =
-                !p.moves[menu.index].effect.locked;
-            }),
-          !m,
-        );
-      }
-      if (menu.track === "camera")
-        add(
-          "Reset this camera",
-          () =>
-            edit("Reset move camera", (p) => {
-              delete p.moves[menu.index].effect.cameras[p.format];
-            }),
-          !m,
-        );
-      if (menu.track === "effect") {
-        add("Edit badge…", () => inspect(menu.index, "badge"), !m);
-        add("Edit beat spotlight…", () => inspect(menu.index, "spotlight"), !m);
-        add(
-          m?.effect.jam.enabled
-            ? "Disable beat spotlight"
-            : "Enable beat spotlight",
-          () =>
-            edit("Toggle beat spotlight", (p) => {
-              p.moves[menu.index].effect.jam.enabled =
-                !p.moves[menu.index].effect.jam.enabled;
-            }),
-          !m,
-        );
-        add(
-          "Remove badge",
-          () =>
-            edit("Remove badge", (p) => {
-              p.moves[menu.index].effect.badge.manual = "none";
-            }),
-          !m,
-        );
-      }
     } else if (menu.track === "annotation") {
       add("Edit annotations…", () =>
         inspect(menu.index, "annotations", menu.id),
       );
       if (menu.id) {
-        add("Duplicate annotation", () =>
+        add("Duplicate annotation", () => {
+          const id = crypto.randomUUID();
           edit("Duplicate annotation", (p) => {
             const a = p.annotations.find((a) => a.id === menu.id);
-            if (a)
+            if (a) {
+              const span = Math.min(a.end - a.start, length);
+              const start = Math.max(
+                0,
+                Math.min(length - span, a.start + 0.15),
+              );
               p.annotations.push({
                 ...structuredClone(a),
-                id: crypto.randomUUID(),
+                id,
+                start,
+                end: start + span,
               });
-          }),
-        );
+            }
+          });
+          inspect(menu.index, "annotations", id);
+        });
         add(
           "Delete annotation",
           () =>
@@ -420,6 +396,7 @@ export function Timeline({
               timeline: "Timeline",
             }[menu.track] || "Timeline"
           }
+          execute={run => { edit.begin(); try { run(); } finally { edit.end(); } }}
           actions={actions}
           close={() => setMenu(null)}
         />
@@ -600,7 +577,11 @@ export function Timeline({
             onDoubleClick={(e) => {
               if ((e.target as HTMLElement).closest("button,[role=slider]"))
                 return;
-              if (p.beatsLocked) return;
+              if (
+                p.beatsLocked ||
+                !(e.target as Element).closest(".music-track")
+              )
+                return;
               const r = e.currentTarget.getBoundingClientRect(),
                 at = ((e.clientX - r.left) / r.width) * length;
               edit("Add beat", (p) => {

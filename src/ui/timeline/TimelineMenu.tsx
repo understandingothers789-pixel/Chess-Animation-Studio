@@ -2,7 +2,11 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 export type MenuAction = {
   label: string;
-  run: () => void;
+  id?: string;
+  run?: () => void;
+  children?: MenuAction[];
+  checked?: boolean;
+  shortcut?: string;
   disabled?: boolean;
   danger?: boolean;
 };
@@ -12,13 +16,17 @@ export function TimelineMenu({
   title,
   actions,
   close,
+  execute,
 }: {
   x: number;
   y: number;
   title: string;
   actions: MenuAction[];
   close: () => void;
+  execute?: (run: () => void) => void;
 }) {
+  const [path, setPath] = useState<MenuAction[]>([]);
+  const visible = path.length ? path[path.length - 1].children! : actions;
   const host = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: x, top: y });
   useLayoutEffect(() => {
@@ -54,6 +62,11 @@ export function TimelineMenu({
         previous?.focus();
     };
   }, [x, y]);
+  useLayoutEffect(() => {
+    host.current
+      ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
+      ?.focus();
+  }, [path]);
   return createPortal(
     <div
       ref={host}
@@ -63,6 +76,20 @@ export function TimelineMenu({
       style={position}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
+        if (e.key === "ArrowLeft" && path.length) {
+          e.preventDefault();
+          setPath((p) => p.slice(0, -1));
+          return;
+        }
+        if (e.key === "ArrowRight") {
+          const b = (e.target as HTMLElement).closest("button");
+          const a = visible.find((a) => a.label === b?.dataset.command);
+          if (a?.children) {
+            e.preventDefault();
+            setPath((p) => [...p, a]);
+          }
+          return;
+        }
         const buttons = Array.from(
           host.current!.querySelectorAll<HTMLButtonElement>(
             "button:not(:disabled)",
@@ -85,19 +112,37 @@ export function TimelineMenu({
         if (e.key === "Tab") close();
       }}
     >
-      <div className="context-menu-title">{title}</div>
-      {actions.map((a) => (
+      <div className="context-menu-title">
+        {title}
+        {path.length ? " / " + path[path.length - 1].label : ""}
+      </div>
+      {path.length > 0 && (
+        <button role="menuitem" onClick={() => setPath((p) => p.slice(0, -1))}>
+          ← Back
+        </button>
+      )}
+      {visible.map((a) => (
         <button
-          role="menuitem"
+          data-command={a.label}
+          role={a.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+          aria-checked={a.checked}
+          aria-haspopup={a.children ? "menu" : undefined}
           key={a.label}
           disabled={a.disabled}
           className={a.danger ? "danger" : ""}
           onClick={() => {
-            close();
-            a.run();
+            if (a.children) setPath((p) => [...p, a]);
+            else {
+              close();
+              if(a.run) { if(execute) execute(a.run); else a.run(); }
+            }
           }}
         >
-          {a.label}
+          <span>
+            {a.checked === undefined ? "" : a.checked ? "✓ " : "○ "}
+            {a.label}
+          </span>
+          <small>{a.children ? "›" : a.shortcut}</small>
         </button>
       ))}
       <small>↑ ↓ Navigate · Enter Choose · Esc Close</small>

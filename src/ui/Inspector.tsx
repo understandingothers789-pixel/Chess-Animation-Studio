@@ -140,6 +140,10 @@ export function Inspector({
   ) => (
     <Range
       key={key}
+      disabled={
+        ["duration", "delay", "hold", "landing"].includes(key) &&
+        targets(project).every((m) => m.effect.locked)
+      }
       label={label}
       value={e[key]}
       mixed={mixed((v) => v[key])}

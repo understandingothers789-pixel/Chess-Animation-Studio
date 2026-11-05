@@ -57,14 +57,18 @@ export function MoveClip({
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => select(index, e)}
       >
-        <strong>{move.san}</strong>
+        <strong>
+          {move.effect.locked ? "🔒 " : ""}
+          {move.san}
+        </strong>
         <small>{move.effect.preset}</small>
       </button>
       <span
         className="clip-resize"
         role="slider"
-        tabIndex={0}
+        tabIndex={move.effect.locked ? -1 : 0}
         aria-label={`Duration of ${move.san}`}
+        aria-disabled={move.effect.locked}
         aria-valuemin={0.2}
         aria-valuemax={30}
         aria-valuenow={move.effect.duration}
@@ -72,7 +76,7 @@ export function MoveClip({
         title="Drag to change move duration."
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => {
-          if (e.button !== 0) return;
+          if (e.button !== 0 || move.effect.locked) return;
           e.preventDefault();
           e.stopPropagation();
           drag.current = {
@@ -110,6 +114,7 @@ export function MoveClip({
         onPointerCancel={() => finish(true)}
         onLostPointerCapture={() => finish()}
         onKeyDown={(e) => {
+          if (move.effect.locked) return;
           if (e.key === "Escape") {
             e.preventDefault();
             finish(true);

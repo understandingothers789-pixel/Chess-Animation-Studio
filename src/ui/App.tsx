@@ -663,14 +663,14 @@ export function App() {
     setChecked(new Set());
     seek(0);
   }
-  function previewMove() {
+  function previewMove(index = selected) {
     if (audition) {
       setTime(audition.time);
       setPlaying(audition.playing);
       setAudition(null);
       return;
     }
-    const segment = movePreviewWindow(p, selected);
+    const segment = movePreviewWindow(p, index);
     if (!segment) return;
     setAudition({ time, playing, end: segment.end });
     setTime(segment.start);
@@ -1086,6 +1086,11 @@ export function App() {
             onChange={(timeline) => workspace.patch({ timeline })}
           />
           <Timeline
+            report={message}
+            preview={(index) => {
+              setSelected(index);
+              previewMove(index);
+            }}
             navigate={(category, section) => {
               setTab(category);
               workspace.patch({ hideLeft: false });
@@ -1129,7 +1134,9 @@ export function App() {
                   }
                 });
               } else {
-                select(index);
+                setSelected(index);
+                setIntroSelected(false);
+                if (!checked.has(p.moves[index]?.id)) select(index);
                 setInspectorRequest({ section, version: Date.now() });
               }
             }}
@@ -1196,7 +1203,7 @@ export function App() {
                 checked={checked}
                 index={selected}
                 edit={edit}
-                onPreview={previewMove}
+                onPreview={() => previewMove()}
                 seek={seek}
                 previewing={!!audition}
                 previewDisabled={loadingAudio > 0}

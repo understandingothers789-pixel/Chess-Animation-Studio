@@ -1,3 +1,4 @@
+import { preserveLockedTiming } from "../core/editing";
 import { useCallback, useRef, useState } from "react";
 import { sample } from "../core/chess";
 import { VERSION, type Project } from "../core/project";
@@ -32,23 +33,25 @@ export function useProject() {
         const old = current.current,
           h = history.current,
           now = Date.now();
-        if (h.drag ? !h.recorded : h.label !== label || now - h.at > 450)
-          record();
-        h.recorded = true;
-        h.label = label;
-        h.at = now;
-        h.future = [];
         const next = structuredClone(old);
         fn(next);
         const previous = new Map(old.moves.map((m) => [m.id, m]));
         for (const m of next.moves) {
           const before = previous.get(m.id);
+          if (before) preserveLockedTiming(before.effect, m.effect);
           if (
             before?.autoPreset &&
             JSON.stringify(m.effect) !== JSON.stringify(before.effect)
           )
             delete m.autoPreset;
         }
+        if (JSON.stringify(next) === JSON.stringify(old)) return;
+        if (h.drag ? !h.recorded : h.label !== label || now - h.at > 450)
+          record();
+        h.recorded = true;
+        h.label = label;
+        h.at = now;
+        h.future = [];
         next.appVersion = VERSION;
         commit(next);
       },

@@ -123,6 +123,7 @@ export function Section({
 export function Range({
   label,
   mixed = false,
+  disabled = false,
   value,
   onChange,
   min,
@@ -134,6 +135,7 @@ export function Range({
 }: {
   label: string;
   mixed?: boolean;
+  disabled?: boolean;
   value: number;
   onChange: (v: number) => void;
   min: number;
@@ -151,6 +153,7 @@ export function Range({
           {mixed && <em className="mixed-value">Mixed</em>}
           {(onReset || resetValue !== undefined) && (
             <button
+              disabled={disabled}
               type="button"
               className="control-reset"
               aria-label={`Reset ${label}`}
@@ -167,6 +170,7 @@ export function Range({
         </span>
         <span className="number-wrap">
           <ScrubNumber
+            disabled={disabled}
             aria-label={label + " value"}
             title={
               settingHelp(label) +
@@ -185,6 +189,7 @@ export function Range({
         </span>
       </span>
       <input
+        disabled={disabled}
         aria-label={label}
         title={settingHelp(label)}
         aria-description={settingHelp(label)}

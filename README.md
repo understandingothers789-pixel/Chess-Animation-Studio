@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.27
+# Chess Animation Studio · 0.2.28
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
@@ -6,9 +6,15 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 The editor usability refinements are documented in [the UI report](docs/ui-refinement/REPORT.md).
 
+The [0.2.28 contextual editing report](docs/context-menu-028/REPORT.md) includes screenshots, validation results, and editing details.
+
 Right-click a timeline clip, or click the **⋯** on its track header, to open its editing menu. **Shift+F10** opens the menu for a focused clip; arrow keys navigate it and **Esc** closes it. Music, beat-driven board pulses, and knight horse sounds are grouped in **Music**. Track visibility, timeline zoom, and snapping are saved automatically; choose **Reset timeline view** to restore defaults.
 
+Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply source settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. Locked moves keep their timing. The selection toolbar and inspector show the current scope. **Right arrow** opens a secondary menu; **Left arrow** or **Back** returns. Right-click the preview board to add arrows, circles, or text, copy the current FEN, or save a frame.
+
 ## Windows downloads
+
+**[Download 0.2.28 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41995926175/artifacts/13400663006).** Adds selective copy/paste, counted chess-aware bulk editing, keyboard-accessible contextual menus, a compact selection toolbar, and board annotation, FEN, and frame commands. Fixes timing locks, right-click multi-selection, annotation duplication, and beat creation outside the music lane. The visual gate, timeline interaction tests, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.27 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41951143203/artifacts/13380609473).** Adds contextual timeline menus, direct settings shortcuts, move and annotation editing actions, and saved track visibility, zoom, and snapping preferences. Groups music-driven board pulses and knight horse sound controls in Music. The visual gate, timeline interaction tests, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

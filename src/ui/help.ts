@@ -37,6 +37,10 @@ const help: Record<string, string> = {
     "Add a short, deterministic camera tremor at the capture impact phase. Zero disables it; range 0–1.",
   "Capture light pulse":
     "Add a brief light accent synchronized to capture impact. Zero disables it; range 0–1.",
+  "Play horse sound on knight moves":
+    "Enable the knight's horse cue in previews and exports. Adjust its level, start offset and length below.",
+  "Start offset from landing":
+    "Seconds before or after the knight lands. Negative values start the horse cue early; positive values delay it.",
   "Horse sound for knight moves":
     "Play a horse sound when a knight lands, in previews and exports.",
   "Horse sound volume":

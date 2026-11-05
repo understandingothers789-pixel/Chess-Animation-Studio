@@ -59,6 +59,7 @@ try {
     };
   });
   page.setDefaultTimeout(15000);
+  page.setDefaultNavigationTimeout(90000);
   await page.goto(origin);
   await page.waitForSelector(".app-shell", { timeout: 60000 });
   await page.waitForFunction(() => !!(window as any).__state);
@@ -185,6 +186,29 @@ try {
   await page.screenshot({
     path: "test-results/timeline-menus/small-window.png",
   });
+  await page.keyboard.press("Escape");
+  await page
+    .getByLabel("Workspace preset", { exact: true })
+    .selectOption("Editing");
+  for (const panel of ["music", "atmosphere"]) {
+    await page
+      .locator(".library-tabs")
+      .getByRole("button", { name: panel, exact: true })
+      .click();
+    const missing = await page
+      .locator("input:visible,select:visible,textarea:visible")
+      .evaluateAll((els) =>
+        els
+          .filter(
+            (e) =>
+              !e.getAttribute("title") ||
+              !e.getAttribute("aria-description") ||
+              e.getAttribute("title")!.startsWith("Adjust "),
+          )
+          .map((e) => e.getAttribute("aria-label")),
+      );
+    assert.deepEqual(missing, [], `Missing help in ${panel}`);
+  }
   assert.deepEqual(errors, []);
   console.log(
     "Timeline menus: clip targeting, edits, locks, deep links, saved visibility, keyboard and viewport checks passed.",

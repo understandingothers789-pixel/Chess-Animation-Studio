@@ -104,7 +104,10 @@ export function TimelineMenu({
       role="menu"
       aria-label={title}
       style={{ ...position, width: 280 * scale, fontSize: 13 * scale }}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       onKeyDown={(e) => {
         if (e.key === "ArrowLeft" && path.length) {
           e.preventDefault();

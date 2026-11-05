@@ -193,12 +193,7 @@ export function Timeline({
         ? Math.min(length, Math.max(0, Math.round(rawAt * 20) / 20))
         : rawAt;
     const index = clip ? Number(clip.dataset.moveIndex) : selected;
-    if (
-      clip &&
-      (index !== selected || introSelected || checked.size > 0) &&
-      !checked.has(p.moves[index]?.id)
-    )
-      contextSelect(index);
+    if (clip) contextSelect(index);
     const rect = target.getBoundingClientRect();
     setMenu({
       x: e.clientX || rect.left,

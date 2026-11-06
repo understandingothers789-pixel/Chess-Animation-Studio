@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.28
+# Chess Animation Studio · 0.2.29
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
 
@@ -6,13 +6,15 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 The editor usability refinements are documented in [the UI report](docs/ui-refinement/REPORT.md).
 
-The [0.2.28 contextual editing report](docs/context-menu-028/REPORT.md) includes screenshots, validation results, and editing details.
+The [0.2.29 hover flyout and contextual editing report](docs/context-menu-029/REPORT.md) includes reviewed screenshots, validation results, and editing details. The [0.2.28 report](docs/context-menu-028/REPORT.md) documents the earlier contextual editing release.
 
 Right-click a timeline clip, or click the **⋯** on its track header, to open its editing menu. **Shift+F10** opens the menu for a focused clip; arrow keys navigate it and **Esc** closes it. Music, beat-driven board pulses, and knight horse sounds are grouped in **Music**. Track visibility, timeline zoom, and snapping are saved automatically; choose **Reset timeline view** to restore defaults.
 
-Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply source settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. Locked moves keep their timing. The selection toolbar and inspector show the current scope. **Right arrow** opens a secondary menu; **Left arrow** or **Back** returns. Right-click the preview board to add arrows, circles, or text, copy the current FEN, or save a frame.
+Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download 0.2.29 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42158103364/artifacts/13476046551).** Adds hover-driven side flyouts with pointer-safe transitions and keyboard navigation, exact inspector targeting, a source-and-target bulk panel, and separate square, annotation, and background preview menus. Keeps playback running for viewing commands and corrects last-landed FEN copying. The visual gate, timeline interaction tests, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.28 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/41995926175/artifacts/13400663006).** Adds selective copy/paste, counted chess-aware bulk editing, keyboard-accessible contextual menus, a compact selection toolbar, and board annotation, FEN, and frame commands. Fixes timing locks, right-click multi-selection, annotation duplication, and beat creation outside the music lane. The visual gate, timeline interaction tests, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

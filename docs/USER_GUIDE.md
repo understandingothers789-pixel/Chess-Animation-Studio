@@ -6,11 +6,23 @@ Extract the portable ZIP and open Chess Animation Studio.exe. The application wo
 
 Open **Opera Game with original music**. Space plays/pauses, the transport slider seeks, and the timeline selects moves. Click a move in Game to edit its effect. Selecting a move seeks to its departure; play or scrub through it to inspect the animation.
 
-Styles applies presets to the selected move, checked moves or all moves. Slow sway makes one broad lean each way over 2.2 seconds by default. Spin exposes a real 0.036-square-thick edge. The reverse is the mirrored physical back of the illustration. Intensity changes movement/growth effects; exact settings are in the Motion inspector.
+The Presets tab applies presets to the selected move, checked moves or all moves. Slow sway makes one broad lean each way over 2.2 seconds by default. Spin exposes a real 0.036-square-thick edge. The reverse is the mirrored physical back of the illustration. Intensity changes movement/growth effects; exact settings are in the Move inspector.
 
-Use Camera for per-format framing. Route includes the endpoints, Follow tracks the moving piece, Manual gives explicit pan/zoom, and Full returns to the board. Look controls highlights, ribbon trails and badges. Keys uses normalized 0–1 move time; positions are board-square units, rotations degrees, scale a multiplier. A key overrides its channel's preset evaluation. At the move's end the legal position, size and upright orientation are restored.
+Use Camera for per-format framing. Route includes the endpoints, Follow tracks the moving piece, Manual gives explicit pan/zoom, and Full returns to the board. Effects controls highlights, ribbon trails and badges. Keys uses normalized 0–1 move time; positions are board-square units, rotations degrees, scale a multiplier. A key overrides its channel's preset evaluation. At the move's end the legal position, size and upright orientation are restored.
 
-Give a refined effect a preset name in Motion, then save it. Copy/Paste copies effects between moves. Undo/redo covers project edits. Changing overall move duration preserves normalized key times and shifts subsequent moves. Music offsets remain fixed unless edited.
+Give a refined effect a preset name in Move, then save it. Copy/Paste transfers the settings category you choose between moves. Undo/redo covers project edits. Changing overall move duration preserves normalized key times and shifts subsequent moves. Music offsets remain fixed unless edited.
+
+## Contextual editing and hover menus
+
+Right-click a move, camera clip, effect clip, annotation, or music/beat lane for commands that apply to that object. Hover a submenu arrow for a side-opening flyout; the parent stays highlighted. Click also opens it. Arrow keys navigate, Right opens a child, Left returns, Enter chooses, and Escape closes. Shift+F10 opens the focused clip's menu. On constrained layouts, Back returns to the previous level.
+
+Copy/Paste separates Movement, Camera, Effects, Timing and Everything. Right-clicking a member of a multi-selection keeps the group; Edit labels and the inspector show the selected count. Exact duration opens and focuses the Duration input. Timing-locked moves retain their timing, including during presets and bulk edits.
+
+Choose **Bulk edit from [move]…** to review the source move, category, chess group, affected count and locked count. Nothing changes until Apply; one Undo restores the whole operation. Quick **Apply [move]’s settings to…** flyouts offer the same chess groups. Camera configuration uses the active output format; Everything includes all formats.
+
+The selection bar keeps Preview, Preset, Edit and More actions available without right-click. Music menus link directly to dark-square pulses and knight horse sound controls. Right-click a visible preview annotation to edit it, a board square to create annotations, or empty preview space for fit, zoom/pan reset, guides, FEN, PNG and fullscreen. Opening a menu keeps playback running; annotation edits pause when chosen. FEN is the position after the last landed move. PNG feedback confirms download initiation; the browser or operating system handles final placement.
+
+See the [0.2.29 report and screenshot gallery](context-menu-029/REPORT.md).
 
 ## Import and legal input
 
@@ -20,7 +32,7 @@ At a displayed chess position, click a movable piece and then a legal destinatio
 
 ## Audio and beats
 
-Import a music file in Music and wait for decoding. Pause/restart playback after changing soundtrack, cue or timing settings so queued audio is rescheduled. Analyze waveform & likely beats finds first-channel transients, not authoritative BPM/downbeats. Drag beat markers on the waveform or edit their numeric times, accents and enabled state. Double-click the timeline to add a marker; arrow keys move a focused marker by 0.01 seconds.
+Import a music file in Music and wait for decoding. Pause/restart playback after changing soundtrack, cue or timing settings so queued audio is rescheduled. Analyze waveform & likely beats finds first-channel transients, not authoritative BPM/downbeats. Drag beat markers on the waveform or edit their numeric times, accents and enabled state. Double-click empty space in the music lane to add a marker; arrow keys move a focused marker by 0.01 seconds.
 
 Source-timed markers follow source trim and project offset edits. Corrections update their source-time anchor. Preview timing arrangement shows how many moves can land on usable markers while respecting locks and 0.5–5 second duration limits. Apply is one undoable edit; Cancel preserves the project. A move may also choose a specific enabled landing marker. If it is unreachable within the limits, it is left unmatched.
 

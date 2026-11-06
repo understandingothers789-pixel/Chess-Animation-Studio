@@ -57,6 +57,7 @@ export class Scene {
   private graph: RenderGraph<RenderFrame>;
   private cameras: CameraSystem;
   private board: BoardSystem;
+  private annotations: AnnotationSystem;
   private project?: Project;
   private game?: Game;
   private current?: RenderFrame;
@@ -95,7 +96,7 @@ export class Scene {
     const background = new BackgroundSystem(r, this.assets);
     this.board = new BoardSystem(this.root);
     const motion = new MotionSystem(this.root);
-    const annotations = new AnnotationSystem(this.root, r);
+    const annotations = (this.annotations = new AnnotationSystem(this.root, r));
     const overlay = new OverlaySystem(this.root, r, this.assets);
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
@@ -436,6 +437,36 @@ export class Scene {
     this.current = c;
     this.renderedRevision = frameRevision;
     return c.e;
+  }
+  pickAnnotation(clientX: number, clientY: number) {
+    this.assertLive();
+    const c = this.current,
+      rect = this.renderer.domElement.getBoundingClientRect();
+    if (
+      !c ||
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    )
+      return null;
+    const px = ((clientX - rect.left) / rect.width) * c.w,
+      py = ((clientY - rect.top) / rect.height) * c.h;
+    this.root.updateWorldMatrix(true, true);
+    this.cameras.camera.updateMatrixWorld(true);
+    const boardY = c.h - py;
+    let ray: T.Raycaster | undefined;
+    if (boardY >= c.viewY && boardY <= c.viewY + c.viewH) {
+      ray = new T.Raycaster();
+      ray.setFromCamera(
+        new T.Vector2(
+          (px / c.w) * 2 - 1,
+          ((boardY - c.viewY) / c.viewH) * 2 - 1,
+        ),
+        this.cameras.camera,
+      );
+    }
+    return this.annotations.pick(px, py, ray);
   }
   pick(clientX: number, clientY: number) {
     this.assertLive();

@@ -1,3 +1,4 @@
+import { focusSetting } from "./focusSetting";
 import { pasteSettings, type SettingsClipboard } from "../core/editing";
 import { Transport } from "./transport/Transport";
 import { ExportDialog } from "./export/ExportDialog";
@@ -6,7 +7,14 @@ import { annotation } from "../core/annotations";
 import { PresetBrowser } from "./presets/PresetBrowser";
 import { useWorkspace, WorkspaceBar, Splitter } from "./workspace/Workspace";
 import { settingHelp } from "./help";
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import {
   BookOpen,
   SlidersHorizontal,
@@ -83,6 +91,13 @@ export function App() {
     section: string;
     version: number;
   } | null>(null);
+  const [settingsRequest, setSettingsRequest] = useState<{
+    category: string;
+    section?: string;
+    control?: string;
+    serial: number;
+  } | null>(null);
+  const [annotationFocus, setAnnotationFocus] = useState(0);
   const [annotationId, setAnnotationId] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<"arrow" | "circle" | null>(null);
   const annotationFrom = useRef<string | null>(null);
@@ -124,6 +139,30 @@ export function App() {
     [rangeStart, setRangeStart] = useState(0),
     [rangeEnd, setRangeEnd] = useState(0),
     [loadingAudio, setLoadingAudio] = useState(0);
+  useLayoutEffect(() => {
+    if (settingsRequest && tab === settingsRequest.category && !layout.hideLeft)
+      focusSetting(
+        document.querySelector(`[data-category="${settingsRequest.category}"]`),
+        settingsRequest.section,
+        settingsRequest.control,
+      );
+  }, [settingsRequest, tab, layout.hideLeft]);
+  useLayoutEffect(() => {
+    if (!annotationFocus || layout.hideRight) return;
+    const drawer =
+      document.querySelector<HTMLDetailsElement>(".annotation-drawer");
+    if (drawer) {
+      drawer.open = true;
+      const a = p.annotations.find((a) => a.id === annotationId);
+      focusSetting(
+        drawer,
+        undefined,
+        a?.kind === "text" || a?.kind === "caption"
+          ? "Annotation text"
+          : "Annotation width",
+      );
+    }
+  }, [annotationFocus, annotationId, layout.hideRight]);
   useEffect(() => localStorage.setItem("studio.category", tab), [tab]);
   const previewProject = useMemo(() => {
     if (!presetDraft || !p.moves[selected]) return p;
@@ -1029,6 +1068,16 @@ export function App() {
           </div>
           <div className="preview-area">
             <Preview
+              onReport={message}
+              onPause={stop}
+              edit={edit}
+              seek={seek}
+              onEditAnnotation={(id) => {
+                stop();
+                setAnnotationId(id);
+                workspace.patch({ hideRight: false });
+                setAnnotationFocus((n) => n + 1);
+              }}
               playing={playing}
               onToggle={() => setPlaying((v) => !v)}
               project={previewProject}
@@ -1144,31 +1193,15 @@ export function App() {
               setSelected(index);
               previewMove(index);
             }}
-            navigate={(category, section) => {
+            navigate={(category, section, control) => {
               setTab(category);
               workspace.patch({ hideLeft: false });
-              if (section)
-                requestAnimationFrame(() => {
-                  const panel = document.querySelector(
-                    `[data-category="${category}"]`,
-                  );
-                  const details = Array.from(
-                    panel?.querySelectorAll<HTMLDetailsElement>(
-                      "details.section",
-                    ) ?? [],
-                  ).find(
-                    (d) =>
-                      d.querySelector("summary > span")?.textContent ===
-                      section,
-                  );
-                  if (details) {
-                    details.open = true;
-                    details.scrollIntoView({
-                      block: "start",
-                      behavior: "smooth",
-                    });
-                  }
-                });
+              setSettingsRequest({
+                category,
+                section,
+                control,
+                serial: Date.now(),
+              });
             }}
             inspect={(index, section, annotation) => {
               workspace.patch({ hideRight: false });
@@ -1176,16 +1209,7 @@ export function App() {
                 selectIntro();
               } else if (section === "annotations") {
                 if (annotation) setAnnotationId(annotation);
-                requestAnimationFrame(() => {
-                  const drawer =
-                    document.querySelector<HTMLDetailsElement>(
-                      ".annotation-drawer",
-                    );
-                  if (drawer) {
-                    drawer.open = true;
-                    drawer.scrollIntoView({ block: "nearest" });
-                  }
-                });
+                setAnnotationFocus((n) => n + 1);
               } else {
                 contextSelect(index);
                 setInspectorRequest({ section, version: Date.now() });
@@ -1289,7 +1313,7 @@ export function App() {
         </div>
       </div>
       <footer className={"status-bar " + (error ? "error" : "")}>
-        <span>
+        <span aria-live="polite">
           {error ? "!" : "●"} {status}
         </span>
         <span>

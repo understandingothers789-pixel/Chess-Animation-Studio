@@ -83,12 +83,10 @@ try {
   );
   await expect(menu).toBeVisible();
   await page.screenshot({ path: "test-results/timeline-menus/hover-copy.png" });
-  await page
-    .getByRole("menuitem", { name: "Paste to this move", exact: true })
-    .hover();
+  await page.getByRole("menuitem", { name: /^Paste to /, exact: true }).hover();
   await expect(page.getByRole("menu").last()).toHaveAttribute(
     "aria-label",
-    "Paste to this move",
+    /^Paste to /,
   );
   await copyParent.hover();
   await expect(page.getByRole("menu").last()).toHaveAttribute(
@@ -181,6 +179,9 @@ try {
     "aria-pressed",
     "true",
   );
+  await expect(
+    page.getByLabel("Camera framing", { exact: true }),
+  ).toBeFocused();
   await page.locator(".effect-track button").first().click({ button: "right" });
   await page.screenshot({
     path: "test-results/timeline-menus/effects-menu.png",
@@ -209,6 +210,9 @@ try {
   await expect(
     page.getByRole("slider", { name: "Horse sound volume", exact: true }),
   ).toBeInViewport();
+  await expect(
+    page.getByLabel("Horse sound volume value", { exact: true }),
+  ).toBeFocused();
   const playhead = await page.evaluate(() => (window as any).__state.time);
   await page.locator('.track-labels [data-track="music"]').click();
   await page
@@ -317,6 +321,28 @@ try {
   await page.screenshot({
     path: "test-results/timeline-menus/multi-selection.png",
   });
+  const beforeExact = await page.evaluate(() => ({
+    project: JSON.stringify((window as any).__state.project),
+    time: (window as any).__state.time,
+  }));
+  await page
+    .getByRole("menuitem", { name: "Speed / Duration", exact: true })
+    .hover();
+  await page
+    .getByRole("menuitem", { name: "Set exact duration…", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Duration value", { exact: true }),
+  ).toBeFocused();
+  assert.equal(await page.locator(".move-clip.checked").count(), 2);
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      project: JSON.stringify((window as any).__state.project),
+      time: (window as any).__state.time,
+    })),
+    beforeExact,
+  );
+  await page.locator(".move-clip").nth(2).click({ button: "right" });
   await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
   await page.screenshot({ path: "test-results/timeline-menus/copy-menu.png" });
   await page.keyboard.press("ArrowLeft");
@@ -337,9 +363,7 @@ try {
     beforeContextTime,
   );
   assert.equal(await page.locator(".move-clip.checked").count(), 1);
-  await page
-    .getByRole("menuitem", { name: "Paste to this move", exact: true })
-    .click();
+  await page.getByRole("menuitem", { name: /^Paste to /, exact: true }).click();
   await expect(
     page.getByRole("menuitem", { name: "Camera", exact: true }),
   ).toBeDisabled();
@@ -355,8 +379,11 @@ try {
     beforePaste,
   );
   await page.locator(".move-clip").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: /^Apply source settings/ }).click();
-  await page.getByRole("menuitem", { name: "Movement", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Apply .*settings to/ }).hover();
+  await page.getByRole("menuitem", { name: "Movement", exact: true }).hover();
+  await expect(page.getByRole("menu")).toHaveCount(3);
+  await expect(page.getByRole("menu").nth(0)).toBeVisible();
+  await expect(page.getByRole("menu").nth(1)).toBeVisible();
   await page.screenshot({ path: "test-results/timeline-menus/bulk-menu.png" });
   const beforeBulk = await page.evaluate(() =>
     JSON.stringify((window as any).__state.project),
@@ -367,6 +394,33 @@ try {
     (before: string) =>
       JSON.stringify((window as any).__state.project) === before,
     beforeBulk,
+  );
+
+  await first.click({ button: "right" });
+  await page
+    .getByRole("menuitemcheckbox", { name: "Lock timing", exact: true })
+    .click();
+  const beforePanel = await page.evaluate(() =>
+    JSON.stringify((window as any).__state.project),
+  );
+  await first.click({ button: "right" });
+  await page.getByRole("menuitem", { name: /^Bulk edit from/ }).click();
+  const panel = page.getByRole("dialog", { name: "Apply move settings" });
+  await expect(panel).toBeVisible();
+  await page.getByLabel("Bulk settings category").selectOption("timing");
+  await page.getByLabel("Bulk target group").selectOption("All moves");
+  await expect(panel).toContainText("1 timing-locked moves");
+  assert.equal(
+    await page.evaluate(() => JSON.stringify((window as any).__state.project)),
+    beforePanel,
+  );
+  await page.screenshot({ path: "test-results/timeline-menus/bulk-panel.png" });
+  await page.getByRole("button", { name: /^Apply timing to/ }).click();
+  await expect(panel).toHaveCount(0);
+  await page.keyboard.press("Control+z");
+  await page.waitForFunction(
+    (p: string) => JSON.stringify((window as any).__state.project) === p,
+    beforePanel,
   );
 
   await page.keyboard.press("Escape");
@@ -463,6 +517,126 @@ try {
     beforeBoard,
   );
 
+  // Preview viewing commands keep playback live and never touch project cameras.
+  await page.getByLabel("Seek composition", { exact: true }).fill("0");
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await page.waitForFunction(() => (window as any).__state.playing);
+  const previewBefore = await page.evaluate(() =>
+    JSON.stringify((window as any).__state.project),
+  );
+  const background = await page.locator(".preview-host").boundingBox();
+  await page.mouse.click(background!.x + 5, background!.y + 5, {
+    button: "right",
+  });
+  await expect(menu).toHaveAttribute("aria-label", "Preview view");
+  await expect(
+    page.getByRole("button", { name: "Pause", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/timeline-menus/blank-preview.png",
+  });
+  await page
+    .getByRole("menuitem", { name: "Fit preview", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Pause", exact: true }),
+  ).toBeVisible();
+  assert.equal(
+    await page.evaluate(() => JSON.stringify((window as any).__state.project)),
+    previewBefore,
+  );
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          (window as any).__copiedFen = text;
+        },
+      },
+    }),
+  );
+  await page.mouse.click(background!.x + 5, background!.y + 5, {
+    button: "right",
+  });
+  await page
+    .getByRole("menuitem", { name: "Copy position FEN", exact: true })
+    .click();
+  await expect(page.locator(".status-bar")).toContainText("FEN copied");
+  assert.match(
+    await page.evaluate(() => (window as any).__copiedFen),
+    / [wb] /,
+  );
+  await page.mouse.click(background!.x + 5, background!.y + 5, {
+    button: "right",
+  });
+  const downloaded = page.waitForEvent("download");
+  await page
+    .getByRole("menuitem", { name: "Save current frame as PNG", exact: true })
+    .click();
+  const png = await downloaded;
+  assert.ok(png.suggestedFilename().endsWith(".png"));
+  assert.equal(await png.failure(), null);
+  await expect(
+    page.getByRole("button", { name: "Pause", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  // A visible text annotation has its own editing menu and exact field target.
+  const textAnnotation = await page.evaluate(() =>
+    (window as any).__state.project.annotations.find(
+      (a: any) => a.kind === "text",
+    ),
+  );
+  if (textAnnotation) {
+    await page
+      .getByLabel("Seek composition", { exact: true })
+      .fill(String(textAnnotation.start + 0.6));
+    await page.waitForTimeout(150);
+    const rect = await board.boundingBox();
+    await page.mouse.click(
+      rect!.x + textAnnotation.x * rect!.width,
+      rect!.y + textAnnotation.y * rect!.height,
+      { button: "right" },
+    );
+    await expect(menu).toHaveAttribute("aria-label", "Annotation");
+    await page
+      .getByRole("menuitem", { name: "Edit text…", exact: true })
+      .click();
+    await expect(
+      page.getByLabel("Annotation text", { exact: true }),
+    ).toBeFocused();
+  }
+
+  // Exercise every edge and corner with actual hover after context invocation.
+  for (const [name, cx, cy] of [
+    ["top-left", 2, 2],
+    ["top-right", 1438, 2],
+    ["bottom-left", 2, 898],
+    ["bottom-right", 1438, 898],
+    ["left", 2, 450],
+    ["right", 1438, 450],
+  ] as const) {
+    await first.dispatchEvent("contextmenu", {
+      button: 2,
+      clientX: cx,
+      clientY: cy,
+    });
+    await page.getByRole("menuitem", { name: "Copy", exact: true }).hover();
+    await expect(page.getByRole("menu")).toHaveCount(2);
+    for (const r of await page.getByRole("menu").evaluateAll((els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return { x: r.x, y: r.y, right: r.right, bottom: r.bottom };
+      }),
+    ))
+      assert.ok(
+        r.x >= 0 && r.y >= 0 && r.right <= 1440 && r.bottom <= 900,
+        JSON.stringify(r),
+      );
+    await page.screenshot({
+      path: `test-results/timeline-menus/flyout-${name}.png`,
+    });
+    await page.keyboard.press("Escape");
+  }
   await page.keyboard.press("Escape");
   for (const [w, h] of [
     [1100, 768],
@@ -489,8 +663,48 @@ try {
           path: `test-results/timeline-menus/view-${w}-${scale}.png`,
         });
       await page.keyboard.press("Escape");
+      await first.dispatchEvent("contextmenu", {
+        button: 2,
+        clientX: w - 4,
+        clientY: h - 4,
+      });
+      await page.getByRole("menuitem", { name: "Copy", exact: true }).hover();
+      await expect(page.getByRole("menu")).toHaveCount(2);
+      for (const box of await page.getByRole("menu").evaluateAll((els) =>
+        els.map((e) => {
+          const r = e.getBoundingClientRect();
+          return { x: r.x, y: r.y, right: r.right, bottom: r.bottom };
+        }),
+      ))
+        assert.ok(
+          box.x >= 0 && box.y >= 0 && box.right <= w + 1 && box.bottom <= h + 1,
+        );
+      if (scale === "150")
+        await page.screenshot({
+          path: `test-results/timeline-menus/flyout-${w}-150.png`,
+        });
+      await page.keyboard.press("Escape");
     }
   }
+  await page.setViewportSize({ width: 700, height: 768 });
+  await first.dispatchEvent("contextmenu", {
+    button: 2,
+    clientX: 680,
+    clientY: 740,
+  });
+  await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await expect(
+    page.getByRole("menuitem", { name: "← Back", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/timeline-menus/narrow-fallback.png",
+  });
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    page.getByRole("menuitem", { name: "Copy", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByLabel("UI scale", { exact: true }).selectOption("100");
   await page.evaluate(
@@ -565,6 +779,10 @@ try {
       ),
     ),
   );
+  await page
+    .getByRole("menuitem", { name: "Preview view", exact: true })
+    .hover();
+  await expect(page.getByRole("menu")).toHaveCount(2);
   await page.screenshot({
     path: "test-results/timeline-menus/fullscreen-board-menu.png",
   });

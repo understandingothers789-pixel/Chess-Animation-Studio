@@ -1,7 +1,8 @@
+import { focusSetting } from "./focusSetting";
 import { KeyframePanel } from "./keyframes/KeyframePanel";
 import { CurveEditor } from "./keyframes/CurveEditor";
 import { settingHelp } from "./help";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   effect,
   moveLightDefaults,
@@ -48,36 +49,30 @@ export function Inspector({
   const [tab, setTab] = useState("move"),
     [channel, setChannel] = useState<Channel>("rz"),
     [presetName, setPresetName] = useState("");
+  const contextualTarget = () => {
+    const targets: Record<string, [string, string, string]> = {
+      move: ["move", "Movement", "Move preset"],
+      duration: ["move", "Movement", "Duration value"],
+      camera: ["camera", `Camera · ${project.format}`, "Camera framing"],
+      effects: ["effects", "Capture impact", "Capture camera shake value"],
+      badge: ["effects", "Move badge", "Badge override"],
+      spotlight: ["effects", "Beat spotlight transition", "Beat spotlight"],
+    };
+    return targets[requestedTab!.section] ?? [requestedTab!.section, "", ""];
+  };
   useEffect(() => {
-    if (!requestedTab) return;
-    const title =
-      requestedTab.section === "badge"
-        ? "Move badge"
-        : requestedTab.section === "spotlight"
-          ? "Beat spotlight transition"
-          : requestedTab.section === "move"
-            ? "Movement"
-            : requestedTab.section === "camera"
-              ? `Camera · ${project.format}`
-              : null;
-    setTab(
-      ["badge", "spotlight"].includes(requestedTab.section)
-        ? "effects"
-        : requestedTab.section,
-    );
-    if (title)
-      requestAnimationFrame(() => {
-        const details = Array.from(
-          document.querySelectorAll<HTMLDetailsElement>(
-            ".inspector details.section",
-          ),
-        ).find((d) => d.querySelector("summary > span")?.textContent === title);
-        if (details) {
-          details.open = true;
-          details.scrollIntoView({ block: "start", behavior: "smooth" });
-        }
-      });
+    if (requestedTab) setTab(contextualTarget()[0]);
   }, [requestedTab]);
+  useLayoutEffect(() => {
+    if (!requestedTab) return;
+    const [nextTab, section, control] = contextualTarget();
+    if (tab === nextTab)
+      focusSetting(
+        document.querySelector(`.inspector [data-inspector-tab="${nextTab}"]`),
+        section,
+        control,
+      );
+  }, [requestedTab, tab]);
   const move = project.moves[index];
   if (!move)
     return (

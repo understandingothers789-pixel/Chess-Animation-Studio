@@ -5,6 +5,13 @@ import { annotationOpacity, type Annotation } from "../../core/annotations";
 import type { RenderFrame } from "../engine/frame";
 export class AnnotationSystem {
   private project?: Project;
+  private textBounds: {
+    id: string;
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  }[] = [];
   private shapes: { mesh: T.Mesh; a: Annotation }[] = [];
   private canvas = document.createElement("canvas");
   private texture = new T.CanvasTexture(this.canvas);
@@ -91,6 +98,7 @@ export class AnnotationSystem {
     }
   }
   post(c: RenderFrame) {
+    this.textBounds = [];
     const text = (c.p.annotations ?? []).filter(
       (a) =>
         (a.kind === "text" || a.kind === "caption") &&
@@ -118,6 +126,20 @@ export class AnnotationSystem {
         left =
           x -
           (a.align === "center" ? width / 2 : a.align === "right" ? width : 0);
+      const pop =
+        a.entrance === "pop"
+          ? Math.max(
+              0.01,
+              Math.min(1, (c.time - a.start) / Math.max(0.001, a.fade)),
+            )
+          : 1;
+      this.textBounds.push({
+        id: a.id,
+        left: x + (left - size * 0.4 - x) * pop,
+        right: x + (left + width + size * 0.4 - x) * pop,
+        top: y - (height / 2 + size * 0.25) * pop,
+        bottom: y + (height / 2 + size * 0.25) * pop,
+      });
       if (a.entrance === "pop") {
         const scale = Math.max(
           0.01,
@@ -152,6 +174,19 @@ export class AnnotationSystem {
     this.renderer.setViewport(0, 0, c.w, c.h);
     this.renderer.clearDepth();
     this.renderer.render(this.overlay, this.camera);
+  }
+  /** Hit-test the visible geometry/text already used by the render passes. */
+  pick(px: number, py: number, ray?: T.Raycaster) {
+    const text = [...this.textBounds]
+      .reverse()
+      .find(
+        (b) => px >= b.left && px <= b.right && py >= b.top && py <= b.bottom,
+      );
+    if (text) return text.id;
+    if (ray)
+      for (const { mesh, a } of [...this.shapes].reverse())
+        if (mesh.visible && ray.intersectObject(mesh).length) return a.id;
+    return null;
   }
   dispose() {
     this.clear();

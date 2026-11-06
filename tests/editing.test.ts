@@ -101,7 +101,7 @@ it("applies movement to a counted chess group in one transaction without touchin
     report: () => {},
   });
   const apply = commands
-    .find((a) => a.label.startsWith("Apply source settings"))!
+    .find((a) => /^Apply .*settings to/.test(a.label))!
     .children!.find((a) => a.label === "Movement")!
     .children!.find((a) => a.label.startsWith("Knight moves"))!;
   expect(apply.label).toContain("3");
@@ -201,7 +201,7 @@ it("reports preserved spotlight timing when applying visual effects to locked ta
     },
   });
   const group = commands
-    .find((a) => a.label.startsWith("Apply source settings"))!
+    .find((a) => /^Apply .*settings to/.test(a.label))!
     .children!.find((a) => a.label === "Effects")!
     .children!.find((a) => a.label.startsWith("All moves"))!;
   expect(group.label).toContain("1 timing locked");

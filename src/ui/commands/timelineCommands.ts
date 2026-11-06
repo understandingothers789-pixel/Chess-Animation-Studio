@@ -1,6 +1,6 @@
 import { moveCommands } from "./moveCommands";
 import { annotationCommands, type AnnotationStyle } from "./annotationCommands";
-import type { SettingsClipboard } from "../../core/editing";
+import type { SettingsClipboard, SettingsKind } from "../../core/editing";
 import type { Project } from "../../core/project";
 import { segments, duration } from "../../core/timeline";
 import type { Edit } from "../state";
@@ -24,9 +24,10 @@ type Context = {
   copied: { current: SettingsClipboard | null };
   annotationStyle: { current: AnnotationStyle | null };
   inspect: (index: number, section: string, id?: string) => void;
-  navigate: (category: string, section?: string) => void;
+  navigate: (category: string, section?: string, control?: string) => void;
   preview: (index: number) => void;
   report: (message: string) => void;
+  bulk?: (sourceId: string, kind: SettingsKind) => void;
   seek: (time: number) => void;
   viewportWidth: number;
   setZoom: Dispatch<SetStateAction<number>>;
@@ -48,6 +49,7 @@ export function timelineCommands({
   navigate,
   preview,
   report,
+  bulk,
   seek,
   viewportWidth,
   setZoom,
@@ -71,7 +73,7 @@ export function timelineCommands({
       const track = menu.track.slice(7);
       add("Open track settings…", () =>
         track === "music"
-          ? navigate("music")
+          ? navigate("music", "Music", "Music volume value")
           : ["camera", "effect", "move"].includes(track)
             ? inspect(selected, track === "effect" ? "effects" : track)
             : track === "annotation"
@@ -84,10 +86,10 @@ export function timelineCommands({
         );
       if (track === "music") {
         add("Dark-square pulse settings…", () =>
-          navigate("music", "Dark-square beat pulse"),
+          navigate("music", "Dark-square beat pulse", "Pulse dark squares"),
         );
         add("Knight horse sound settings…", () =>
-          navigate("music", "Knight horse sound"),
+          navigate("music", "Knight horse sound", "Horse sound volume value"),
         );
       }
       if (track === "music")
@@ -120,6 +122,7 @@ export function timelineCommands({
           navigate,
           preview,
           report,
+          bulk,
         }),
       );
     } else if (menu.track === "annotation") {
@@ -136,12 +139,17 @@ export function timelineCommands({
         ),
       );
     } else if (menu.track === "music") {
-      add("Music levels & trim…", () => navigate("music", "Music"));
+      add("Music volume…", () =>
+        navigate("music", "Music", "Music volume value"),
+      );
+      add("Music trim…", () =>
+        navigate("music", "Music", "Source trim start value"),
+      );
       add("Dark-square pulse settings…", () =>
-        navigate("music", "Dark-square beat pulse"),
+        navigate("music", "Dark-square beat pulse", "Pulse dark squares"),
       );
       add("Knight horse sound settings…", () =>
-        navigate("music", "Knight horse sound"),
+        navigate("music", "Knight horse sound", "Horse sound volume value"),
       );
       add(p.music.muted ? "Unmute music" : "Mute music", () =>
         edit("Toggle music mute", (p) => {

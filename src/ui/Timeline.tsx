@@ -1,9 +1,10 @@
+import { BulkEditPanel } from "./timeline/BulkEditPanel";
 import type { AnnotationStyle } from "./commands/annotationCommands";
 import {
   timelineCommands,
   type TimelineTarget,
 } from "./commands/timelineCommands";
-import type { SettingsClipboard } from "../core/editing";
+import type { SettingsClipboard, SettingsKind } from "../core/editing";
 import { TimelineMenu, type MenuAction } from "./timeline/TimelineMenu";
 import { ControlGroup } from "./timeline/ControlGroup";
 import { MoveClip } from "./timeline/MoveClip";
@@ -45,11 +46,15 @@ export function Timeline({
   seek: (t: number) => void;
   edit: Edit;
   clipboard: { current: SettingsClipboard | null };
-  navigate: (category: string, section?: string) => void;
+  navigate: (category: string, section?: string, control?: string) => void;
   preview: (index: number) => void;
   report: (message: string) => void;
   inspect: (index: number, section: string, annotation?: string) => void;
 }) {
+  const [bulk, setBulk] = useState<{
+    sourceId: string;
+    kind: SettingsKind;
+  } | null>(null);
   const [menu, setMenu] = useState<TimelineTarget | null>(null);
   useEffect(() => {
     if (
@@ -63,6 +68,9 @@ export function Timeline({
   useEffect(() => {
     setMenu(null);
   }, [p]);
+  useEffect(() => {
+    setBulk(null);
+  }, [p.id]);
   const copied = clipboard;
   const annotationStyle = useRef<AnnotationStyle | null>(null);
   const [zoom, setZoom] = useState(() => {
@@ -221,6 +229,7 @@ export function Timeline({
         navigate,
         preview,
         report,
+        bulk: (sourceId, kind) => setBulk({ sourceId, kind }),
         seek,
         viewportWidth: host.current?.clientWidth ?? 760,
         setZoom,
@@ -407,6 +416,17 @@ export function Timeline({
           </label>
         </ControlGroup>
       </header>
+      {bulk && (
+        <BulkEditPanel
+          project={p}
+          sourceId={bulk.sourceId}
+          initialKind={bulk.kind}
+          checked={checked}
+          edit={edit}
+          report={report}
+          close={() => setBulk(null)}
+        />
+      )}
       <div className="selection-tools" aria-label="Selection actions">
         <strong>
           {checked.size > 1
@@ -427,6 +447,12 @@ export function Timeline({
         </button>
         <button
           disabled={!p.moves[selected]}
+          onClick={() => inspect(activeIndex, "move")}
+        >
+          Edit
+        </button>
+        <button
+          disabled={!p.moves[selected]}
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             setMenu({
@@ -438,7 +464,7 @@ export function Timeline({
             });
           }}
         >
-          Edit / Apply…
+          More actions…
         </button>
       </div>
       <div className="timeline-body">

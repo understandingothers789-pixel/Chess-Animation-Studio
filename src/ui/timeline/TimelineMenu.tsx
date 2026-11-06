@@ -58,6 +58,7 @@ export function TimelineMenu({
         document.querySelector(".workspace") || document.body,
       ).getPropertyValue("--ui-scale"),
     ) || 1;
+  const contentKey = JSON.stringify(actions);
   const tree = commands(actions),
     levels: { title: string; items: Command[]; parent?: Command }[] = [
       { title, items: tree },
@@ -185,11 +186,13 @@ export function TimelineMenu({
         : panels.current[next.depth]?.querySelector<HTMLButtonElement>(
             "button:not(:disabled)",
           );
-      target?.focus({ preventScroll: true });
-      focusNext.current = null;
+      if (target && getComputedStyle(target).visibility !== "hidden") {
+        target.focus({ preventScroll: true });
+        focusNext.current = null;
+      }
     }
     return () => observer.disconnect();
-  }, [x, y, path, scale, revision, actions, layout.start]);
+  }, [x, y, path, scale, revision, contentKey, layout.start]);
   return createPortal(
     <div
       ref={host}
@@ -200,10 +203,21 @@ export function TimelineMenu({
       }}
       onPointerEnter={cancelLeave}
       onPointerLeave={(e) => {
-        if (host.current?.contains(e.relatedTarget as Node)) return;
+        if (
+          e.relatedTarget instanceof Node &&
+          host.current?.contains(e.relatedTarget)
+        )
+          return;
         cancelHover();
         cancelLeave();
-        leave.current = setTimeout(() => setPath([]), 320);
+        leave.current = setTimeout(() => {
+          if (
+            host.current?.contains(document.activeElement) &&
+            !panels.current[0]?.contains(document.activeElement)
+          )
+            focusNext.current = { depth: 0, key: path[0] };
+          setPath([]);
+        }, 320);
       }}
     >
       {levels.map((level, depth) => {

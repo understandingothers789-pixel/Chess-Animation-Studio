@@ -1,4 +1,4 @@
-import { _electron as electron } from "@playwright/test";
+import { _electron as electron, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -80,6 +80,34 @@ try {
   assert.ok(result.duration > 20);
   console.log(
     "PASS: application launches, vector art prepares, and bundled sample opens.",
+  );
+  // Validate actual context flyouts inside the packaged Electron runtime too.
+  await page.locator(".move-clip").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Copy", exact: true }).hover();
+  await expect(page.getByRole("menu")).toHaveCount(2);
+  await expect(
+    page.getByRole("menuitem", { name: "Copy", exact: true }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await page.screenshot({ path: path.join(dir, "packaged-hover-flyout.png") });
+  await page.keyboard.press("Escape");
+  await page.locator(".move-clip").first().click({ button: "right" });
+  await page
+    .getByRole("menuitem", { name: "Speed / Duration", exact: true })
+    .hover();
+  await page
+    .getByRole("menuitem", { name: "Set exact duration…", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Duration value", { exact: true }),
+  ).toBeFocused();
+  await page.locator(".move-clip").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: /^Bulk edit from/ }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Apply move settings" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  console.log(
+    "PASS: packaged hover flyouts, exact duration targeting, and bulk panel cancellation.",
   );
   await page.evaluate(() => {
     const old = AudioBufferSourceNode.prototype.start;

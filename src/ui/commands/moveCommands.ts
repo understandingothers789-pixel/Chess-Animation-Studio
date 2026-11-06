@@ -1,7 +1,10 @@
+import {
+  applyMoveSettings,
+  bulkGroups,
+  settingsLabel as label,
+} from "./bulkEditing";
 import { effect, type Project, type Effect } from "../../core/project";
 import {
-  moveGroups,
-  pasteSettings,
   settingsKinds,
   settingsAffectTiming,
   type SettingsClipboard,
@@ -17,14 +20,11 @@ export type MoveCommandContext = {
   edit: Edit;
   copied: { current: SettingsClipboard | null };
   inspect: (index: number, section: string) => void;
-  navigate: (category: string, section?: string) => void;
+  navigate: (category: string, section?: string, control?: string) => void;
   preview: (index: number) => void;
   report: (message: string) => void;
+  bulk?: (sourceId: string, kind: SettingsKind) => void;
 };
-const label = (kind: SettingsKind) =>
-  kind === "everything"
-    ? "Everything (all formats)"
-    : kind[0].toUpperCase() + kind.slice(1);
 export function moveCommands(c: MoveCommandContext): MenuAction[] {
   const { p, index, track, edit, copied } = c,
     m = p.moves[index];
@@ -46,21 +46,9 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
     source: Effect,
     sourceFormat = p.format,
   ) => {
-    const locked = p.moves.filter(
-      (m) => ids.includes(m.id) && m.effect.locked,
-    ).length;
-    edit(`Apply ${kind} to ${ids.length} moves`, (draft) => {
-      for (const move of draft.moves.filter((m) => ids.includes(m.id)))
-        move.effect = pasteSettings(
-          move.effect,
-          { kind, source, format: sourceFormat },
-          p.format,
-        );
-    });
-    c.report(
-      `${label(kind)} applied to ${ids.length} moves${locked && settingsAffectTiming(kind) ? `; timing preserved for ${locked} locked moves` : ""}. Undo is available.`,
-    );
+    applyMoveSettings(p, edit, c.report, kind, ids, source, sourceFormat);
   };
+
   const kinds: SettingsKind[] =
     track === "camera"
       ? ["camera"]
@@ -89,11 +77,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
         apply(kind, one, copied.current.source, copied.current.format);
     },
   }));
-  const groups = {
-    "This move": one,
-    ...(selected.length > 1 ? { "Selected moves": selected } : {}),
-    ...moveGroups(p),
-  };
+  const groups = bulkGroups(p, m.id, c.checked);
   const bulk = kinds.map((kind) => ({
     label: label(kind),
     children: Object.entries(groups).map(([name, ids]) => ({
@@ -125,12 +109,26 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       },
     },
     { label: "Copy", children: copies, separatorBefore: true },
-    { label: "Paste to this move", children: pastes },
+    { label: `Paste to ${m.san}`, children: pastes },
     {
-      label: `Apply source settings to…${selected.length > 1 ? ` (${selected.length} selected)` : ""}`,
+      label: `Apply ${m.san}’s settings to…${selected.length > 1 ? ` (${selected.length} selected)` : ""}`,
       children: bulk,
     },
   ];
+  if (c.bulk)
+    actions.push({
+      id: "bulk.panel",
+      label: `Bulk edit from ${m.san}…`,
+      run: () =>
+        c.bulk!(
+          m.id,
+          track === "camera"
+            ? "camera"
+            : track === "effect"
+              ? "effects"
+              : "movement",
+        ),
+    });
   if (track === "move") {
     actions.splice(3, 0, {
       label: "Speed / Duration",
@@ -149,7 +147,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
         {
           label: "Set exact duration…",
           disabled: m.effect.locked,
-          run: () => c.inspect(index, "move"),
+          run: () => c.inspect(index, "duration"),
         },
         {
           label: "Reset duration",

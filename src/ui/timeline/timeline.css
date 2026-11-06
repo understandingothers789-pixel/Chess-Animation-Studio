@@ -586,7 +586,7 @@
 }
 .timeline-context-menu .menu-hint {
   padding: 5px 8px 2px;
-  font-size: 0.75em;
+  font-size: 0.85em;
 }
 .timeline-context-menu button:disabled:hover {
   background: transparent;
@@ -642,4 +642,9 @@
   border-left: 3px solid #bad899;
   background: #263b2c;
   line-height: 1.7;
+}
+
+.timeline-context-menu:focus-visible {
+  outline: 2px solid #aeca96;
+  outline-offset: -2px;
 }

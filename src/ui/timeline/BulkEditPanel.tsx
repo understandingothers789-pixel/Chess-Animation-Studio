@@ -1,10 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  settingsKinds,
-  settingsAffectTiming,
-  type SettingsKind,
-} from "../../core/editing";
+import { settingsKinds, type SettingsKind } from "../../core/editing";
 import type { Project } from "../../core/project";
 import type { Edit } from "../state";
 import {
@@ -29,6 +25,12 @@ export function BulkEditPanel({
   report: (s: string) => void;
   close: () => void;
 }) {
+  const scale =
+    Number(
+      getComputedStyle(
+        document.querySelector(".workspace") || document.body,
+      ).getPropertyValue("--ui-scale"),
+    ) || 1;
   const sourceIndex = p.moves.findIndex((m) => m.id === sourceId),
     source = p.moves[sourceIndex];
   const groups = bulkGroups(p, sourceId, checked),
@@ -64,6 +66,7 @@ export function BulkEditPanel({
         aria-modal="true"
         aria-labelledby="bulk-edit-title"
         className="bulk-editor"
+        style={{ fontSize: 13 * scale, width: 430 * scale }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
@@ -122,10 +125,10 @@ export function BulkEditPanel({
         <p className="bulk-summary" aria-live="polite">
           <strong>{ids.length} moves will be updated</strong>
           <br />
-          {locked} timing-locked moves{" "}
-          {settingsAffectTiming(kind)
-            ? "will preserve their timing"
-            : "keep their timing"}
+          {locked} timing-locked {locked === 1 ? "move" : "moves"}{" "}
+          {locked === 1
+            ? "will preserve its timing"
+            : "will preserve their timing"}
           .<br />
           {kind === "camera"
             ? `Camera configuration: ${p.format}.`
@@ -134,8 +137,8 @@ export function BulkEditPanel({
               : "Other settings categories stay as they are."}
         </p>
         <p className="hint">
-          One operation · one Undo. Hovering or changing these choices does not
-          apply an edit.
+          Changes apply when you choose Apply. Undo restores the whole
+          operation.
         </p>
         <div className="button-row">
           <button onClick={close}>Cancel</button>
@@ -156,7 +159,8 @@ export function BulkEditPanel({
               close();
             }}
           >
-            Apply {settingsLabel(kind).toLowerCase()} to {ids.length} moves
+            Apply {settingsLabel(kind).toLowerCase()} to {ids.length}{" "}
+            {ids.length === 1 ? "move" : "moves"}
           </button>
         </div>
       </div>

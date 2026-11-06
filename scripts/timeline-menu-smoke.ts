@@ -155,6 +155,23 @@ try {
     page.getByRole("menuitem", { name: "25% faster", exact: true }),
   ).toBeDisabled();
   await page.screenshot({ path: "test-results/timeline-menus/speed-menu.png" });
+  const lockedBeforeClick = await page.evaluate(() =>
+    JSON.stringify((window as any).__state.project),
+  );
+  await page
+    .getByRole("menuitem", { name: "25% faster", exact: true })
+    .evaluate((button: HTMLButtonElement) => button.click());
+  assert.equal(
+    await page.evaluate(() => JSON.stringify((window as any).__state.project)),
+    lockedBeforeClick,
+  );
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    page.getByRole("menuitem", { name: "Speed / Duration", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("menu").last()).toBeFocused();
+
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
   await first.click({ button: "right" });
@@ -409,7 +426,7 @@ try {
   await expect(panel).toBeVisible();
   await page.getByLabel("Bulk settings category").selectOption("timing");
   await page.getByLabel("Bulk target group").selectOption("All moves");
-  await expect(panel).toContainText("1 timing-locked moves");
+  await expect(panel).toContainText("1 timing-locked move");
   assert.equal(
     await page.evaluate(() => JSON.stringify((window as any).__state.project)),
     beforePanel,
@@ -566,6 +583,44 @@ try {
     await page.evaluate(() => (window as any).__copiedFen),
     / [wb] /,
   );
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async () => {
+          throw Error("clipboard denied");
+        },
+      },
+    }),
+  );
+  await page.mouse.click(background!.x + 5, background!.y + 5, {
+    button: "right",
+  });
+  await page
+    .getByRole("menuitem", { name: "Copy position FEN", exact: true })
+    .click();
+  await expect(page.locator(".status-bar")).toContainText("Could not copy FEN");
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: () =>
+          new Promise<void>((resolve) => {
+            (window as any).__completeClipboard = resolve;
+          }),
+      },
+    }),
+  );
+  await page.mouse.click(background!.x + 5, background!.y + 5, {
+    button: "right",
+  });
+  await page
+    .getByRole("menuitem", { name: "Copy position FEN", exact: true })
+    .click();
+  await expect(page.locator(".status-bar")).not.toContainText("FEN copied");
+  await page.evaluate(() => (window as any).__completeClipboard());
+  await expect(page.locator(".status-bar")).toContainText("FEN copied");
+
   await page.mouse.click(background!.x + 5, background!.y + 5, {
     button: "right",
   });
@@ -615,11 +670,24 @@ try {
     ["left", 2, 450],
     ["right", 1438, 450],
   ] as const) {
-    await first.dispatchEvent("contextmenu", {
-      button: 2,
-      clientX: cx,
-      clientY: cy,
-    });
+    await first.evaluate(
+      (el, point) =>
+        el.dispatchEvent(
+          new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            button: 2,
+            clientX: point.x,
+            clientY: point.y,
+          }),
+        ),
+      { x: cx, y: cy },
+    );
+    const anchored = await menu.boundingBox();
+    if (cx < 10)
+      assert.ok(anchored!.x < 20, `Left anchor ignored: ${anchored!.x}`);
+    if (cx > 1400) assert.ok(anchored!.x + anchored!.width > 1410);
+    if (cy < 10) assert.ok(anchored!.y < 20);
     await page.getByRole("menuitem", { name: "Copy", exact: true }).hover();
     await expect(page.getByRole("menu")).toHaveCount(2);
     for (const r of await page.getByRole("menu").evaluateAll((els) =>
@@ -663,11 +731,19 @@ try {
           path: `test-results/timeline-menus/view-${w}-${scale}.png`,
         });
       await page.keyboard.press("Escape");
-      await first.dispatchEvent("contextmenu", {
-        button: 2,
-        clientX: w - 4,
-        clientY: h - 4,
-      });
+      await first.evaluate(
+        (el, point) =>
+          el.dispatchEvent(
+            new MouseEvent("contextmenu", {
+              bubbles: true,
+              cancelable: true,
+              button: 2,
+              clientX: point.x,
+              clientY: point.y,
+            }),
+          ),
+        { x: w - 4, y: h - 4 },
+      );
       await page.getByRole("menuitem", { name: "Copy", exact: true }).hover();
       await expect(page.getByRole("menu")).toHaveCount(2);
       for (const box of await page.getByRole("menu").evaluateAll((els) =>
@@ -686,12 +762,31 @@ try {
       await page.keyboard.press("Escape");
     }
   }
+  await first.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Copy", exact: true }).hover();
+  await expect(page.getByRole("menu")).toHaveCount(2);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(page.getByRole("menu")).toHaveCount(2);
+  for (const r of await page.getByRole("menu").evaluateAll((els) =>
+    els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return { right: r.right, bottom: r.bottom };
+    }),
+  ))
+    assert.ok(r.right <= 1280 && r.bottom <= 720);
+  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 700, height: 768 });
-  await first.dispatchEvent("contextmenu", {
-    button: 2,
-    clientX: 680,
-    clientY: 740,
-  });
+  await first.evaluate((el) =>
+    el.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        clientX: 680,
+        clientY: 740,
+      }),
+    ),
+  );
   await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
   await expect(page.getByRole("menu")).toHaveCount(1);
   await expect(
@@ -703,6 +798,20 @@ try {
   await page.keyboard.press("ArrowLeft");
   await expect(
     page.getByRole("menuitem", { name: "Copy", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("menuitem", { name: /^Apply .*settings to/ }).click();
+  await page.getByRole("menuitem", { name: "Movement", exact: true }).click();
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await expect(
+    page.getByRole("menuitem", { name: /^Knight moves/ }),
+  ).toBeVisible();
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    page.getByRole("menuitem", { name: "Movement", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(
+    page.getByRole("menuitem", { name: /^Apply .*settings to/ }),
   ).toBeFocused();
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -812,6 +921,28 @@ try {
             p.style.orientation = orientation;
             p.format = format;
             p.boardFX.intro = false;
+            const { annotation } = await import(
+              String("/src/core/annotations.ts")
+            );
+            const circle = {
+              ...annotation("circle", 0),
+              id: "circle-pick",
+              from: "d4",
+              end: 10,
+              fade: 0,
+              entrance: "none",
+            };
+            const text = {
+              ...annotation("text", 0),
+              id: "text-pick",
+              x: 0.5,
+              y: 0.1,
+              end: 10,
+              fade: 0,
+              entrance: "none",
+            };
+            p.annotations = [circle, text];
+
             for (const m of p.moves)
               m.effect.cameras[format] = {
                 ...model.camera(),
@@ -847,6 +978,32 @@ try {
                 );
               checked++;
             }
+            if (
+              scene.pickAnnotation(
+                r.left + r.width * 0.5,
+                r.top + r.height * 0.1,
+              ) !== "text-pick"
+            )
+              throw Error("Text annotation picking failed");
+            const point = scene.root
+              .localToWorld(
+                new T.Vector3(-0.5 + 0.43 + circle.width / 2, -0.5, 0.8),
+              )
+              .project(scene.cameras.camera);
+            const sx = r.left + ((point.x + 1) / 2) * r.width,
+              sy =
+                r.top +
+                (1 - (c.viewY + ((point.y + 1) / 2) * c.viewH) / h) * r.height;
+            if (
+              sx >= r.left &&
+              sx <= r.right &&
+              sy >= r.top &&
+              sy <= r.bottom &&
+              scene.pickAnnotation(sx, sy) !== "circle-pick"
+            )
+              throw Error(
+                `Circle annotation picking failed ${orientation} ${format} ${tilt}`,
+              );
           }
     } finally {
       scene.dispose();

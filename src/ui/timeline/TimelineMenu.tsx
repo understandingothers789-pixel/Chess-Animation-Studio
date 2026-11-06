@@ -93,9 +93,11 @@ export function TimelineMenu({
     );
     if (keyboard && a.children)
       requestAnimationFrame(() => {
-        panels.current[depth + 1]
-          ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
-          ?.focus();
+        const panel = panels.current[depth + 1];
+        (
+          panel?.querySelector<HTMLButtonElement>("button:not(:disabled)") ??
+          panel
+        )?.focus();
       });
   };
   const back = (depth: number) => {
@@ -183,9 +185,9 @@ export function TimelineMenu({
     if (next) {
       const target = next.key
         ? rows.current.get(next.key)
-        : panels.current[next.depth]?.querySelector<HTMLButtonElement>(
+        : (panels.current[next.depth]?.querySelector<HTMLButtonElement>(
             "button:not(:disabled)",
-          );
+          ) ?? panels.current[next.depth]);
       if (target && getComputedStyle(target).visibility !== "hidden") {
         target.focus({ preventScroll: true });
         focusNext.current = null;
@@ -232,6 +234,7 @@ export function TimelineMenu({
             id={`${uid}-panel-${depth}`}
             className="timeline-context-menu"
             role="menu"
+            tabIndex={-1}
             aria-label={level.title}
             data-menu-depth={depth}
             data-direction={layout.direction === 1 ? "right" : "left"}
@@ -287,7 +290,9 @@ export function TimelineMenu({
               } else if (e.key === "Tab") closeRef.current();
             }}
           >
-            <div className="context-menu-title">{level.title}</div>
+            <div className="context-menu-title">
+              {compact ? `${title} · ${level.title}` : level.title}
+            </div>
             {compact && (
               <button role="menuitem" onClick={() => back(depth)}>
                 ← Back

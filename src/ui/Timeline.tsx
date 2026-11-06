@@ -203,9 +203,12 @@ export function Timeline({
     const index = clip ? Number(clip.dataset.moveIndex) : selected;
     if (clip) contextSelect(index);
     const rect = target.getBoundingClientRect();
+    const keyboard =
+      e.type === "keydown" ||
+      (e.button !== 2 && e.clientX === 0 && e.clientY === 0);
     setMenu({
-      x: e.clientX || rect.left,
-      y: e.clientY || rect.bottom,
+      x: keyboard ? rect.left : e.clientX,
+      y: keyboard ? rect.bottom : e.clientY,
       track,
       index,
       at,

@@ -339,7 +339,12 @@ export function Preview({
           actions={boardActions}
           close={() => setMenu(null)}
           execute={(run) => {
-            run();
+            edit?.begin();
+            try {
+              run();
+            } finally {
+              edit?.end();
+            }
           }}
         />
       )}

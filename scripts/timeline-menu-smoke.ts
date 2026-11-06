@@ -64,11 +64,64 @@ try {
   await page.waitForSelector(".app-shell", { timeout: 60000 });
   await page.waitForFunction(() => !!(window as any).__state);
   await fs.mkdir("test-results/timeline-menus", { recursive: true });
-  const menu = page.getByRole("menu");
+  const menu = page.getByRole("menu").first();
   const first = page.locator(".move-clip").first();
   await first.click({ button: "right" });
   await expect(menu).toBeVisible();
   await page.screenshot({ path: "test-results/timeline-menus/move-menu.png" });
+  // Real hover interactions: parents remain visible and hover does not steal focus.
+  const copyParent = page.getByRole("menuitem", { name: "Copy", exact: true });
+  const focusedBeforeHover = await page.evaluate(
+    () => document.activeElement?.id,
+  );
+  await copyParent.hover();
+  await expect(page.getByRole("menu")).toHaveCount(2);
+  await expect(copyParent).toHaveAttribute("aria-expanded", "true");
+  assert.equal(
+    await page.evaluate(() => document.activeElement?.id),
+    focusedBeforeHover,
+  );
+  await expect(menu).toBeVisible();
+  await page.screenshot({ path: "test-results/timeline-menus/hover-copy.png" });
+  await page
+    .getByRole("menuitem", { name: "Paste to this move", exact: true })
+    .hover();
+  await expect(page.getByRole("menu").last()).toHaveAttribute(
+    "aria-label",
+    "Paste to this move",
+  );
+  await copyParent.hover();
+  await expect(page.getByRole("menu").last()).toHaveAttribute(
+    "aria-label",
+    "Copy",
+  );
+  // Both fast and slow diagonals cross other root rows en route to the flyout.
+  for (const stepDelay of [0, 35]) {
+    await copyParent.hover();
+    const parent = await copyParent.boundingBox(),
+      child = await page.getByRole("menu").last().boundingBox();
+    const dest = {
+      x: child!.x + child!.width / 2,
+      y: child!.y + child!.height - 25,
+    };
+    const start = {
+      x: parent!.x + parent!.width * 0.6,
+      y: parent!.y + parent!.height / 2,
+    };
+    await page.mouse.move(start.x, start.y);
+    for (let i = 1; i <= 6; i++) {
+      await page.mouse.move(
+        start.x + ((dest.x - start.x) * i) / 6,
+        start.y + ((dest.y - start.y) * i) / 6,
+      );
+      if (stepDelay) await page.waitForTimeout(stepDelay);
+    }
+    await expect(copyParent).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("menu")).toHaveCount(2);
+  }
+  await page.mouse.move(12, 12);
+  await expect(page.getByRole("menu")).toHaveCount(1);
+
   await page
     .getByRole("menuitemcheckbox", { name: "Lock timing", exact: true })
     .click();
@@ -473,6 +526,11 @@ try {
   await page.mouse.click(edge.x, edge.y, { button: "right" });
   await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
   const corner = await menu.boundingBox();
+  await expect(page.getByRole("menu")).toHaveCount(2);
+  await expect(page.getByRole("menu").last()).toHaveAttribute(
+    "data-direction",
+    "left",
+  );
   assert.ok(
     corner &&
       corner.x + corner.width > 1420 &&

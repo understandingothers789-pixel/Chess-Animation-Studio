@@ -563,3 +563,32 @@
   margin-top: 5px;
   padding-top: 10px;
 }
+
+.menu-hierarchy {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+}
+.menu-hierarchy .timeline-context-menu {
+  pointer-events: auto;
+  z-index: auto;
+  border-radius: 7px;
+}
+.timeline-context-menu button.submenu-active {
+  background: #3c5742;
+  box-shadow: inset 3px 0 #b6d393;
+}
+.timeline-context-menu button {
+  padding: 0.48em 0.7em;
+  min-height: 32px;
+  gap: 10px;
+}
+.timeline-context-menu .menu-hint {
+  padding: 5px 8px 2px;
+  font-size: 0.75em;
+}
+.timeline-context-menu button:disabled:hover {
+  background: transparent;
+  outline: none;
+}

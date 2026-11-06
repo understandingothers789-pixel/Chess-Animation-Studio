@@ -690,6 +690,22 @@ try {
     if (cy < 10) assert.ok(anchored!.y < 20);
     await page.getByRole("menuitem", { name: "Copy", exact: true }).hover();
     await expect(page.getByRole("menu")).toHaveCount(2);
+    const row = await page
+        .getByRole("menuitem", { name: "Copy", exact: true })
+        .boundingBox(),
+      flyout = await page.getByRole("menu").last().boundingBox();
+    const towardX =
+      flyout!.x < row!.x ? flyout!.x + flyout!.width - 10 : flyout!.x + 10;
+    await page.mouse.move(row!.x + row!.width / 2, row!.y + row!.height / 2);
+    await page.mouse.move(towardX, row!.y + row!.height / 2, { steps: 10 });
+    await page.waitForTimeout(350);
+    await expect(page.getByRole("menu")).toHaveCount(2);
+    for (let jitter = 0; jitter < 6; jitter++)
+      await page.mouse.move(
+        towardX + (jitter % 2 ? 2 : -2),
+        row!.y + row!.height / 2 + (jitter % 2 ? 1 : -1),
+      );
+    await expect(page.getByRole("menu")).toHaveCount(2);
     for (const r of await page.getByRole("menu").evaluateAll((els) =>
       els.map((e) => {
         const r = e.getBoundingClientRect();
@@ -767,6 +783,21 @@ try {
   await expect(page.getByRole("menu")).toHaveCount(2);
   await page.setViewportSize({ width: 1280, height: 720 });
   await expect(page.getByRole("menu")).toHaveCount(2);
+  await expect
+    .poll(async () =>
+      page.getByRole("menu").evaluateAll(
+        (els) =>
+          els.length === 2 &&
+          els.every((e) => {
+            const r = e.getBoundingClientRect();
+            return (
+              r.left >= 0 && r.top >= 0 && r.right <= 1280 && r.bottom <= 720
+            );
+          }),
+      ),
+    )
+    .toBe(true);
+
   for (const r of await page.getByRole("menu").evaluateAll((els) =>
     els.map((e) => {
       const r = e.getBoundingClientRect();

@@ -208,5 +208,5 @@ it("reports preserved spotlight timing when applying visual effects to locked ta
   group.run!();
   expect(p.moves[1].effect.jam.enabled).toBe(before.jam.enabled);
   expect(p.moves[1].effect.jam.duration).toBe(before.jam.duration);
-  expect(report).toContain("1 locked moves");
+  expect(report).toContain("1 locked move kept its timing");
 });

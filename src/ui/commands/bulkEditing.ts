@@ -27,12 +27,14 @@ export function applyMoveSettings(
   sourceFormat = p.format,
   group = "moves",
 ) {
+  const targetName =
+    group === "all moves" ? "moves" : group === "this move" ? "move" : group;
   const targets = p.moves.filter((m) => ids.includes(m.id)),
     locked = targets.filter((m) => m.effect.locked).length;
   if (!targets.length) return;
   edit.begin();
   try {
-    edit(`Apply ${kind} to ${targets.length} ${group}`, (draft) => {
+    edit(`Apply ${kind} to ${targets.length} ${targetName}`, (draft) => {
       if (draft.id !== p.id) return;
       for (const move of draft.moves.filter((m) => ids.includes(m.id)))
         move.effect = pasteSettings(
@@ -45,6 +47,6 @@ export function applyMoveSettings(
     edit.end();
   }
   report(
-    `${settingsLabel(kind)} applied to ${targets.length} ${group}${locked && settingsAffectTiming(kind) ? `; ${locked} locked moves kept their timing` : ""}. Undo is available.`,
+    `${settingsLabel(kind)} applied to ${targets.length} ${targetName}${locked && settingsAffectTiming(kind) ? `; ${locked} locked ${locked === 1 ? "move kept its" : "moves kept their"} timing` : ""}. Undo is available.`,
   );
 }

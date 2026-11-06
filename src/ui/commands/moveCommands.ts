@@ -146,6 +146,8 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
         })),
         {
           label: "Set exact duration…",
+          shortcut:
+            selected.length > 1 ? `${selected.length} selected` : "this move",
           disabled: m.effect.locked,
           run: () => c.inspect(index, "duration"),
         },

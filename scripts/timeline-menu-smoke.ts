@@ -83,6 +83,15 @@ try {
   );
   await expect(menu).toBeVisible();
   await page.screenshot({ path: "test-results/timeline-menus/hover-copy.png" });
+  await page.keyboard.press("End");
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await expect(
+    page.getByRole("menuitem", { name: "Reset movement only", exact: true }),
+  ).toBeFocused();
+  await page.mouse.move(12, 12);
+  await copyParent.hover();
+  await expect(page.getByRole("menu")).toHaveCount(2);
+
   await page.getByRole("menuitem", { name: /^Paste to /, exact: true }).hover();
   await expect(page.getByRole("menu").last()).toHaveAttribute(
     "aria-label",

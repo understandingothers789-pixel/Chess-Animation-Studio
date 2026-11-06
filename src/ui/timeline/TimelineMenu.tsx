@@ -258,6 +258,7 @@ export function TimelineMenu({
             onKeyDown={(e) => {
               e.stopPropagation();
               cancelHover();
+              cancelLeave();
               const buttons = Array.from(
                 e.currentTarget.querySelectorAll<HTMLButtonElement>(
                   "button:not(:disabled)",
@@ -277,6 +278,11 @@ export function TimelineMenu({
                           (e.key === "ArrowDown" ? 1 : -1) +
                           buttons.length) %
                         buttons.length;
+                if (
+                  path[depth] &&
+                  buttons[next]?.dataset.commandId !== path[depth]
+                )
+                  setPath((p) => p.slice(0, depth));
                 buttons[next]?.focus();
               } else if (e.key === "ArrowRight") {
                 e.preventDefault();

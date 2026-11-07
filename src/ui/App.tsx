@@ -1,3 +1,20 @@
+import "./storyboard/storyboard.css";
+import { StoryMusic } from "./storyboard/StoryMusic";
+import { StorySourcePanel } from "./storyboard/StorySourcePanel";
+import { StoryTimeline } from "./storyboard/StoryTimeline";
+import { StoryTransport } from "./storyboard/StoryTransport";
+import { ShotInspector } from "./storyboard/ShotInspector";
+import {
+  StoryThumbnails,
+  type ThumbnailRenderer,
+} from "./storyboard/thumbnails";
+import {
+  compileStoryboard,
+  presentationDuration,
+  resolveStoryboardFrame,
+  shotFromMove,
+} from "../core/storyboard";
+import type { PlaybackMode } from "../core/project";
 import { focusSetting } from "./focusSetting";
 import { pasteSettings, type SettingsClipboard } from "../core/editing";
 import { Transport } from "./transport/Transport";
@@ -85,6 +102,16 @@ export function App() {
     canUndo,
     canRedo,
   } = useProject();
+  const [mode, setMode] = useState<PlaybackMode>("source");
+  const modeRef = useRef<PlaybackMode>(mode);
+  modeRef.current = mode;
+  const sourceClock = useRef(0),
+    storyClock = useRef(0);
+  const [shotId, setShotId] = useState<string | null>(null),
+    shotIdRef = useRef<string | null>(null);
+  shotIdRef.current = shotId;
+  const thumbnailPort = useRef<ThumbnailRenderer | null>(null);
+  const thumbnails = useMemo(() => new StoryThumbnails(thumbnailPort), []);
   const workspace = useWorkspace();
   const layout = workspace.layout;
   const [inspectorRequest, setInspectorRequest] = useState<{
@@ -149,11 +176,16 @@ export function App() {
   }, [settingsRequest, tab, layout.hideLeft]);
   useLayoutEffect(() => {
     if (!annotationFocus || layout.hideRight) return;
-    const drawer =
-      document.querySelector<HTMLDetailsElement>(".annotation-drawer");
+    const drawer = document.querySelector<HTMLDetailsElement>(
+      mode === "storyboard" ? ".story-annotation-editor" : ".annotation-drawer",
+    );
     if (drawer) {
       drawer.open = true;
-      const a = p.annotations.find((a) => a.id === annotationId);
+      const a = (
+        mode === "storyboard"
+          ? (p.storyboard.shots.find((s) => s.id === shotId)?.annotations ?? [])
+          : p.annotations
+      ).find((a) => a.id === annotationId);
       focusSetting(
         drawer,
         undefined,
@@ -162,7 +194,7 @@ export function App() {
           : "Annotation width",
       );
     }
-  }, [annotationFocus, annotationId, layout.hideRight]);
+  }, [annotationFocus, annotationId, layout.hideRight, mode, shotId]);
   useEffect(() => localStorage.setItem("studio.category", tab), [tab]);
   const previewProject = useMemo(() => {
     if (!presetDraft || !p.moves[selected]) return p;
@@ -208,7 +240,19 @@ export function App() {
   const seek = useCallback(
     (t: number) => {
       stop();
-      setTime(Math.max(0, Math.min(duration(latest.current), t)));
+      const next = Math.max(
+        0,
+        Math.min(presentationDuration(latest.current, modeRef.current), t),
+      );
+      timeRef.current = next;
+      setTime(next);
+      if (modeRef.current === "storyboard") {
+        storyClock.current = next;
+        const id =
+          resolveStoryboardFrame(latest.current, next)?.shot.id ?? null;
+        shotIdRef.current = id;
+        setShotId(id);
+      } else sourceClock.current = next;
     },
     [stop],
   );
@@ -242,7 +286,7 @@ export function App() {
       const seq = segments(latest.current);
       if (!seq[i]) return;
       setSelected(i);
-      seek(seq[i].depart);
+      if (modeRef.current === "source") seek(seq[i].depart);
       setPicked(null);
     },
     [seek],
@@ -416,7 +460,11 @@ export function App() {
       raf = 0;
     const start = timeRef.current;
     run(async () => {
-      const origin = await audio.current!.play(latest.current, start);
+      const origin = await audio.current!.play(
+        latest.current,
+        start,
+        modeRef.current,
+      );
       if (!alive) {
         audio.current!.stop();
         return;
@@ -431,8 +479,8 @@ export function App() {
           setAudition(null);
           return;
         }
-        if (t >= duration(latest.current)) {
-          setTime(duration(latest.current));
+        if (t >= presentationDuration(latest.current, modeRef.current)) {
+          setTime(presentationDuration(latest.current, modeRef.current));
           stop();
           return;
         }
@@ -447,7 +495,7 @@ export function App() {
       cancelAnimationFrame(raf);
       audio.current?.stop();
     };
-  }, [playing, audition]);
+  }, [playing, audition, mode]);
   useEffect(() => {
     audio.current?.updateMusic(p, timeRef.current);
   }, [p.music.volume, p.music.muted, p.music.volumePoints]);
@@ -458,6 +506,7 @@ export function App() {
     window.studio.present({
       project: p,
       time,
+      mode,
       playing,
       assets: Object.fromEntries(
         p.assets
@@ -465,7 +514,7 @@ export function App() {
           .map((a) => [a.id, assets[a.id]]),
       ),
     });
-  }, [p, time, playing, assets]);
+  }, [p, time, playing, assets, mode]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (
@@ -510,6 +559,33 @@ export function App() {
         seek(timeRef.current + (e.key === "ArrowRight" ? 1 / 60 : -1 / 60));
         return;
       }
+      if (
+        modeRef.current === "storyboard" &&
+        !buttonFocus &&
+        ["ArrowLeft", "ArrowRight"].includes(e.key)
+      ) {
+        e.preventDefault();
+        const c = compileStoryboard(latest.current),
+          at =
+            resolveStoryboardFrame(latest.current, timeRef.current)?.index ?? 0;
+        const target =
+          c.shots[
+            Math.max(
+              0,
+              Math.min(
+                c.shots.length - 1,
+                at + (e.key === "ArrowRight" ? 1 : -1),
+              ),
+            )
+          ];
+        if (target) seek(target.start);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        addToStoryboard();
+        return;
+      }
       if (e.key === "ArrowRight" && !buttonFocus)
         select(Math.min(latest.current.moves.length - 1, selected + 1));
       if (e.key === "ArrowLeft" && !buttonFocus)
@@ -523,6 +599,15 @@ export function App() {
     replace(project);
     setPath(file);
     setTime(0);
+    sourceClock.current = 0;
+    storyClock.current = 0;
+    const nextMode: PlaybackMode = project.storyboard.shots.length
+      ? "storyboard"
+      : "source";
+    setMode(nextMode);
+    modeRef.current = nextMode;
+    workspace.preset(nextMode === "storyboard" ? "Storyboard" : "Editing");
+    setShotId(project.storyboard.shots[0]?.id ?? null);
     setSelected(0);
     setPicked(null);
     setChecked(new Set());
@@ -615,6 +700,7 @@ export function App() {
         };
         p.waveform = [];
         p.beats = [];
+        p.storyboard.beats = [];
       }
       if (use === "background") {
         p.layouts[p.format].background = "image";
@@ -693,6 +779,154 @@ export function App() {
       message("Choose a piece that can move in this position.");
     }
   }
+  function switchMode(next: PlaybackMode, applyLayout = true) {
+    stop();
+    setPresetDraft(null);
+    setDrawing(null);
+    annotationFrom.current = null;
+    if (modeRef.current === "source") sourceClock.current = timeRef.current;
+    else storyClock.current = timeRef.current;
+    modeRef.current = next;
+    setMode(next);
+    if (applyLayout)
+      workspace.preset(next === "storyboard" ? "Storyboard" : "Editing");
+    const at = Math.min(
+      presentationDuration(p, next),
+      next === "storyboard" ? storyClock.current : sourceClock.current,
+    );
+    setTime(at);
+    timeRef.current = at;
+    if (next === "storyboard") {
+      const id =
+        resolveStoryboardFrame(p, at)?.shot.id ??
+        p.storyboard.shots[0]?.id ??
+        null;
+      setShotId(id);
+      shotIdRef.current = id;
+    }
+  }
+  function addToStoryboard(ids?: string[]) {
+    const chosen =
+      ids ??
+      (checked.size
+        ? p.moves.filter((m) => checked.has(m.id)).map((m) => m.id)
+        : p.moves[selected]
+          ? [p.moves[selected].id]
+          : []);
+    if (!chosen.length) {
+      message("Choose source moves to add.");
+      return;
+    }
+    if (p.storyboard.shots.length + chosen.length > 200) {
+      message(
+        "A storyboard supports up to 200 shots. Remove shots before adding more.",
+      );
+      return;
+    }
+    const shots = chosen.map((id) => shotFromMove(p, id));
+    stop();
+    edit.begin();
+    try {
+      edit("Add moves to storyboard", (d) => d.storyboard.shots.push(...shots));
+    } finally {
+      edit.end();
+    }
+    setShotId(shots[0].id);
+    shotIdRef.current = shots[0].id;
+    message(
+      `${shots.length} ${shots.length === 1 ? "move" : "moves"} added to storyboard. Undo is available.`,
+    );
+  }
+  function addPosition() {
+    const sourceTime =
+      modeRef.current === "storyboard"
+        ? (resolveStoryboardFrame(p, timeRef.current)?.sourceTime ?? 0)
+        : timeRef.current;
+    const seq = segments(p);
+    let index = -1;
+    seq.forEach((s, i) => {
+      if (s.land <= sourceTime) index = i;
+    });
+    const shot = shotFromMove(
+      p,
+      index < 0 ? "@start" : p.moves[index].id,
+      "position-hold",
+      index < 0 ? "before" : "after",
+    );
+    stop();
+    edit.begin();
+    try {
+      edit("Add position hold", (d) => d.storyboard.shots.push(shot));
+    } finally {
+      edit.end();
+    }
+    setShotId(shot.id);
+    shotIdRef.current = shot.id;
+    message("Position hold added to storyboard.");
+  }
+  function openSource(index: number, play = false) {
+    if (!p.moves[index]) return;
+    switchMode("source");
+    setSelected(index);
+    setIntroSelected(false);
+    const seg = segments(p)[index];
+    seek(seg.start);
+    if (play) {
+      setAudition({ time: seg.start, playing: false, end: seg.end });
+      setPlaying(true);
+    }
+  }
+  const storyEdit = Object.assign(
+    (label: string, fn: (draft: Project) => void) => {
+      stop();
+      edit(label, fn);
+    },
+    { begin: edit.begin, end: edit.end },
+  );
+  const annotationEdit = Object.assign(
+    (label: string, fn: (draft: Project) => void) => {
+      stop();
+      edit(label, (d) => {
+        if (modeRef.current === "source") {
+          fn(d);
+          return;
+        }
+        const target = resolveStoryboardFrame(d, timeRef.current)?.shot.id;
+        const shot = d.storyboard.shots.find((s) => s.id === target);
+        if (!shot) return;
+        const view = {
+          ...d,
+          annotations: shot.annotations,
+          moves: [],
+          lead: 0,
+          tail: shot.duration,
+        };
+        fn(view);
+        shot.annotations = view.annotations;
+      });
+    },
+    { begin: edit.begin, end: edit.end },
+  );
+  const story = mode === "storyboard" ? compileStoryboard(p) : null;
+  const currentStory =
+    mode === "storyboard" ? resolveStoryboardFrame(p, time) : null;
+  const selectedShot =
+    p.storyboard.shots.find((s) => s.id === shotId) ?? p.storyboard.shots[0];
+  const currentAnnotations =
+    mode === "storyboard"
+      ? (currentStory?.shot.annotations ?? [])
+      : p.annotations;
+  const annotationTime =
+    mode === "storyboard" ? (currentStory?.localTime ?? 0) : time;
+  useEffect(() => {
+    if (
+      mode === "storyboard" &&
+      timeRef.current > presentationDuration(p, mode)
+    )
+      seek(presentationDuration(p, mode));
+    if (shotId && !p.storyboard.shots.some((s) => s.id === shotId))
+      setShotId(p.storyboard.shots[0]?.id ?? null);
+  }, [p.storyboard]);
   const props: PanelProps = {
     project: p,
     edit,
@@ -719,6 +953,7 @@ export function App() {
     promotion,
     setPromotion,
     analysisProgress,
+    addToStoryboard,
   };
   function selectIntro() {
     setIntroSelected(true);
@@ -750,7 +985,7 @@ export function App() {
     analysis: AnalysisPanel,
     files: FilesPanel,
   };
-  const end = duration(p),
+  const end = presentationDuration(p, mode),
     progressBusy =
       !!exportProgress &&
       !["Complete", "Failed", "Cancelled"].includes(exportProgress.phase);
@@ -860,9 +1095,38 @@ export function App() {
           </button>
         </div>
       )}
-      <WorkspaceBar workspace={workspace} />
+      <WorkspaceBar
+        workspace={workspace}
+        onPreset={(name) => {
+          if (name !== "Preview")
+            switchMode(name === "Storyboard" ? "storyboard" : "source", false);
+        }}
+      />
+      <div className="composition-modebar">
+        <div className="button-row" role="group" aria-label="Editing mode">
+          <button
+            aria-label="Full Game mode"
+            aria-pressed={mode === "source"}
+            onClick={() => switchMode("source")}
+          >
+            Full Game
+          </button>
+          <button
+            aria-label="Storyboard mode"
+            aria-pressed={mode === "storyboard"}
+            onClick={() => switchMode("storyboard")}
+          >
+            Storyboard · {p.storyboard.shots.length} shots
+          </button>
+        </div>
+        <small>
+          {mode === "storyboard"
+            ? "Output time · edited sequence"
+            : "Source time · full legal game"}
+        </small>
+      </div>
       <div
-        className={`workspace flexible ${layout.compact ? "compact-nav" : ""} ${layout.hideLeft ? "left-hidden" : ""} ${layout.hideRight ? "right-hidden" : ""} ${layout.hideTimeline ? "timeline-hidden" : ""}`}
+        className={`workspace flexible ${mode === "storyboard" ? "storyboard-workspace" : ""} ${layout.compact ? "compact-nav" : ""} ${layout.hideLeft ? "left-hidden" : ""} ${layout.hideRight ? "right-hidden" : ""} ${layout.hideTimeline ? "timeline-hidden" : ""}`}
         style={
           {
             "--left": `${layout.left}px`,
@@ -873,8 +1137,30 @@ export function App() {
         }
       >
         <aside className="library">
+          {mode === "storyboard" && (
+            <StorySourcePanel
+              p={p}
+              selected={selected}
+              checked={checked}
+              select={select}
+              setChecked={setChecked}
+              add={addToStoryboard}
+              openSource={openSource}
+              hold={addPosition}
+              audio={
+                <StoryMusic
+                  p={p}
+                  edit={storyEdit}
+                  time={time}
+                  importMusic={() => run(() => importAsset("audio", "music"))}
+                />
+              }
+            />
+          )}
+
           <nav
             className="library-tabs"
+            hidden={mode === "storyboard"}
             aria-label="Composition categories"
             onKeyDown={(e) => {
               const buttons = Array.from(
@@ -924,8 +1210,10 @@ export function App() {
               </button>
             ))}
           </nav>
-          <SettingsSearch navigate={setTab} selectIntro={selectIntro} />
-          <div className="library-content">
+          {mode !== "storyboard" && (
+            <SettingsSearch navigate={setTab} selectIntro={selectIntro} />
+          )}
+          <div className="library-content" hidden={mode === "storyboard"}>
             {Object.entries(panels).map(([category, Panel]) => (
               <div
                 key={category}
@@ -1068,9 +1356,23 @@ export function App() {
           </div>
           <div className="preview-area">
             <Preview
+              mode={mode}
+              thumbnailPort={thumbnailPort}
+              onAddMove={() => addToStoryboard()}
+              onAddPosition={addPosition}
+              onPrepareShotEdit={(id, localTime) => {
+                const entry = compileStoryboard(p).shots.find(
+                  (s) => s.shot.id === id,
+                );
+                if (entry) {
+                  shotIdRef.current = id;
+                  setShotId(id);
+                  seek(entry.start + localTime);
+                }
+              }}
               onReport={message}
               onPause={stop}
-              edit={edit}
+              edit={annotationEdit}
               seek={seek}
               onEditAnnotation={(id) => {
                 stop();
@@ -1088,9 +1390,9 @@ export function App() {
                   .map((a) => [a.id, assets[a.id]]),
               )}
               onCompositionPoint={(x, y) => {
-                const a = p.annotations.find((a) => a.id === annotationId);
+                const a = currentAnnotations.find((a) => a.id === annotationId);
                 if (a && (a.kind === "text" || a.kind === "caption"))
-                  edit("Position annotation", (p) => {
+                  annotationEdit("Position annotation", (p) => {
                     Object.assign(
                       p.annotations.find((a) => a.id === annotationId)!,
                       { x, y },
@@ -1114,12 +1416,17 @@ export function App() {
                 } else {
                   setDrawing(null);
                   annotationFrom.current = null;
-                  const a = annotation(kind, time);
+                  const localTime =
+                    modeRef.current === "storyboard"
+                      ? (resolveStoryboardFrame(p, timeRef.current)
+                          ?.localTime ?? 0)
+                      : timeRef.current;
+                  const a = annotation(kind, localTime);
                   a.from = sq;
                   a.to = sq;
                   a.x = x;
                   a.y = y;
-                  edit("Add board annotation", (p) => {
+                  annotationEdit("Add board annotation", (p) => {
                     p.annotations.push(a);
                   });
                   setAnnotationId(a.id);
@@ -1127,6 +1434,12 @@ export function App() {
               }}
               onSquare={(sq) => {
                 if (!drawing) {
+                  if (mode === "storyboard") {
+                    message(
+                      "Use shot annotations to mark the board. Source moves are edited in Full Game mode.",
+                    );
+                    return;
+                  }
                   square(sq);
                   return;
                 }
@@ -1135,15 +1448,15 @@ export function App() {
                   message("Click the arrow destination square.");
                   return;
                 }
-                const existing = p.annotations.find(
+                const existing = currentAnnotations.find(
                   (a) => a.id === annotationId && a.kind === drawing,
                 );
                 const a = existing
                   ? structuredClone(existing)
-                  : annotation(drawing, time);
+                  : annotation(drawing, annotationTime);
                 a.from = annotationFrom.current ?? sq;
                 a.to = sq;
-                edit("Draw annotation", (p) => {
+                annotationEdit("Draw annotation", (p) => {
                   if (existing)
                     Object.assign(p.annotations.find((v) => v.id === a.id)!, a);
                   else p.annotations.push(a);
@@ -1163,20 +1476,34 @@ export function App() {
               <span>{sizes[p.format].join(" × ")} · 60 FPS</span>
             </div>
           </div>
-          <Transport
-            p={p}
-            selected={selected}
-            time={time}
-            end={end}
-            playing={playing}
-            loadingAudio={loadingAudio}
-            select={select}
-            seek={seek}
-            toggle={() => {
-              if (time >= end) setTime(0);
-              setPlaying((v) => !v);
-            }}
-          />
+          {mode === "storyboard" ? (
+            <StoryTransport
+              p={p}
+              time={time}
+              playing={playing}
+              toggle={() => {
+                if (time >= end) seek(0);
+                setPlaying((v) => !v);
+              }}
+              seek={seek}
+              loading={loadingAudio}
+            />
+          ) : (
+            <Transport
+              p={p}
+              selected={selected}
+              time={time}
+              end={end}
+              playing={playing}
+              loadingAudio={loadingAudio}
+              select={select}
+              seek={seek}
+              toggle={() => {
+                if (time >= end) setTime(0);
+                setPlaying((v) => !v);
+              }}
+            />
+          )}
           <Splitter
             label="Timeline height"
             vertical
@@ -1185,50 +1512,77 @@ export function App() {
             max={520}
             onChange={(timeline) => workspace.patch({ timeline })}
           />
-          <Timeline
-            contextSelect={contextSelect}
-            clipboard={clipboard}
-            report={message}
-            preview={(index) => {
-              setSelected(index);
-              previewMove(index);
-            }}
-            navigate={(category, section, control) => {
-              setTab(category);
-              workspace.patch({ hideLeft: false });
-              setSettingsRequest({
-                category,
-                section,
-                control,
-                serial: Date.now(),
-              });
-            }}
-            inspect={(index, section, annotation) => {
-              workspace.patch({ hideRight: false });
-              if (section === "intro") {
-                selectIntro();
-              } else if (section === "annotations") {
-                if (annotation) setAnnotationId(annotation);
-                setAnnotationFocus((n) => n + 1);
-              } else {
-                contextSelect(index);
-                setInspectorRequest({ section, version: Date.now() });
+          {mode === "storyboard" ? (
+            <StoryTimeline
+              p={p}
+              edit={storyEdit}
+              selected={shotId}
+              select={(id) => {
+                setShotId(id);
+                shotIdRef.current = id;
+              }}
+              seek={seek}
+              openSource={openSource}
+              exportStory={() => setExportOpen(true)}
+              sourceIds={
+                checked.size
+                  ? p.moves.filter((m) => checked.has(m.id)).map((m) => m.id)
+                  : p.moves[selected]
+                    ? [p.moves[selected].id]
+                    : []
               }
-            }}
-            project={p}
-            time={time}
-            selected={selected}
-            checked={checked}
-            introSelected={introSelected}
-            selectIntro={() => {
-              setIntroSelected(true);
-              setChecked(new Set());
-              seek(0);
-            }}
-            select={select}
-            seek={seek}
-            edit={edit}
-          />
+              report={message}
+              time={time}
+              thumbnails={thumbnails}
+              playing={playing}
+            />
+          ) : (
+            <Timeline
+              addToStoryboard={addToStoryboard}
+              contextSelect={contextSelect}
+              clipboard={clipboard}
+              report={message}
+              preview={(index) => {
+                setSelected(index);
+                previewMove(index);
+              }}
+              navigate={(category, section, control) => {
+                setTab(category);
+                workspace.patch({ hideLeft: false });
+                setSettingsRequest({
+                  category,
+                  section,
+                  control,
+                  serial: Date.now(),
+                });
+              }}
+              inspect={(index, section, annotation) => {
+                workspace.patch({ hideRight: false });
+                if (section === "intro") {
+                  selectIntro();
+                } else if (section === "annotations") {
+                  if (annotation) setAnnotationId(annotation);
+                  setAnnotationFocus((n) => n + 1);
+                } else {
+                  contextSelect(index);
+                  setInspectorRequest({ section, version: Date.now() });
+                }
+              }}
+              project={p}
+              time={time}
+              selected={selected}
+              checked={checked}
+              introSelected={introSelected}
+              selectIntro={() => {
+                setIntroSelected(true);
+                setChecked(new Set());
+                seek(0);
+              }}
+              select={select}
+              seek={seek}
+              edit={edit}
+            />
+          )}
         </main>
         <Splitter
           label="Right inspector width"
@@ -1238,78 +1592,114 @@ export function App() {
           onChange={(right) => workspace.patch({ right })}
         />
         <div className="inspector-host">
-          <details className="annotation-drawer">
-            <summary>
-              Annotations · {p.annotations.length}
-              {drawing ? " · click preview squares" : ""}
-            </summary>
-            <AnnotationEditor
-              project={p}
-              edit={edit}
-              time={time}
-              selected={annotationId}
-              onSelect={setAnnotationId}
-              onDraw={(kind) => {
+          {mode === "storyboard" ? (
+            <ShotInspector
+              p={p}
+              id={selectedShot?.id ?? null}
+              edit={storyEdit}
+              sourceId={p.moves[selected]?.id ?? null}
+              openSource={openSource}
+              preview={(id) => {
+                const entry = compileStoryboard(p).shots.find(
+                  (s) => s.shot.id === id,
+                );
+                if (entry) {
+                  seek(entry.start);
+                  setAudition({
+                    time: entry.start,
+                    playing: false,
+                    end: entry.end,
+                  });
+                  setPlaying(true);
+                }
+              }}
+              annotationId={annotationId}
+              setAnnotationId={setAnnotationId}
+              draw={(kind) => {
+                const entry = compileStoryboard(p).shots.find(
+                  (s) => s.shot.id === shotId,
+                );
+                if (entry) seek(entry.start);
                 setDrawing(kind);
                 annotationFrom.current = null;
-                message(
-                  kind
-                    ? "Click preview squares to draw " + kind + "."
-                    : "Select text and Alt-click the preview to position it.",
-                );
               }}
             />
-          </details>
-          <div hidden={!introSelected} className="inspector-slot">
-            <IntroInspector project={p} edit={edit} />
-            <button
-              className="return-move"
-              data-return-move
-              onClick={() => setIntroSelected(false)}
-            >
-              Return to selected move
-            </button>
-          </div>
-          <div hidden={introSelected} className="inspector-slot">
-            <SettingsScope.Provider value="move-inspector">
-              <Inspector
-                requestedTab={inspectorRequest}
-                project={p}
-                checked={checked}
-                index={selected}
-                edit={edit}
-                onPreview={() => previewMove()}
-                seek={seek}
-                previewing={!!audition}
-                previewDisabled={loadingAudio > 0}
-                onGlobalEffects={() => setTab("effects")}
-                onCopy={() => {
-                  if (p.moves[selected])
-                    clipboard.current = {
-                      kind: "everything",
-                      source: structuredClone(p.moves[selected].effect),
-                      format: p.format,
-                    };
-                  message("Move effect copied.");
-                }}
-                onPaste={() => {
-                  if (clipboard.current)
-                    edit("Paste effect", (p) => {
-                      for (const m of p.moves.filter((m) =>
-                        checked.size
-                          ? checked.has(m.id)
-                          : m.id === p.moves[selected]?.id,
-                      ))
-                        m.effect = pasteSettings(
-                          m.effect,
-                          clipboard.current!,
-                          p.format,
-                        );
-                    });
-                }}
-              />
-            </SettingsScope.Provider>
-          </div>
+          ) : (
+            <>
+              <details className="annotation-drawer">
+                <summary>
+                  Annotations · {p.annotations.length}
+                  {drawing ? " · click preview squares" : ""}
+                </summary>
+                <AnnotationEditor
+                  project={p}
+                  edit={edit}
+                  time={time}
+                  selected={annotationId}
+                  onSelect={setAnnotationId}
+                  onDraw={(kind) => {
+                    setDrawing(kind);
+                    annotationFrom.current = null;
+                    message(
+                      kind
+                        ? "Click preview squares to draw " + kind + "."
+                        : "Select text and Alt-click the preview to position it.",
+                    );
+                  }}
+                />
+              </details>
+              <div hidden={!introSelected} className="inspector-slot">
+                <IntroInspector project={p} edit={edit} />
+                <button
+                  className="return-move"
+                  data-return-move
+                  onClick={() => setIntroSelected(false)}
+                >
+                  Return to selected move
+                </button>
+              </div>
+              <div hidden={introSelected} className="inspector-slot">
+                <SettingsScope.Provider value="move-inspector">
+                  <Inspector
+                    requestedTab={inspectorRequest}
+                    project={p}
+                    checked={checked}
+                    index={selected}
+                    edit={edit}
+                    onPreview={() => previewMove()}
+                    seek={seek}
+                    previewing={!!audition}
+                    previewDisabled={loadingAudio > 0}
+                    onGlobalEffects={() => setTab("effects")}
+                    onCopy={() => {
+                      if (p.moves[selected])
+                        clipboard.current = {
+                          kind: "everything",
+                          source: structuredClone(p.moves[selected].effect),
+                          format: p.format,
+                        };
+                      message("Move effect copied.");
+                    }}
+                    onPaste={() => {
+                      if (clipboard.current)
+                        edit("Paste effect", (p) => {
+                          for (const m of p.moves.filter((m) =>
+                            checked.size
+                              ? checked.has(m.id)
+                              : m.id === p.moves[selected]?.id,
+                          ))
+                            m.effect = pasteSettings(
+                              m.effect,
+                              clipboard.current!,
+                              p.format,
+                            );
+                        });
+                    }}
+                  />
+                </SettingsScope.Provider>
+              </div>
+            </>
+          )}
         </div>
       </div>
       <footer className={"status-bar " + (error ? "error" : "")}>
@@ -1333,6 +1723,7 @@ export function App() {
       {exportOpen && (
         <ExportDialog
           project={p}
+          mode={mode}
           index={selected}
           settings={settings}
           missing={missing.size}

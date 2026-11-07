@@ -28,6 +28,7 @@ export interface PanelProps {
   ) => Promise<void>;
   analyzeMusic: () => Promise<void>;
   onOpen: () => void;
+  addToStoryboard?: (ids?: string[]) => void;
   openRecent: (s: string) => void;
   recent: string[];
   path: string | null;

@@ -23,6 +23,7 @@ export type MoveCommandContext = {
   navigate: (category: string, section?: string, control?: string) => void;
   preview: (index: number) => void;
   report: (message: string) => void;
+  addToStoryboard?: (ids: string[]) => void;
   bulk?: (sourceId: string, kind: SettingsKind) => void;
 };
 export function moveCommands(c: MoveCommandContext): MenuAction[] {
@@ -115,6 +116,19 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       children: bulk,
     },
   ];
+  if (c.addToStoryboard && track === "move") {
+    actions.push({
+      id: "story.add",
+      label: `Add ${m.san} to storyboard`,
+      run: () => c.addToStoryboard!([m.id]),
+    });
+    if (selected.length > 1)
+      actions.push({
+        id: "story.add-selected",
+        label: `Add ${selected.length} selected moves to storyboard`,
+        run: () => c.addToStoryboard!(selected),
+      });
+  }
   if (c.bulk)
     actions.push({
       id: "bulk.panel",

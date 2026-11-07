@@ -1,3 +1,6 @@
+import { compileStoryboard, resolveStoryboardFrame } from "../core/storyboard";
+import type { PlaybackMode } from "../core/project";
+import type { ThumbnailPort } from "./storyboard/thumbnails";
 import {
   annotationCommands,
   type AnnotationStyle,
@@ -12,6 +15,11 @@ import { Scene, ContextLostError } from "../render/Scene";
 import { sizes, type Project } from "../core/project";
 export function Preview({
   project,
+  mode = "source",
+  thumbnailPort,
+  onAddMove,
+  onAddPosition,
+  onPrepareShotEdit,
   time,
   assets,
   onSquare,
@@ -27,6 +35,11 @@ export function Preview({
   seek,
 }: {
   project: Project;
+  mode?: PlaybackMode;
+  thumbnailPort?: ThumbnailPort;
+  onAddMove?: () => void;
+  onAddPosition?: () => void;
+  onPrepareShotEdit?: (id: string, localTime: number) => void;
   time: number;
   assets: Record<string, string>;
   onSquare: (square: string) => void;
@@ -51,6 +64,7 @@ export function Preview({
     y: number;
     square: string | null;
     annotation?: string | null;
+    storyTime?: number;
     px: number;
     py: number;
   } | null>(null);
@@ -92,13 +106,13 @@ export function Preview({
   const canvas = useRef<HTMLCanvasElement>(null),
     host = useRef<HTMLDivElement>(null),
     scene = useRef<Scene | null>(null),
-    latest = useRef({ project, time }),
+    latest = useRef({ project, time, mode, playing }),
     [ready, setReady] = useState(false),
     [assetFailed, setAssetFailed] = useState(false),
     [retry, setRetry] = useState(0),
     [generation, setGeneration] = useState(0),
     [graphicsFailed, setGraphicsFailed] = useState(false);
-  latest.current = { project, time };
+  latest.current = { project, time, mode, playing };
   const click = useRef(onSquare);
   click.current = onSquare;
   useEffect(() => {
@@ -129,7 +143,7 @@ export function Preview({
       });
     const draw = () => {
       if (alive && available && host.current) {
-        const { project, time } = latest.current,
+        const { project, time, mode } = latest.current,
           [w, h] = sizes[project.format],
           scale = Math.min(
             host.current.clientWidth / w,
@@ -147,6 +161,8 @@ export function Preview({
             time,
             Math.round(width * devicePixelRatio),
             Math.round(height * devicePixelRatio),
+            project.format,
+            mode,
           );
           renderError = "";
         } catch (error) {
@@ -170,6 +186,33 @@ export function Preview({
       s.dispose();
     };
   }, [generation]);
+  useEffect(() => {
+    if (!thumbnailPort || !ready) return;
+    thumbnailPort.current = (p, time, w, h) => {
+      const current = latest.current,
+        s = scene.current,
+        c = canvas.current;
+      if (!s || !c || current.playing) return null;
+      const width = c.width,
+        height = c.height;
+      try {
+        s.render(p, time, w, h, p.format, "storyboard");
+        return c.toDataURL("image/png");
+      } finally {
+        s.render(
+          current.project,
+          current.time,
+          width,
+          height,
+          current.project.format,
+          current.mode,
+        );
+      }
+    };
+    return () => {
+      thumbnailPort.current = null;
+    };
+  }, [ready, thumbnailPort, generation]);
   const requested = useRef(new Set<string>());
   useEffect(() => {
     if (!scene.current) return;
@@ -198,9 +241,9 @@ export function Preview({
       if (!scene.current || !ready || !canvas.current)
         throw Error("Preview is still preparing.");
       // Snapshot a single evaluated frame before asking the browser to save it.
-      const { project, time } = latest.current,
+      const { project, time, mode } = latest.current,
         [w, h] = sizes[project.format];
-      scene.current.render(project, time, w, h);
+      scene.current.render(project, time, w, h, project.format, mode);
       const link = document.createElement("a");
       link.download = `${project.title}-frame.png`;
       link.href = canvas.current.toDataURL("image/png");
@@ -219,7 +262,9 @@ export function Preview({
   const copyFen = async () => {
     try {
       const { project, time } = latest.current;
-      const fen = positionFen(project, time);
+      const resolved =
+        mode === "storyboard" ? resolveStoryboardFrame(project, time) : null;
+      const fen = positionFen(project, resolved?.sourceTime ?? time);
       await navigator.clipboard.writeText(fen);
       onReport?.("FEN copied");
     } catch {
@@ -249,6 +294,9 @@ export function Preview({
       separatorBefore: true,
     },
     {
+      disabled:
+        mode === "storyboard" &&
+        resolveStoryboardFrame(project, time)?.shot.kind === "title-card",
       id: "preview.fen",
       label: "Copy position FEN",
       run: () => {
@@ -261,26 +309,44 @@ export function Preview({
       run: full,
     },
   ];
+  const storyFrame =
+    mode === "storyboard"
+      ? resolveStoryboardFrame(project, menu?.storyTime ?? time)
+      : null;
+  const prepareAnnotation = () => {
+    onPause?.();
+    if (storyFrame)
+      onPrepareShotEdit?.(storyFrame.shot.id, storyFrame.localTime);
+  };
+  const annotationProject = storyFrame
+    ? {
+        ...project,
+        annotations: storyFrame.shot.annotations,
+        moves: [],
+        lead: 0,
+        tail: storyFrame.shot.duration,
+      }
+    : project;
   const boardActions: MenuAction[] =
     menu?.annotation && edit
       ? [
           ...annotationCommands(
-            project,
+            annotationProject,
             menu.annotation,
-            segments(project).findIndex((s) => s.end >= time),
-            time,
+            storyFrame ? -1 : segments(project).findIndex((s) => s.end >= time),
+            storyFrame?.localTime ?? time,
             Object.assign(
               (label: string, change: (p: Project) => void) => {
-                onPause?.();
+                prepareAnnotation();
                 edit(label, change);
               },
               { begin: edit.begin, end: edit.end },
             ),
             (_i, _s, id) => {
-              onPause?.();
+              prepareAnnotation();
               if (id) onEditAnnotation?.(id);
             },
-            (t) => seek?.(t),
+            (t) => seek?.((storyFrame?.start ?? 0) + t),
             annotationStyle,
           ),
           ...viewportActions,
@@ -290,20 +356,26 @@ export function Preview({
             {
               id: "board.arrow",
               label: `Draw arrow from ${menu.square}…`,
-              run: () =>
-                onContextAnnotation?.(menu.square!, "arrow", menu.px, menu.py),
+              run: () => {
+                prepareAnnotation();
+                onContextAnnotation?.(menu.square!, "arrow", menu.px, menu.py);
+              },
             },
             {
               id: "board.circle",
               label: "Highlight square / add circle",
-              run: () =>
-                onContextAnnotation?.(menu.square!, "circle", menu.px, menu.py),
+              run: () => {
+                prepareAnnotation();
+                onContextAnnotation?.(menu.square!, "circle", menu.px, menu.py);
+              },
             },
             {
               id: "board.text",
               label: "Add text callout…",
-              run: () =>
-                onContextAnnotation?.(menu.square!, "text", menu.px, menu.py),
+              run: () => {
+                prepareAnnotation();
+                onContextAnnotation?.(menu.square!, "text", menu.px, menu.py);
+              },
             },
             {
               id: "board.fen",
@@ -323,6 +395,21 @@ export function Preview({
             },
           ]
         : viewportActions;
+  if (mode === "source") {
+    if (onAddMove)
+      boardActions.push({
+        id: "story.add-move",
+        label: "Add selected move to storyboard",
+        run: onAddMove,
+        separatorBefore: true,
+      });
+    if (onAddPosition)
+      boardActions.push({
+        id: "story.add-position",
+        label: "Add current position to storyboard",
+        run: onAddPosition,
+      });
+  }
   return (
     <div className="preview-shell" ref={shell}>
       {menu && (
@@ -371,6 +458,7 @@ export function Preview({
           const square = scene.current?.pick(cx, cy) ?? null,
             annotation = scene.current?.pickAnnotation(cx, cy);
           setMenu({
+            storyTime: mode === "storyboard" ? time : undefined,
             x: cx,
             y: cy,
             square,

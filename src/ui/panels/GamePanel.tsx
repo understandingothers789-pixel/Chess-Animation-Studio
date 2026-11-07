@@ -37,6 +37,15 @@ export function GamePanel(q: PanelProps) {
   return (
     <>
       <Section title="Game & variations">
+        {q.addToStoryboard && (
+          <button
+            className="wide"
+            disabled={!p.moves.length}
+            onClick={() => q.addToStoryboard?.()}
+          >
+            Add selected moves to storyboard
+          </button>
+        )}
         <Select
           label="Variation"
           value={String(p.line)}

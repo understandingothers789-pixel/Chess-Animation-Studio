@@ -27,6 +27,7 @@ type Context = {
   navigate: (category: string, section?: string, control?: string) => void;
   preview: (index: number) => void;
   report: (message: string) => void;
+  addToStoryboard?: (ids: string[]) => void;
   bulk?: (sourceId: string, kind: SettingsKind) => void;
   seek: (time: number) => void;
   viewportWidth: number;
@@ -50,6 +51,7 @@ export function timelineCommands({
   preview,
   report,
   bulk,
+  addToStoryboard,
   seek,
   viewportWidth,
   setZoom,
@@ -123,6 +125,7 @@ export function timelineCommands({
           preview,
           report,
           bulk,
+          addToStoryboard,
         }),
       );
     } else if (menu.track === "annotation") {

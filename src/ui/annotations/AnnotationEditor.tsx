@@ -12,7 +12,9 @@ export function AnnotationEditor({
   selected,
   onSelect,
   onDraw,
+  allowBoard = true,
 }: {
+  allowBoard?: boolean;
   project: Project;
   edit: Edit;
   time: number;
@@ -34,26 +36,30 @@ export function AnnotationEditor({
         preview to position selected text.
       </p>
       <div className="button-row">
-        {(["arrow", "circle", "text", "caption"] as const).map((kind) => (
-          <button
-            key={kind}
-            onClick={() => {
-              if (kind === "arrow" || kind === "circle") {
-                onSelect("");
-                onDraw(kind);
-              } else {
-                const a = annotation(kind, time);
-                edit("Add annotation", (p) => {
-                  p.annotations.push(a);
-                });
-                onSelect(a.id);
-                onDraw(null);
-              }
-            }}
-          >
-            + {kind}
-          </button>
-        ))}
+        {(["arrow", "circle", "text", "caption"] as const)
+          .filter(
+            (kind) => allowBoard || (kind !== "arrow" && kind !== "circle"),
+          )
+          .map((kind) => (
+            <button
+              key={kind}
+              onClick={() => {
+                if (kind === "arrow" || kind === "circle") {
+                  onSelect("");
+                  onDraw(kind);
+                } else {
+                  const a = annotation(kind, time);
+                  edit("Add annotation", (p) => {
+                    p.annotations.push(a);
+                  });
+                  onSelect(a.id);
+                  onDraw(null);
+                }
+              }}
+            >
+              + {kind}
+            </button>
+          ))}
       </div>
       <select
         aria-label="Selected annotation"

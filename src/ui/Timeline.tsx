@@ -31,8 +31,10 @@ export function Timeline({
   preview,
   report,
   inspect,
+  addToStoryboard,
 }: {
   project: Project;
+  addToStoryboard?: (ids: string[]) => void;
   time: number;
   selected: number;
   checked: Set<string>;
@@ -232,6 +234,7 @@ export function Timeline({
         navigate,
         preview,
         report,
+        addToStoryboard,
         bulk: (sourceId, kind) => setBulk({ sourceId, kind }),
         seek,
         viewportWidth: host.current?.clientWidth ?? 760,

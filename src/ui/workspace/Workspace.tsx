@@ -31,6 +31,14 @@ const modes: Record<string, Partial<Layout>> = {
     right: 430,
     timeline: 190,
   },
+  Storyboard: {
+    hideLeft: false,
+    hideRight: false,
+    hideTimeline: false,
+    left: 300,
+    right: 340,
+    timeline: 280,
+  },
   Timeline: {
     hideLeft: true,
     hideRight: false,
@@ -153,8 +161,10 @@ export function Splitter({
 }
 export function WorkspaceBar({
   workspace,
+  onPreset,
 }: {
   workspace: ReturnType<typeof useWorkspace>;
+  onPreset?: (name: string) => void;
 }) {
   const { layout: l, patch, preset } = workspace;
   return (
@@ -169,7 +179,10 @@ export function WorkspaceBar({
           title="Switch between balanced editing, a large preview, detailed effects and an expanded timeline."
           aria-description="Switch between balanced editing, a large preview, detailed effects and an expanded timeline."
           value={l.mode}
-          onChange={(e) => preset(e.target.value)}
+          onChange={(e) => {
+            preset(e.target.value);
+            onPreset?.(e.target.value);
+          }}
         >
           {Object.keys(modes).map((m) => (
             <option key={m}>{m}</option>

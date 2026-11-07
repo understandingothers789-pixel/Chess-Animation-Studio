@@ -1,3 +1,7 @@
+import {
+  storyboardDuckEnvelope,
+  storyboardDuckGain,
+} from "../core/audio/ducking";
 import { audioEvents } from "../core/audioEvents";
 import { presentationDuration } from "../core/storyboard";
 import { musicAt, musicVolumeAt, musicEnd } from "../core/audio";
@@ -43,12 +47,16 @@ export class AudioPlayer {
       source.buffer = b;
       const master = this.context.createGain(),
         fadeOutGain = this.context.createGain();
+      const duck = this.context.createGain();
       this.musicGain = master;
-      master.gain.value = m.muted ? 0 : m.volume;
+      master.gain.value = m.muted
+        ? 0
+        : musicVolumeAt(p, Math.max(time, m.offset));
       source
         .connect(gain)
         .connect(fadeOutGain)
         .connect(master)
+        .connect(duck)
         .connect(this.context.destination);
       const offset = musicAt(p, time),
         start = origin + Math.max(0, -(time - m.offset)),
@@ -56,6 +64,25 @@ export class AudioPlayer {
         sourceStart = Math.max(m.trimStart, offset),
         length = Math.min(trimEnd, b.duration) - sourceStart;
       if (length > 0) {
+        const outputStart = Math.max(time, m.offset);
+        duck.gain.setValueAtTime(
+          mode === "storyboard" ? storyboardDuckGain(p, outputStart) : 1,
+          start,
+        );
+        if (mode === "storyboard")
+          for (const point of storyboardDuckEnvelope(p))
+            if (point.time > outputStart && point.time <= outputEnd)
+              duck.gain.linearRampToValueAtTime(
+                point.value,
+                start + point.time - outputStart,
+              );
+        // If output ends in a ramp, schedule its interpolated endpoint too.
+        if (mode === "storyboard")
+          duck.gain.linearRampToValueAtTime(
+            storyboardDuckGain(p, outputEnd),
+            start + outputEnd - outputStart,
+          );
+
         const elapsed = Math.max(0, time - m.offset);
         gain.gain.setValueAtTime(
           m.fadeIn ? Math.min(1, elapsed / m.fadeIn) : 1,

@@ -311,7 +311,13 @@ export class VideoJob {
         p.music.volume,
         0,
         0,
-        soundtrackGainExpression(p, this.options.start, end, trim),
+        soundtrackGainExpression(
+          p,
+          this.options.start,
+          end,
+          trim,
+          this.options.mode,
+        ),
       );
     }
     const moveSound = path.join(this.temp, "move.wav"),

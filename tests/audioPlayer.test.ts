@@ -147,6 +147,12 @@ it("keeps one continuous storyboard music source and resumes the output-capped f
   p.music.fadeIn = 0;
   p.music.fadeOut = 1;
   p.storyboard.shots = [titleShot(p, "A", 2), titleShot(p, "B", 2)];
+  p.storyboard.shots[1].musicDucking = {
+    enabled: true,
+    volume: 0.3,
+    fadeDown: 0.1,
+    fadeUp: 0.2,
+  };
   const player = new AudioPlayer();
   player.buffers.set("music", { duration: 90 } as AudioBuffer);
   await player.play(p, 3.8, "storyboard");
@@ -154,6 +160,7 @@ it("keeps one continuous storyboard music source and resumes the output-capped f
   expect(starts[0][1]).toBe(3.8);
   expect(starts[0][2]).toBeCloseTo(0.2);
   expect(gains[2].setValueAtTime.mock.calls[0][0]).toBeCloseTo(0.2);
+  expect(gains[3].setValueAtTime.mock.calls[0][0]).toBeCloseTo(0.3);
   player.updateMusic(p, 3.9);
   player.clear("old-unrelated-track");
   expect(stop).not.toHaveBeenCalled();

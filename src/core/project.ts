@@ -491,6 +491,13 @@ export const cinematicSchema = z
   })
   .default({ ...cinematicPresets.Cinematic, enabled: false });
 export type CinematicSettings = z.infer<typeof cinematicSchema>;
+export const musicDuckingSchema = z.object({
+  enabled: z.boolean().default(false),
+  volume: n(0, 1).default(0.3),
+  fadeDown: n(0.01, 5).default(0.25),
+  fadeUp: n(0.01, 5).default(0.4),
+});
+export const musicDucking = () => musicDuckingSchema.parse({});
 export const storyboardShotSchema = z
   .object({
     id: z.string().min(1).max(100),
@@ -511,6 +518,7 @@ export const storyboardShotSchema = z
     preset: z.enum(["inherit", ...presets]),
     camera: cameraSchema.nullable(),
     inheritAnnotations: z.boolean(),
+    musicDucking: musicDuckingSchema.prefault({}),
     annotations: z.array(annotationSchema).max(50),
   })
   .superRefine((shot, ctx) => {

@@ -123,6 +123,64 @@ export function ShotInspector({
       <button className="primary wide" onClick={() => preview(s.id)}>
         Preview selected shot
       </button>
+      <Section title="Music ducking">
+        <Toggle
+          label="Lower music during this shot"
+          checked={s.musicDucking.enabled}
+          onChange={(enabled) =>
+            change("Shot music ducking", (s) => {
+              s.musicDucking.enabled = enabled;
+            })
+          }
+        />
+        {s.musicDucking.enabled && (
+          <>
+            <Range
+              label="Ducked music level"
+              value={s.musicDucking.volume * 100}
+              min={0}
+              max={100}
+              step={1}
+              unit="%"
+              onChange={(v) =>
+                change("Shot duck level", (s) => {
+                  s.musicDucking.volume = v / 100;
+                })
+              }
+            />
+            <Range
+              label="Music fade down"
+              value={s.musicDucking.fadeDown}
+              min={0.01}
+              max={5}
+              step={0.01}
+              unit="s"
+              onChange={(fadeDown) =>
+                change("Shot duck fade down", (s) => {
+                  s.musicDucking.fadeDown = fadeDown;
+                })
+              }
+            />
+            <Range
+              label="Music fade up"
+              value={s.musicDucking.fadeUp}
+              min={0.01}
+              max={5}
+              step={0.01}
+              unit="s"
+              onChange={(fadeUp) =>
+                change("Shot duck fade up", (s) => {
+                  s.musicDucking.fadeUp = fadeUp;
+                })
+              }
+            />
+            <p className="hint">
+              Music only. Adjacent shots transition directly between levels;
+              release continues into the following shot.
+            </p>
+          </>
+        )}
+      </Section>
       <Section title="Shot timing">
         <Range
           label="Shot duration"

@@ -8,6 +8,7 @@ import {
 } from "./timeline";
 import {
   effect,
+  musicDucking,
   camera,
   uid,
   type Project,
@@ -364,6 +365,7 @@ export function shotFromMove(
     preset: "inherit",
     camera: null,
     inheritAnnotations: false,
+    musicDucking: musicDucking(),
     annotations: [],
   };
 }
@@ -401,6 +403,7 @@ export function titleShot(
     preset: "inherit",
     camera: { ...camera(), mode: "full" },
     inheritAnnotations: false,
+    musicDucking: musicDucking(),
     annotations: [
       {
         ...shotCaption(p, title, duration),

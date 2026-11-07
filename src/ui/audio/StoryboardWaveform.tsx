@@ -234,7 +234,7 @@ export function StoryboardWaveform({
     () =>
       Array.from({ length: Math.ceil(width / 4) }, (_, i) => {
         const t = (scroll + i * 4) / px;
-        return `${i ? "L" : "M"}${scroll + i * 4},${126 - soundtrackGain(p, t, c.duration) * 30}`;
+        return `${i ? "L" : "M"}${scroll + i * 4},${126 - soundtrackGain(p, t, c.duration, "storyboard") * 30}`;
       }).join(" "),
     [p, scroll, width, px, c.duration],
   );

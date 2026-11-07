@@ -1,3 +1,5 @@
+import { storyboardDuckGain, storyboardDuckExpression } from "./ducking";
+import type { PlaybackMode } from "../project";
 import type { Project } from "../project";
 import { automationPoints, musicAt, musicEnd, musicVolumeAt } from "../audio";
 export function soundtrackWindow(p: Project, outputEnd: number) {
@@ -14,7 +16,12 @@ export function soundtrackWindow(p: Project, outputEnd: number) {
     ),
   };
 }
-export function soundtrackGain(p: Project, time: number, outputEnd: number) {
+export function soundtrackGain(
+  p: Project,
+  time: number,
+  outputEnd: number,
+  mode: PlaybackMode = "source",
+) {
   const source = musicAt(p, time),
     end = musicEnd(p, p.music.sourceDuration, outputEnd),
     elapsed = time - p.music.offset;
@@ -26,6 +33,7 @@ export function soundtrackGain(p: Project, time: number, outputEnd: number) {
   )
     return 0;
   return (
+    (mode === "storyboard" ? storyboardDuckGain(p, time) : 1) *
     musicVolumeAt(p, time) *
     Math.min(1, p.music.fadeIn ? elapsed / p.music.fadeIn : 1) *
     Math.min(1, p.music.fadeOut ? (end - source) / p.music.fadeOut : 1)
@@ -84,6 +92,7 @@ export function soundtrackGainExpression(
   start: number,
   end: number,
   trim: number,
+  mode: PlaybackMode = "source",
 ) {
   const points = automationPoints(p);
   const origin = Math.max(start, p.music.offset);
@@ -104,7 +113,9 @@ export function soundtrackGainExpression(
   const fadeOut = p.music.fadeOut
     ? `min(1,max(0,(${end - trim}-t)/${p.music.fadeOut}))`
     : "1";
-  return `(${expr})*(${fadeIn})*(${fadeOut})`;
+  const duck =
+    mode === "storyboard" ? storyboardDuckExpression(p, `t+${origin}`) : "1";
+  return `(${expr})*(${fadeIn})*(${fadeOut})*(${duck})`;
 }
 export function normalizeMusicRange(m: Project["music"]) {
   if (m.sourceDuration <= 0) return;

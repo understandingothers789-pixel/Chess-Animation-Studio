@@ -1,0 +1,8 @@
+{
+  "shots": 200,
+  "sourceMoves": 33,
+  "coldCompileMs": 34.951815999999894,
+  "resolve10000Ms": 8.718592000000058,
+  "editCompileMs": 0.6783570000000054,
+  "note": "Node CPU benchmark; no GPU FPS claim. Thumbnail cache bounded to 48 images; source-context cache bounded to four entries."
+}

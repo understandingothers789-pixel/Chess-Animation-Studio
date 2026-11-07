@@ -1,0 +1,8 @@
+PASS: landscape, inherited game framing matches source projection matrix and camera position
+PASS: vertical, inherited game framing matches source projection matrix and camera position
+PASS: square, inherited game framing matches source projection matrix and camera position
+PASS: square-in-vertical, inherited game framing matches source projection matrix and camera position
+PASS: landscape, manual hold camera with Shorts enabled matches source projection matrix and camera position
+PASS: vertical, manual hold camera with Shorts enabled matches source projection matrix and camera position
+PASS: square, manual hold camera with Shorts enabled matches source projection matrix and camera position
+PASS: square-in-vertical, manual hold camera with Shorts enabled matches source projection matrix and camera position

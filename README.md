@@ -1,10 +1,14 @@
-# Chess Animation Studio · 0.2.29
+# Chess Animation Studio · 0.2.30
 
-A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. This is a fresh implementation on the `fresh-start` branch; the earlier implementation and downloads are preserved.
+A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
 
-![Version 0.2.11 editor with guided project workflow and selected-move controls](docs/images/editor-011.png)
+![Chess Animation Studio 0.2.30 Storyboard workspace](docs/storyboard-030/02-populated.png)
 
 The editor usability refinements are documented in [the UI report](docs/ui-refinement/REPORT.md).
+
+Choose **Storyboard** to assemble selected source moves into an edited sequence. Add moments from the source list, Game panel, or timeline context menu. Reorder shot cards by dragging or **Alt+←/→**, adjust timing, add legal position holds and title cards, and edit captions and camera settings in the shot inspector. **Fit storyboard timeline** shows the entire sequence. Five templates preview editable narrative structures before applying. **Full Game** keeps the original legal game in source order.
+
+**Soundtrack & output beats** controls continuous music against storyboard output time. Source move, capture, and knight cues follow the selected shots. Choose **Storyboard** in Export video to render the edited sequence. See the [0.2.30 engineering report](docs/storyboard-030/REPORT.md) for the time model, screenshots, checks, and limitations.
 
 The [0.2.29 hover flyout and contextual editing report](docs/context-menu-029/REPORT.md) includes reviewed screenshots, validation results, and editing details. The [0.2.28 report](docs/context-menu-028/REPORT.md) documents the earlier contextual editing release.
 
@@ -13,6 +17,8 @@ Right-click a timeline clip, or click the **⋯** on its track header, to open i
 Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download 0.2.30 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42336830877/artifacts/13560720389).** Adds a real storyboard for nonconsecutive moves, legal position holds, title cards, editable templates, captions, and chess-aware highlight discovery. Includes continuous output-time music, mapped chess sounds, and 24/30/60 FPS MP4 export. The visual gate, storyboard frame/audio checks, Windows build, packaged app, save/open, preview, export, and cancellation checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.29 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42158103364/artifacts/13476046551).** Adds hover-driven side flyouts with pointer-safe transitions and keyboard navigation, exact inspector targeting, a source-and-target bulk panel, and separate square, annotation, and background preview menus. Keeps playback running for viewing commands and corrects last-landed FEN copying. The visual gate, timeline interaction tests, Windows build, packaged app, save/open, and export checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

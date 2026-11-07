@@ -1,0 +1,27 @@
+{
+  "run": "42336830877",
+  "status": "Success",
+  "sourcePresent": true,
+  "artifacts": [
+    {
+      "id": "13560720389",
+      "text": "Chess-Animation-Studio-0.2.30-Windows-Portable 168 MB sha256:8fbafd291fcb2ca9038ed1cfcaa4dcda69e8a231a01cff2e99034a18c6b40872",
+      "url": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42336830877/artifacts/13560720389"
+    },
+    {
+      "id": "13559484006",
+      "text": "Chromium-visual-evidence 26.2 MB sha256:586af9ee94a0f78eec195fdf311543bbbb72384ece054ef4495837a925e6d912",
+      "url": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42336830877/artifacts/13559484006"
+    },
+    {
+      "id": "13560152899",
+      "text": "Windows-validation-0.2.30-81 1.79 MB sha256:0bbefd98e470bb7e0b22a40a524849f2adffc175da321805ac84d157c504acd1",
+      "url": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42336830877/artifacts/13560152899"
+    }
+  ],
+  "jobs": [
+    "128295525218",
+    "128297679991"
+  ],
+  "sourceCommit": "996d8c0ae0cc4f949396702e94e1f1a24e43d214"
+}

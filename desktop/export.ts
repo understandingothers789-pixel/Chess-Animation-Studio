@@ -1,3 +1,12 @@
+import { audioEvents } from "../src/core/audioEvents";
+import {
+  presentationDuration,
+  validateStoryboardExport,
+} from "../src/core/storyboard";
+import {
+  validateExport,
+  MAX_EXPORT_DIMENSION,
+} from "../src/core/exportOptions";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -68,19 +77,22 @@ export class VideoJob {
   }
   async start() {
     this.check();
+    if (this.options.mode === "storyboard")
+      validateStoryboardExport(this.project);
     if (!this.ffmpeg)
       throw Error("Choose FFmpeg in Settings before exporting.");
     if (
       this.options.end <= this.options.start ||
       this.options.start < 0 ||
-      this.options.end > duration(this.project) + 0.01
+      this.options.end >
+        presentationDuration(this.project, this.options.mode) + 0.01
     )
       throw Error("Invalid export range.");
     if (
       this.width % 2 ||
       this.height % 2 ||
-      this.width > 3840 ||
-      this.height > 3840
+      this.width > MAX_EXPORT_DIMENSION ||
+      this.height > MAX_EXPORT_DIMENSION
     )
       throw Error("H.264 requires even supported dimensions.");
     for (const a of this.project.assets) await validAsset(a);
@@ -275,7 +287,10 @@ export class VideoJob {
       const trim =
           p.music.trimStart + Math.max(0, this.options.start - p.music.offset),
         end =
-          p.music.trimEnd || p.music.trimStart + duration(p) - p.music.offset;
+          p.music.trimEnd ||
+          p.music.trimStart +
+            presentationDuration(p, this.options.mode) -
+            p.music.offset;
       add(
         music.path,
         trim,
@@ -307,55 +322,24 @@ export class VideoJob {
       captureSound = path.join(this.temp, "capture.wav");
     await fs.writeFile(moveSound, sound());
     await fs.writeFile(captureSound, sound(true));
-    const seq = segments(p),
-      game = buildGame(p);
-    const cues = p.cues.map((c) => {
-      const i = c.move ? p.moves.findIndex((m) => m.id === c.move) : -1;
-      return { ...c, absolute: (i >= 0 ? seq[i].land : 0) + c.time };
-    });
-    if (p.audio.automatic)
-      for (let i = 0; i < seq.length; i++)
-        cues.push({
-          id: "auto" + i,
-          asset: null,
-          move: null,
-          time: 0,
-          volume: 0.7,
-          kind: game.steps[i].capturedId ? "capture" : "move",
-          bus: "chess",
-          absolute: seq[i].land,
-        });
-    if (p.audio.knightHorse)
-      for (let i = 0; i < seq.length; i++)
-        if (
-          game.steps[i].before.find(
-            (piece) => piece.id === game.steps[i].pieceId,
-          )?.type === "n"
-        )
-          cues.push({
-            id: "horse" + i,
-            asset: "__knightHorse",
-            move: null,
-            time: 0,
-            volume: p.audio.knightVolume,
-            kind: "custom",
-            bus: "chess",
-            absolute: seq[i].land + p.audio.knightOffset,
-          });
+    const cues = audioEvents(p, this.options.mode);
     for (const c of cues) {
-      if (
-        c.absolute < this.options.start - 0.3 ||
-        c.absolute >= this.options.end
-      )
-        continue;
+      if (c.at >= this.options.end || c.end <= this.options.start) continue;
+      const trimStart = c.offset + Math.max(0, this.options.start - c.at);
+      const trimEnd = Math.min(
+        c.duration ?? Infinity,
+        c.offset + c.end - c.at,
+        c.offset + this.options.end - c.at,
+      );
+      if (trimEnd <= trimStart) continue;
       const asset = c.asset ? map.get(c.asset) : null;
       add(
         c.asset === "__knightHorse"
           ? path.resolve(__dirname, "../dist/sounds/horse.oga")
           : (asset?.path ?? (c.kind === "capture" ? captureSound : moveSound)),
-        Math.max(0, this.options.start - c.absolute),
-        c.asset === "__knightHorse" ? p.audio.knightDuration : 0,
-        c.absolute - this.options.start,
+        trimStart,
+        trimEnd,
+        c.at - this.options.start,
         c.volume * p.audio[c.bus],
         0,
         0,

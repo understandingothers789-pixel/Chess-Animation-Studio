@@ -1,10 +1,18 @@
+import { compileStoryboard } from "../../core/storyboard";
+import { MAX_EXPORT_DIMENSION } from "../../core/exportOptions";
 import { useState } from "react";
-import { sizes, type Project, type Format } from "../../core/project";
+import {
+  sizes,
+  type Project,
+  type Format,
+  type PlaybackMode,
+} from "../../core/project";
 import { duration, segments } from "../../core/timeline";
 import type { Settings, ExportProgress, ExportOptions } from "../../bridge";
 export function ExportDialog({
   project: p,
   index,
+  mode = "source",
   settings,
   missing,
   progress,
@@ -14,6 +22,7 @@ export function ExportDialog({
 }: {
   project: Project;
   index: number;
+  mode?: PlaybackMode;
   settings: Settings;
   missing: number;
   progress: ExportProgress | null;
@@ -21,19 +30,38 @@ export function ExportDialog({
   render: (o: ExportOptions) => void;
   cancel: () => void;
 }) {
-  const end = duration(p),
+  const sourceEnd = duration(p),
+    story = compileStoryboard(p),
     [format, setFormat] = useState<Format>(p.format),
     [fps, setFps] = useState(60),
-    [range, setRange] = useState("all"),
+    [range, setRange] = useState(mode === "storyboard" ? "storyboard" : "all"),
     [start, setStart] = useState(0),
-    [finish, setFinish] = useState(end),
+    [finish, setFinish] = useState(sourceEnd),
     [resolution, setResolution] = useState(1);
+  const end = range === "storyboard" ? story.duration : sourceEnd;
   const segment = segments(p)[index],
     from =
-      range === "all" ? 0 : range === "move" ? (segment?.start ?? 0) : start,
+      range === "storyboard" || range === "all"
+        ? 0
+        : range === "move"
+          ? (segment?.start ?? 0)
+          : start,
     to =
-      range === "all" ? end : range === "move" ? (segment?.end ?? end) : finish;
+      range === "storyboard" || range === "all"
+        ? end
+        : range === "move"
+          ? (segment?.end ?? end)
+          : finish;
   const [customWidth, setCustomWidth] = useState(1280);
+  const maxWidth =
+    Math.floor(
+      Math.min(
+        MAX_EXPORT_DIMENSION,
+        (MAX_EXPORT_DIMENSION * sizes[format][0]) / sizes[format][1],
+      ) / 2,
+    ) * 2;
+  const minWidth =
+    Math.ceil(Math.max(64, (64 * sizes[format][0]) / sizes[format][1]) / 2) * 2;
   const [w, h] = sizes[format].map(
     (n) =>
       Math.round(
@@ -84,12 +112,14 @@ export function ExportDialog({
             <input
               aria-label="Custom export width"
               type="number"
-              min={128}
-              max={4096}
+              min={minWidth}
+              max={maxWidth}
               step={2}
               value={customWidth}
               onChange={(e) =>
-                setCustomWidth(Math.max(128, Math.min(4096, +e.target.value)))
+                setCustomWidth(
+                  Math.max(minWidth, Math.min(maxWidth, +e.target.value)),
+                )
               }
             />
           </label>
@@ -119,7 +149,10 @@ export function ExportDialog({
             <option value="move" disabled={!segment}>
               Selected move
             </option>
-            <option value="custom">Custom range</option>
+            <option value="custom">Custom source range</option>
+            <option value="storyboard" disabled={!story.shots.length}>
+              Storyboard · {story.shots.length} shots
+            </option>
           </select>
         </label>
         {range === "custom" && (
@@ -149,6 +182,18 @@ export function ExportDialog({
               />
             </label>
           </div>
+        )}
+        {range === "storyboard" && (
+          <p className="story-export-summary">
+            Storyboard · {story.shots.length} shots ·{" "}
+            {Math.ceil(Math.max(0, to - from) * fps)} frames
+          </p>
+        )}
+        {range === "storyboard" && story.issues.length > 0 && (
+          <p className="danger">
+            Repair {story.issues.length} storyboard shots before exporting:{" "}
+            {story.issues[0].message}
+          </p>
         )}
         <p>
           {w} × {h} · {fps} FPS · {Math.max(0, to - from).toFixed(2)}s · MP4 /
@@ -185,8 +230,11 @@ export function ExportDialog({
               <button
                 className="primary"
                 disabled={
-                  w > 4096 ||
-                  h > 4096 ||
+                  w > MAX_EXPORT_DIMENSION ||
+                  h > MAX_EXPORT_DIMENSION ||
+                  w < 64 ||
+                  h < 64 ||
+                  (range === "storyboard" && story.issues.length > 0) ||
                   !settings.ffmpeg ||
                   missing > 0 ||
                   from < 0 ||
@@ -195,6 +243,7 @@ export function ExportDialog({
                 }
                 onClick={() =>
                   render({
+                    mode: range === "storyboard" ? "storyboard" : "source",
                     format,
                     start: from,
                     end: to,

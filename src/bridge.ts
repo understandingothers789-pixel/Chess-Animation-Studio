@@ -1,4 +1,4 @@
-import type { Project, Asset, Format } from "./core/project";
+import type { Project, Asset, Format, PlaybackMode } from "./core/project";
 export interface Settings {
   ffmpeg: string;
   stockfish: string;
@@ -6,6 +6,7 @@ export interface Settings {
   tokenPresent: boolean;
 }
 export interface ExportOptions {
+  mode?: PlaybackMode;
   format: Format;
   start: number;
   end: number;
@@ -69,6 +70,7 @@ export interface Studio {
     project: Project;
     time: number;
     playing: boolean;
+    mode?: PlaybackMode;
     assets: Record<string, string>;
   }): void;
   onPresentation(
@@ -76,6 +78,7 @@ export interface Studio {
       project: Project;
       time: number;
       playing: boolean;
+      mode?: PlaybackMode;
       assets: Record<string, string>;
       at: number;
     }) => void,

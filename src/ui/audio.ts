@@ -1,7 +1,9 @@
+import { audioEvents } from "../core/audioEvents";
+import { presentationDuration } from "../core/storyboard";
 import { musicAt, gainAt, musicVolumeAt } from "../core/audio";
 import { segments } from "../core/timeline";
 import { buildGame } from "../core/chess";
-import type { Project } from "../core/project";
+import type { Project, PlaybackMode } from "../core/project";
 export class AudioPlayer {
   context = new AudioContext();
   buffers = new Map<string, AudioBuffer>();
@@ -21,7 +23,8 @@ export class AudioPlayer {
     // the selected music is playing.
     this.buffers.delete(id);
   }
-  async play(p: Project, time: number) {
+  async play(p: Project, time: number, mode: PlaybackMode = "source") {
+    const outputEnd = presentationDuration(p, mode);
     this.stop();
     await this.context.resume();
     if (p.audio.knightHorse && !this.buffers.has("__knightHorse")) {
@@ -44,7 +47,10 @@ export class AudioPlayer {
       source.connect(gain).connect(master).connect(this.context.destination);
       const offset = musicAt(p, time),
         start = origin + Math.max(0, -(time - m.offset)),
-        trimEnd = m.trimEnd || b.duration,
+        trimEnd = Math.min(
+          m.trimEnd || b.duration,
+          m.trimStart + outputEnd - m.offset,
+        ),
         sourceStart = Math.max(m.trimStart, offset),
         length = Math.min(trimEnd, b.duration) - sourceStart;
       if (length > 0) {
@@ -82,44 +88,15 @@ export class AudioPlayer {
         this.sources.push(source);
       }
     }
-    const seq = segments(p),
-      game = buildGame(p),
-      events = p.cues.map((c) => {
-        const i = c.move ? p.moves.findIndex((m) => m.id === c.move) : -1;
-        return { ...c, at: (i >= 0 ? seq[i].land : 0) + c.time };
-      });
-    if (p.audio.automatic)
-      for (let i = 0; i < seq.length; i++)
-        events.push({
-          id: "auto" + i,
-          asset: null,
-          move: null,
-          time: 0,
-          at: seq[i].land,
-          kind: game.steps[i].capturedId ? "capture" : "move",
-          volume: 0.7,
-          bus: "chess",
-        });
-    if (p.audio.knightHorse)
-      for (let i = 0; i < seq.length; i++)
-        if (
-          game.steps[i].before.find(
-            (piece) => piece.id === game.steps[i].pieceId,
-          )?.type === "n"
-        )
-          events.push({
-            id: "horse" + i,
-            asset: "__knightHorse",
-            move: null,
-            time: 0,
-            at: seq[i].land + p.audio.knightOffset,
-            kind: "custom",
-            volume: p.audio.knightVolume,
-            bus: "chess",
-          });
+    const events = audioEvents(p, mode);
     for (const cue of events) {
-      if (cue.at < time) continue;
-      const at = origin + cue.at - time,
+      const duration = Math.min(
+        cue.duration ?? Infinity,
+        cue.end - cue.at + cue.offset,
+      );
+      const offset = cue.offset + Math.max(0, time - cue.at);
+      if (cue.end <= time || offset >= duration) continue;
+      const at = origin + Math.max(0, cue.at - time),
         volume = cue.volume * p.audio[cue.bus],
         buffer = this.buffers.get(cue.asset ?? "");
       if (buffer) {
@@ -128,9 +105,13 @@ export class AudioPlayer {
         s.buffer = buffer;
         g.gain.value = volume;
         s.connect(g).connect(this.context.destination);
-        if (cue.asset === "__knightHorse")
-          s.start(at, 0, Math.min(buffer.duration, p.audio.knightDuration));
-        else s.start(at);
+        const length = Math.min(
+          buffer.duration - offset,
+          duration - offset,
+          outputEnd - Math.max(time, cue.at),
+        );
+        if (length <= 0) continue;
+        s.start(at, offset, length);
         this.sources.push(s);
       } else if (!cue.asset) {
         const osc = this.context.createOscillator(),
@@ -139,11 +120,17 @@ export class AudioPlayer {
         g.gain.setValueAtTime(0.25 * volume, at);
         g.gain.exponentialRampToValueAtTime(
           0.0001,
-          at + (cue.kind === "capture" ? 0.16 : 0.075),
+          Math.max(
+            at + 0.001,
+            Math.min(
+              at + (cue.kind === "capture" ? 0.16 : 0.075),
+              origin + cue.end - time,
+            ),
+          ),
         );
         osc.connect(g).connect(this.context.destination);
         osc.start(at);
-        osc.stop(at + 0.2);
+        osc.stop(Math.min(at + 0.2, origin + cue.end - time));
         this.sources.push(osc);
       }
     }

@@ -1,3 +1,4 @@
+import { compileStoryboard } from "../core/storyboard";
 import { evaluatePresentationFrame } from "./engine/presentation";
 import { AnnotationSystem } from "./systems/AnnotationSystem";
 import * as T from "three";
@@ -391,7 +392,8 @@ export class Scene {
     // A failed frame must never be mistaken for a cached successful draw.
     this.renderedRevision = -1;
     if (this.project !== p) {
-      this.game = buildGame(p);
+      this.game =
+        mode === "storyboard" ? compileStoryboard(p).game : buildGame(p);
       this.project = p;
     }
     if (

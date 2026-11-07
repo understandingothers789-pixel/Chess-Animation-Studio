@@ -1,8 +1,9 @@
+import { presentationDuration } from "../core/storyboard";
 import { useEffect, useRef, useState } from "react";
 import { GraphicsSession } from "./GraphicsSession";
 import { Scene } from "./Scene";
 import { sizes } from "../core/project";
-import type { Project } from "../core/project";
+import type { Project, PlaybackMode } from "../core/project";
 import { duration } from "../core/timeline";
 export function Output() {
   const host = useRef<HTMLDivElement>(null);
@@ -22,12 +23,13 @@ export function Output() {
         project: Project;
         time: number;
         playing: boolean;
+        mode?: PlaybackMode;
         at: number;
       } | null = null;
       const position = () =>
         state
           ? Math.min(
-              duration(state.project),
+              presentationDuration(state.project, state.mode),
               state.time +
                 (state.playing && !failed
                   ? (performance.now() - state.at) / 1000
@@ -90,6 +92,7 @@ export function Output() {
           project: s.project,
           time: s.time,
           playing: s.playing,
+          mode: s.mode,
           at: performance.now(),
         };
         assets = s.assets;
@@ -112,6 +115,8 @@ export function Output() {
               position(),
               Math.max(1, Math.round(w * scale)),
               Math.max(1, Math.round(h * scale)),
+              state.project.format,
+              state.mode,
             );
           } catch (e) {
             fail(e);
@@ -147,6 +152,7 @@ export function Output() {
               w,
               h,
               options.format,
+              options.mode,
             );
             await window.studio.frame(scene.rgba(), i);
           }

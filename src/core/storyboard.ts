@@ -38,22 +38,58 @@ export type CompiledStoryboard = {
   game: Game;
 };
 const cache = new WeakMap<Project, CompiledStoryboard>();
+const sourceContexts = new Map<
+  string,
+  {
+    game: Game;
+    timeline: CompiledTimeline;
+    cameras: Map<string, Record<Format, Frame["camera"]>>;
+  }
+>();
+function sourceContext(p: Project) {
+  const key = JSON.stringify({
+    fen: p.fen,
+    moves: p.moves,
+    lead: p.lead,
+    tail: p.tail,
+    shorts: p.shorts.enabled,
+    pulse: p.pulse,
+    beats: p.beats,
+  });
+  let value = sourceContexts.get(key);
+  if (!value) {
+    value = {
+      game: buildGame(p),
+      timeline: compileTimeline(p),
+      cameras: new Map(),
+    };
+    sourceContexts.set(key, value);
+    while (sourceContexts.size > 4)
+      sourceContexts.delete(sourceContexts.keys().next().value!);
+  }
+  return value;
+}
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 /** Compile immutable project snapshots, matching the source timeline cache contract. */
 export function compileStoryboard(p: Project): CompiledStoryboard {
   const cached = cache.get(p);
   if (cached) return cached;
-  const timeline = compileTimeline(p),
-    game = buildGame(p),
+  const context = sourceContext(p);
+  const timeline = context.timeline,
+    game = context.game,
     indices = new Map(p.moves.map((m, i) => [m.id, i]));
   let at = 0;
   const shots = p.storyboard.shots.map((shot, index): CompiledShot => {
     const start = at;
-    at += shot.duration;
+    at = Math.round((at + shot.duration) * 1e9) / 1e9;
     const i = indices.get(shot.source?.startMoveId ?? "") ?? -1,
       j = indices.get(shot.source?.endMoveId ?? "") ?? -1;
+    const starting =
+      shot.kind === "position-hold" &&
+      shot.source?.startMoveId === "@start" &&
+      shot.source?.endMoveId === "@start";
     let issue: string | null = null;
-    if (shot.kind !== "title-card" && (i < 0 || j < 0))
+    if (shot.kind !== "title-card" && !starting && (i < 0 || j < 0))
       issue = "Source move is missing. Relink or remove this shot.";
     else if (shot.kind === "move-range" && j < i)
       issue = "The source end must follow its start.";
@@ -73,23 +109,27 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       evalBar: shot.kind === "title-card" ? false : p.evalBar,
     };
     let shotGame = game;
-    const initialCameras = Object.fromEntries(
-      (Object.keys(p.layouts) as Format[]).map((f) => [
-        f,
-        evaluate(
-          p,
-          shot.kind === "position-hold" && shot.source?.position === "after"
-            ? (timeline.segments[i]?.finish ?? 0)
-            : a,
-          game,
+    const cameraKey = `${i}:${shot.kind === "position-hold" ? shot.source?.position : "before"}`;
+    let initialCameras = context.cameras.get(cameraKey);
+    if (!initialCameras) {
+      initialCameras = Object.fromEntries(
+        (Object.keys(p.layouts) as Format[]).map((f) => [
           f,
-          timeline,
-        ).camera,
-      ]),
-    ) as Record<Format, Frame["camera"]>;
+          evaluate(
+            p,
+            shot.kind === "position-hold" && shot.source?.position === "after"
+              ? (timeline.segments[i]?.finish ?? 0)
+              : a,
+            game,
+            f,
+            timeline,
+          ).camera,
+        ]),
+      ) as Record<Format, Frame["camera"]>;
+      context.cameras.set(cameraKey, initialCameras);
+    }
     if (shot.kind === "move-range") {
-      const moves = p.moves.map((m, k) => {
-        if (k < i || k > j) return m;
+      const moves = p.moves.slice(Math.max(0, i), j + 1).map((m) => {
         let e =
           shot.preset === "inherit"
             ? m.effect
@@ -108,7 +148,7 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       projection = {
         ...projection,
         fen: game.steps[i]?.fen ?? p.fen,
-        moves: moves.slice(Math.max(0, i), j + 1),
+        moves,
         lead: 0,
         tail: 0,
       };
@@ -117,7 +157,7 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
         end: game.steps[j + 1]?.fen ?? game.end,
         steps: game.steps
           .slice(Math.max(0, i), j + 1)
-          .map((step, k) => ({ ...step, move: moves[i + k] })),
+          .map((step, k) => ({ ...step, move: moves[k] })),
       };
       const rate =
         (b - a - shot.trimStart - shot.trimEnd) /
@@ -267,6 +307,17 @@ export function shotFromMove(
   kind: StoryboardShot["kind"] = "move-range",
   position: "before" | "after" = "after",
 ): StoryboardShot {
+  if (id === "@start" && kind === "position-hold")
+    return {
+      ...titleShot(p, "Starting position", 3),
+      kind,
+      source: {
+        startMoveId: "@start",
+        endMoveId: "@start",
+        position: "before",
+      },
+      annotations: [],
+    };
   const i = p.moves.findIndex((m) => m.id === id);
   if (i < 0) throw Error("Choose a source move.");
   const seg = compileTimeline(p).segments[i];

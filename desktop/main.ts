@@ -1,3 +1,5 @@
+import { requiredAssetIds } from "../src/core/exportAssets";
+import { productionChecks } from "../src/core/productionChecks";
 import { validateExport } from "../src/core/exportOptions";
 import {
   app,
@@ -469,8 +471,13 @@ app.whenReady().then(async () => {
   handle("export", async (value: unknown, options: ExportOptions) => {
     if (job) throw Error("An export is already running.");
     const p = parseProject(value);
-    checkAssets(p);
     options = validateExport(p, options);
+    const needed = requiredAssetIds(p, options);
+    for (const a of p.assets) if (needed.has(a.id)) ensureAsset(a);
+    const errors = productionChecks(p, options).filter(
+      (i) => i.severity === "error",
+    );
+    if (errors.length) throw Error(errors.map((i) => i.message).join(" "));
     const r = await dialog.showSaveDialog(editor!, {
       defaultPath: p.title.replace(/[^a-z0-9 _-]/gi, "") + ".mp4",
       filters: [{ name: "MP4 video", extensions: ["mp4"] }],
@@ -494,7 +501,8 @@ app.whenReady().then(async () => {
       await active.start();
       const assets: Record<string, string> = {};
       for (const a of p.assets)
-        if (a.kind === "image") assets[a.id] = await dataUrl(a);
+        if (a.kind === "image" && needed.has(a.id))
+          assets[a.id] = await dataUrl(a);
       if (job !== active) {
         await active.clean();
         return false;

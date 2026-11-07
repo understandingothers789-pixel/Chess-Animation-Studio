@@ -1,3 +1,6 @@
+import { requiredAssetIds } from "../../core/exportAssets";
+import { ProductionChecks } from "./ProductionChecks";
+import { productionChecks } from "../../core/productionChecks";
 import { compileStoryboard } from "../../core/storyboard";
 import { MAX_EXPORT_DIMENSION } from "../../core/exportOptions";
 import { useState } from "react";
@@ -14,7 +17,7 @@ export function ExportDialog({
   index,
   mode = "source",
   settings,
-  missing,
+  missingIds,
   progress,
   close,
   render,
@@ -24,7 +27,7 @@ export function ExportDialog({
   index: number;
   mode?: PlaybackMode;
   settings: Settings;
-  missing: number;
+  missingIds: Set<string>;
   progress: ExportProgress | null;
   close: () => void;
   render: (o: ExportOptions) => void;
@@ -68,6 +71,21 @@ export function ExportDialog({
         (n * (resolution === 0 ? customWidth / sizes[format][0] : resolution)) /
           2,
       ) * 2,
+  );
+  const outputOptions = {
+    mode:
+      range === "storyboard" ? ("storyboard" as const) : ("source" as const),
+    format,
+    start: from,
+    end: to,
+    width: w,
+    height: h,
+    fps,
+  };
+  const needed = requiredAssetIds(p, outputOptions),
+    missing = [...missingIds].filter((id) => needed.has(id)).length;
+  const blocked = productionChecks(p, outputOptions).some(
+    (i) => i.severity === "error",
   );
   const busy =
     !!progress && !["Complete", "Failed", "Cancelled"].includes(progress.phase);
@@ -203,6 +221,7 @@ export function ExportDialog({
           For a thumbnail, use Save PNG above the preview. PNG capture uses the
           full composition resolution.
         </p>
+        <ProductionChecks p={p} options={outputOptions} close={close} />
         {progress && (
           <div className="export-progress">
             <progress max={Math.max(1, progress.total)} value={progress.done} />
@@ -230,6 +249,7 @@ export function ExportDialog({
               <button
                 className="primary"
                 disabled={
+                  blocked ||
                   w > MAX_EXPORT_DIMENSION ||
                   h > MAX_EXPORT_DIMENSION ||
                   w < 64 ||

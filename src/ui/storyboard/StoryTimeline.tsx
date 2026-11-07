@@ -1,3 +1,4 @@
+import { StoryboardWaveform } from "../audio/StoryboardWaveform";
 import { ShotThumbnail } from "./ShotThumbnail";
 import type { StoryThumbnails } from "./thumbnails";
 import { useRef, useState } from "react";
@@ -131,6 +132,14 @@ export function StoryTimeline({
           Export storyboard
         </button>
       </div>
+      <StoryboardWaveform
+        p={p}
+        edit={edit}
+        time={time}
+        seek={seek}
+        selected={selected}
+        select={select}
+      />
       {overview && c.shots.length > 0 && (
         <div className="story-overview" aria-label="Entire storyboard">
           <span>Full sequence</span>

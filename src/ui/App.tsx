@@ -1728,7 +1728,7 @@ export function App() {
           mode={mode}
           index={selected}
           settings={settings}
-          missing={missing.size}
+          missingIds={missing}
           progress={exportProgress}
           close={() => setExportOpen(false)}
           cancel={() => run(() => window.studio.cancelExport())}

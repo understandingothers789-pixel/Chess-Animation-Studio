@@ -1,3 +1,5 @@
+import { requiredAssetIds } from "../src/core/exportAssets";
+import { soundtrackGainExpression } from "../src/core/audio/timing";
 import { musicEnd } from "../src/core/audio";
 import { audioEvents } from "../src/core/audioEvents";
 import {
@@ -96,7 +98,12 @@ export class VideoJob {
       this.height > MAX_EXPORT_DIMENSION
     )
       throw Error("H.264 requires even supported dimensions.");
-    for (const a of this.project.assets) await validAsset(a);
+    const needed = requiredAssetIds(this.project, this.options);
+    for (const id of needed) {
+      const asset = this.project.assets.find((a) => a.id === id);
+      if (!asset) throw Error("Required export asset is missing: " + id);
+      await validAsset(asset);
+    }
     const free = await fs.statfs(path.dirname(this.destination));
     if (
       Number(free.bavail) * Number(free.bsize) <
@@ -301,30 +308,7 @@ export class VideoJob {
         p.music.volume,
         0,
         0,
-        (() => {
-          const points = [...p.music.volumePoints].sort(
-            (a, b) => a.time - b.time,
-          );
-          const origin = Math.max(this.options.start, p.music.offset);
-          let expr = String(p.music.volume);
-          if (points.length) {
-            expr = String(points[points.length - 1].value);
-            for (let i = points.length - 2; i >= 0; i--) {
-              const a = points[i],
-                b = points[i + 1];
-              if (b.time === a.time) continue;
-              expr = `if(lt(t+${origin},${b.time}),${a.value}+(${b.value}-${a.value})*(t+${origin}-${a.time})/${b.time - a.time},${expr})`;
-            }
-            expr = `if(lt(t+${origin},${points[0].time}),${points[0].value},${expr})`;
-          }
-          const fadeIn = p.music.fadeIn
-            ? `min(1,max(0,(t+${origin - p.music.offset})/${p.music.fadeIn}))`
-            : "1";
-          const fadeOut = p.music.fadeOut
-            ? `min(1,max(0,(${end - trim}-t)/${p.music.fadeOut}))`
-            : "1";
-          return `(${expr})*(${fadeIn})*(${fadeOut})`;
-        })(),
+        soundtrackGainExpression(p, this.options.start, end, trim),
       );
     }
     const moveSound = path.join(this.temp, "move.wav"),

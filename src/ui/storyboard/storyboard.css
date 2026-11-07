@@ -466,3 +466,84 @@
   padding: 3px 8px;
   z-index: 4;
 }
+.story-waveform {
+  border-bottom: 1px solid #3b503b;
+  padding: 5px 12px;
+  background: #13251b;
+  flex-shrink: 0;
+}
+.wave-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 12px;
+}
+.wave-tools label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.wave-tools input[type="range"] {
+  width: 90px;
+}
+.wave-tools input[type="number"] {
+  width: 80px;
+}
+.wave-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  margin-top: 5px;
+}
+.wave-scroll svg {
+  display: block;
+  touch-action: none;
+}
+.wave-scroll text {
+  fill: #d5e6c9;
+  font-size: 11px;
+}
+.wave-handle {
+  fill: #abc98e;
+  stroke: #14241a;
+  cursor: ew-resize;
+}
+.wave-handle.fadeIn,
+.wave-handle.fadeOut,
+.wave-handle.volume {
+  fill: #e5c47c;
+}
+.wave-handle:focus {
+  stroke: white;
+  stroke-width: 2;
+}
+.story-waveform .hint {
+  font-size: 11px;
+  margin: 3px 0;
+}
+.shot-inspector input[type="checkbox"] {
+  width: auto;
+}
+.story-timeline {
+  overflow-y: auto;
+}
+.shot-strip {
+  min-height: 190px;
+  flex-shrink: 0;
+}
+.story-waveform > summary {
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #cfe5b8;
+}
+.production-checks {
+  border: 1px solid #40583c;
+  border-radius: 5px;
+  padding: 8px;
+  max-height: 210px;
+  overflow: auto;
+}
+.wave-handle.accent {
+  fill: #f7be7e;
+}

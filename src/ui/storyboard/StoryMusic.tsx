@@ -1,3 +1,4 @@
+import { normalizeMusicRange } from "../../core/audio/timing";
 import { syncMarkers } from "../../core/audio";
 import type { Project } from "../../core/project";
 import type { Edit } from "../state";
@@ -54,6 +55,7 @@ export function StoryMusic({
           onChange={(v) =>
             edit(label, (d) => {
               d.music[key] = v;
+              normalizeMusicRange(d.music);
               if (key === "offset" || key === "trimStart")
                 d.beats = syncMarkers(d).beats;
             })

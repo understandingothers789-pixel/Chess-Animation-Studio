@@ -41,8 +41,14 @@ export function analyze(samples: Float32Array, sampleRate: number) {
 export function musicAt(p: Project, time: number) {
   return p.music.trimStart + time - p.music.offset;
 }
+export function automationPoints(p: Project) {
+  // Last edit at a duplicate timestamp wins, identically in preview and FFmpeg.
+  return [
+    ...new Map(p.music.volumePoints.map((v) => [v.time, v])).values(),
+  ].sort((a, b) => a.time - b.time);
+}
 export function musicVolumeAt(p: Project, time: number) {
-  const points = [...p.music.volumePoints].sort((a, b) => a.time - b.time);
+  const points = automationPoints(p);
   if (!points.length) return p.music.volume;
   if (time <= points[0].time) return points[0].value;
   for (let i = 1; i < points.length; i++) {

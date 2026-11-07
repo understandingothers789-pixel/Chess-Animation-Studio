@@ -1,3 +1,4 @@
+import { CaptionGuide } from "./captions/CaptionGuide";
 import { compileStoryboard, resolveStoryboardFrame } from "../core/storyboard";
 import type { PlaybackMode } from "../core/project";
 import type { ThumbnailPort } from "./storyboard/thumbnails";
@@ -529,6 +530,14 @@ export function Preview({
               const square = scene.current?.pick(e.clientX, e.clientY);
               if (square) click.current(square);
             }}
+          />
+          <CaptionGuide
+            a={annotationProject.annotations.find(
+              (a) => a.kind === "caption" || a.kind === "text",
+            )}
+            format={project.format}
+            edit={edit}
+            prepare={prepareAnnotation}
           />
           {view.guides !== "none" && (
             <div

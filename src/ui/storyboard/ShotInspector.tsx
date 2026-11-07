@@ -1,3 +1,4 @@
+import { CaptionControls } from "../captions/CaptionControls";
 import { useEffect, useMemo, useState } from "react";
 import type { Project, StoryboardShot } from "../../core/project";
 import { camera, presets } from "../../core/project";
@@ -369,6 +370,23 @@ export function ShotInspector({
             onChange={(e) => captionChange("text", e.target.value)}
           />
         </label>
+        {caption && (
+          <CaptionControls
+            a={caption}
+            format={p.format}
+            patch={(v) =>
+              change("Caption layout", (s) => {
+                Object.assign(
+                  s.annotations.find((a) => a.id === caption.id)!,
+                  v,
+                );
+              })
+            }
+          />
+        )}
+        <button disabled={!caption} onClick={() => preview(s.id)}>
+          Preview caption
+        </button>
         <Range
           label="Caption start"
           min={0}

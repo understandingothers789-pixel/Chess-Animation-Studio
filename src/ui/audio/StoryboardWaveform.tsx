@@ -95,6 +95,8 @@ export function StoryboardWaveform({
   const begin = (e: React.PointerEvent, kind: string, index = -1) => {
     e.stopPropagation();
     e.preventDefault();
+    if (kind === "beat") setActiveBeat(beats[index].id);
+    if (kind === "volume") setPoint(index);
     edit.begin();
     drag.current = {
       kind,
@@ -168,18 +170,25 @@ export function StoryboardWaveform({
       role="slider"
       tabIndex={0}
       aria-label={label}
+      aria-valuenow={x / px}
+      aria-valuemin={0}
+      aria-valuemax={c.duration}
       aria-valuetext={`${(x / px).toFixed(3)}s`}
       x={Math.max(0, Math.min(total - 10, x - 5))}
       y={y}
       width={10}
       height={18}
       rx={2}
-      className={`wave-handle ${kind} ${label.startsWith("Accent") ? "accent" : ""}`}
+      className={`wave-handle wave-${kind} ${label.startsWith("Accent") ? "accent" : ""}`}
       onPointerDown={(e) => begin(e, kind, index)}
       onPointerMove={move}
       onPointerUp={end}
       onPointerCancel={end}
       onLostPointerCapture={end}
+      onFocus={() => {
+        if (kind === "beat") setActiveBeat(beats[index].id);
+        if (kind === "volume") setPoint(index);
+      }}
       onKeyDown={(e) => {
         if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
         e.preventDefault();

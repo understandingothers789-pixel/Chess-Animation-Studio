@@ -508,9 +508,9 @@
   stroke: #14241a;
   cursor: ew-resize;
 }
-.wave-handle.fadeIn,
-.wave-handle.fadeOut,
-.wave-handle.volume {
+.wave-handle.wave-fadeIn,
+.wave-handle.wave-fadeOut,
+.wave-handle.wave-volume {
   fill: #e5c47c;
 }
 .wave-handle:focus {

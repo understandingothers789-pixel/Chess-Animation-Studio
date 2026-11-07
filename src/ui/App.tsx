@@ -517,6 +517,12 @@ export function App() {
   }, [p, time, playing, assets, mode]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        save(false);
+        return;
+      }
+
       if (
         (e.target as HTMLElement).closest(
           "input,textarea,select,[contenteditable]",
@@ -542,10 +548,6 @@ export function App() {
         e.preventDefault();
         stop();
         e.shiftKey ? redo() : undo();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        save(false);
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -623,10 +625,11 @@ export function App() {
   }
   function save(as: boolean) {
     run(async () => {
-      const file = await window.studio.save(latest.current, as);
+      const snapshot = latest.current;
+      const file = await window.studio.save(snapshot, as);
       if (file) {
-        saved.current = latest.current;
-        setDirty(false);
+        saved.current = snapshot;
+        setDirty(latest.current !== snapshot);
         setPath(file);
         setRecent(await window.studio.recent());
         message("Saved " + file);

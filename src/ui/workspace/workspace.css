@@ -504,3 +504,18 @@
     font-size: var(--text-meta);
   }
 }
+
+/* Reserve a usable preview on short desktop windows. The timeline yields space
+   and remains scrollable instead of reducing the render target to 2 × 2. */
+.workspace.flexible .studio .preview-area {
+  flex: 1 0 200px;
+  min-height: 200px;
+}
+.workspace.flexible .preview-host {
+  min-height: 64px;
+}
+.workspace.flexible .studio > :is(.timeline, .story-timeline) {
+  flex-shrink: 1;
+  min-height: 140px;
+  overflow-y: auto;
+}

@@ -264,6 +264,20 @@ try {
   await page.getByLabel("UI scale", { exact: true }).selectOption("100");
   await page.setViewportSize({ width: 1100, height: 800 });
   await snap("19-narrow");
+  await page.setViewportSize({ width: 1100, height: 700 });
+  for (const mode of ["Full Game mode", "Storyboard mode"]) {
+    await page.getByLabel(mode, { exact: true }).click();
+    await expect
+      .poll(async () =>
+        page
+          .locator(".preview-host canvas")
+          .evaluate((c: HTMLCanvasElement) => Math.min(c.width, c.height)),
+      )
+      .toBeGreaterThanOrEqual(64);
+    await snap(
+      mode === "Full Game mode" ? "20-short-full-game" : "21-short-storyboard",
+    );
+  }
   assert.deepEqual(errors, []);
   console.log(
     "PASS: real storyboard UI add/select, accurate thumbnails, native drag + keyboard, single Undo, duplicate, caption, timing drag, holds/title, template preview/apply/Undo, playback/seek, formats, save/reopen, source preservation, responsive screenshots; zero page errors.",

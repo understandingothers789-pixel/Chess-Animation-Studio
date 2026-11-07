@@ -51,6 +51,7 @@ electronProcess.on("exit", (code, signal) =>
 );
 try {
   const page = await launch.firstWindow();
+  await page.setViewportSize({ width: 1550, height: 980 });
   page.setDefaultTimeout(90000);
   page.on("crash", () => diagnostics.push("editor renderer crashed"));
   page.on("close", () => diagnostics.push("editor window closed"));
@@ -567,8 +568,14 @@ try {
     .click();
   await page.getByLabel("Seek composition", { exact: true }).fill("3");
   await page.waitForTimeout(200);
-  const settledPreview = () =>
-    page
+  const settledPreview = async () => {
+    await page.waitForFunction(() => {
+      const c = document.querySelector<HTMLCanvasElement>(
+        ".preview-host canvas",
+      );
+      return !!c && c.width >= 64 && c.height >= 64;
+    });
+    return page
       .locator(".preview-host canvas")
       .evaluate(async (c: HTMLCanvasElement) => {
         // Wait for React state and the preview's RAF draw, rather than elapsed wall time.
@@ -577,6 +584,7 @@ try {
         );
         return c.toDataURL();
       });
+  };
   const plainPixels = await settledPreview();
   await page
     .getByRole("button", { name: "Apply red flicker", exact: true })
@@ -698,21 +706,14 @@ try {
     .getByLabel("Seek composition", { exact: true })
     .fill(String(+dustTime.toFixed(3)));
   await page.waitForTimeout(300);
-  const dustPixels = await page
-    .locator(".preview-host canvas")
-    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  const dustPixels = await settledPreview();
   await page.getByLabel("Seek composition", { exact: true }).fill("4");
   await page.waitForTimeout(150);
   await page
     .getByLabel("Seek composition", { exact: true })
     .fill(String(+dustTime.toFixed(3)));
   await page.waitForTimeout(300);
-  assert.equal(
-    await page
-      .locator(".preview-host canvas")
-      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
-    dustPixels,
-  );
+  assert.equal(await settledPreview(), dustPixels);
   console.log(
     "PASS: captured-piece dust renders and backward seeking reconstructs it exactly.",
   );

@@ -533,7 +533,10 @@ export function App() {
       );
       if (e.code === "Space" && !buttonFocus) {
         e.preventDefault();
-        if (!loadingAudio) setPlaying((v) => !v);
+        if (!loadingAudio) {
+          if (modeRef.current === "storyboard") setAudition(null);
+          setPlaying((v) => !v);
+        }
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -804,6 +807,13 @@ export function App() {
       setShotId(id);
       shotIdRef.current = id;
     }
+  }
+  function previewStoryShot(id: string) {
+    const entry = compileStoryboard(p).shots.find((s) => s.shot.id === id);
+    if (!entry) return;
+    seek(entry.start);
+    setAudition({ time: entry.start, playing: false, end: entry.end });
+    setPlaying(true);
   }
   function addToStoryboard(ids?: string[]) {
     const chosen =
@@ -1381,7 +1391,10 @@ export function App() {
                 setAnnotationFocus((n) => n + 1);
               }}
               playing={playing}
-              onToggle={() => setPlaying((v) => !v)}
+              onToggle={() => {
+                if (modeRef.current === "storyboard") setAudition(null);
+                setPlaying((v) => !v);
+              }}
               project={previewProject}
               time={time}
               assets={Object.fromEntries(
@@ -1482,6 +1495,7 @@ export function App() {
               time={time}
               playing={playing}
               toggle={() => {
+                setAudition(null);
                 if (time >= end) seek(0);
                 setPlaying((v) => !v);
               }}
@@ -1514,6 +1528,7 @@ export function App() {
           />
           {mode === "storyboard" ? (
             <StoryTimeline
+              playShot={previewStoryShot}
               p={p}
               edit={storyEdit}
               selected={shotId}
@@ -1599,20 +1614,7 @@ export function App() {
               edit={storyEdit}
               sourceId={p.moves[selected]?.id ?? null}
               openSource={openSource}
-              preview={(id) => {
-                const entry = compileStoryboard(p).shots.find(
-                  (s) => s.shot.id === id,
-                );
-                if (entry) {
-                  seek(entry.start);
-                  setAudition({
-                    time: entry.start,
-                    playing: false,
-                    end: entry.end,
-                  });
-                  setPlaying(true);
-                }
-              }}
+              preview={previewStoryShot}
               annotationId={annotationId}
               setAnnotationId={setAnnotationId}
               draw={(kind) => {

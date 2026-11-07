@@ -134,6 +134,19 @@ try {
   await expect(page.locator(".shot-card")).toHaveCount(3);
   await page.locator(".shot-card").first().click();
   await snap("06-inspector");
+  await page.getByLabel("Preview shot 1", { exact: true }).click();
+  await expect(
+    page.getByLabel("Pause storyboard", { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Pause storyboard", { exact: true }).click();
+  await page.getByLabel("Play storyboard", { exact: true }).click();
+  const previewDuration = (await state()).storyboard.shots[0].duration;
+  await expect
+    .poll(async () => await page.evaluate(() => (window as any).__state.time), {
+      timeout: 10000,
+    })
+    .toBeGreaterThan(previewDuration + 0.05);
+  await page.getByLabel("Pause storyboard", { exact: true }).click();
   await page
     .getByRole("button", { name: "Fit storyboard timeline", exact: true })
     .click();

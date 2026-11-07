@@ -93,3 +93,27 @@ it("uses output-domain soundtrack beats and distinct title/repair frames", () =>
   expect(c.e.pieces).toEqual([]);
   expect(c.p.annotations[0].text).toMatch(/missing/);
 });
+it("inherits only annotations visible at a held source position when explicitly enabled", () => {
+  const p = make(),
+    s = shotFromMove(p, p.moves[2].id, "position-hold", "after"),
+    t = segments(p)[2].finish;
+  p.annotations = [
+    { ...annotation("circle", 0), end: t + 1, fade: 0 },
+    { ...annotation("text", t + 2), end: t + 3 },
+  ];
+  s.inheritAnnotations = true;
+  p.storyboard.shots = [s];
+  const a = evaluatePresentationFrame(
+      p,
+      0.5,
+      640,
+      360,
+      undefined,
+      "storyboard",
+    ),
+    b = evaluatePresentationFrame(p, 2, 640, 360, undefined, "storyboard");
+  expect(a.p.annotations).toHaveLength(1);
+  expect(a.p.annotations[0].id).toBe(`source-${p.annotations[0].id}`);
+  expect(a.p.annotations).toEqual(b.p.annotations);
+  expect(p.annotations[0].end).toBe(t + 1);
+});

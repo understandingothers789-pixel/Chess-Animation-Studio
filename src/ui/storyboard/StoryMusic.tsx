@@ -1,3 +1,4 @@
+import { syncMarkers } from "../../core/audio";
 import type { Project } from "../../core/project";
 import type { Edit } from "../state";
 import { Range, Toggle } from "../controls";
@@ -53,6 +54,8 @@ export function StoryMusic({
           onChange={(v) =>
             edit(label, (d) => {
               d.music[key] = v;
+              if (key === "offset" || key === "trimStart")
+                d.beats = syncMarkers(d).beats;
             })
           }
         />

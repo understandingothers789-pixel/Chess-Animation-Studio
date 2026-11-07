@@ -283,76 +283,80 @@ export function ShotInspector({
           </button>
         </Section>
       )}
-      <Section title="Shot presentation">
-        <Select
-          label="Shot animation"
-          value={s.preset}
-          options={[
-            ["inherit", "Inherit source animation"],
-            ...presets.map((v) => [v, presetLabels[v]] as const),
-          ]}
-          onChange={(v) =>
-            change("Shot animation", (s) => {
-              s.preset = v;
-            })
-          }
-        />
-        <Select
-          label="Shot camera"
-          value={cam ? (cam.mode === "full" ? "full" : "manual") : "inherit"}
-          options={[
-            ["inherit", "Inherit source camera"],
-            ["full", "Full board"],
-            ["manual", "Manual framing"],
-          ]}
-          onChange={(v) =>
-            change("Shot camera", (s) => {
-              s.camera =
-                v === "inherit"
-                  ? null
-                  : { ...camera(), mode: v as "manual" | "full" };
-            })
-          }
-        />
-        {cam &&
-          cam.mode !== "full" &&
-          (
-            [
-              ["zoom", "Shot camera zoom", 0.6, 3, 0.05],
-              ["x", "Shot camera X", -4, 4, 0.1],
-              ["y", "Shot camera Y", -4, 4, 0.1],
-              ["rotation", "Shot camera rotation", -35, 35, 1],
-              ["tilt", "Shot camera tilt", -25, 25, 1],
-            ] as const
-          ).map(([k, label, min, max, step]) => (
-            <Range
-              key={k}
-              label={label}
-              value={cam[k]}
-              min={min}
-              max={max}
-              step={step}
+      {s.kind !== "title-card" && (
+        <Section title="Shot presentation">
+          {s.kind === "move-range" && (
+            <Select
+              label="Shot animation"
+              value={s.preset}
+              options={[
+                ["inherit", "Inherit source animation"],
+                ...presets.map((v) => [v, presetLabels[v]] as const),
+              ]}
               onChange={(v) =>
-                change("Shot camera", (s) => {
-                  s.camera![k] = v;
+                change("Shot animation", (s) => {
+                  s.preset = v;
                 })
               }
             />
-          ))}
-        <p className="hint">
-          Shot overrides apply to all formats. Inherited cameras retain the
-          source's per-format settings.
-        </p>
-        <Toggle
-          label="Include source annotations"
-          checked={s.inheritAnnotations}
-          onChange={(v) =>
-            change("Shot annotation inheritance", (s) => {
-              s.inheritAnnotations = v;
-            })
-          }
-        />
-      </Section>
+          )}
+          <Select
+            label="Shot camera"
+            value={cam ? (cam.mode === "full" ? "full" : "manual") : "inherit"}
+            options={[
+              ["inherit", "Inherit source camera"],
+              ["full", "Full board"],
+              ["manual", "Manual framing"],
+            ]}
+            onChange={(v) =>
+              change("Shot camera", (s) => {
+                s.camera =
+                  v === "inherit"
+                    ? null
+                    : { ...camera(), mode: v as "manual" | "full" };
+              })
+            }
+          />
+          {cam &&
+            cam.mode !== "full" &&
+            (
+              [
+                ["zoom", "Shot camera zoom", 0.6, 3, 0.05],
+                ["x", "Shot camera X", -4, 4, 0.1],
+                ["y", "Shot camera Y", -4, 4, 0.1],
+                ["rotation", "Shot camera rotation", -35, 35, 1],
+                ["tilt", "Shot camera tilt", -25, 25, 1],
+              ] as const
+            ).map(([k, label, min, max, step]) => (
+              <Range
+                key={k}
+                label={label}
+                value={cam[k]}
+                min={min}
+                max={max}
+                step={step}
+                onChange={(v) =>
+                  change("Shot camera", (s) => {
+                    s.camera![k] = v;
+                  })
+                }
+              />
+            ))}
+          <p className="hint">
+            Shot overrides apply to all formats. Inherited cameras retain the
+            source's per-format settings.
+          </p>
+          <Toggle
+            label="Include source annotations"
+            checked={s.inheritAnnotations}
+            onChange={(v) =>
+              change("Shot annotation inheritance", (s) => {
+                s.inheritAnnotations = v;
+              })
+            }
+          />
+        </Section>
+      )}
       <Section title="Shot caption">
         <label>
           On-screen caption

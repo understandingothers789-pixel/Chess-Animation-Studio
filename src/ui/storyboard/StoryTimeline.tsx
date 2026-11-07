@@ -26,7 +26,9 @@ export function StoryTimeline({
   time,
   thumbnails,
   playing,
+  playShot,
 }: {
+  playShot: (id: string) => void;
   p: Project;
   edit: Edit;
   selected: string | null;
@@ -201,6 +203,7 @@ export function StoryTimeline({
               dragging={dragging === entry.shot.id}
               before={over === entry.shot.id && dragging !== entry.shot.id}
               select={() => select(entry.shot.id)}
+              play={() => playShot(entry.shot.id)}
               preview={() => {
                 select(entry.shot.id);
                 seek(entry.start);
@@ -251,6 +254,7 @@ function ShotCard({
   before,
   select,
   preview,
+  play,
   duplicate,
   remove,
   move,
@@ -273,6 +277,7 @@ function ShotCard({
   before: boolean;
   select: () => void;
   preview: () => void;
+  play: () => void;
   duplicate: () => void;
   remove: () => void;
   move: (d: number) => void;
@@ -351,7 +356,7 @@ function ShotCard({
           aria-label={`Preview shot ${index + 1}`}
           onClick={(e) => {
             e.stopPropagation();
-            preview();
+            play();
           }}
         >
           Preview

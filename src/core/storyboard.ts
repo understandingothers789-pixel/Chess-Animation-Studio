@@ -1,4 +1,4 @@
-import { annotation, type Annotation } from "./annotations";
+import { annotation, annotationOpacity, type Annotation } from "./annotations";
 import { buildGame, type Game } from "./chess";
 import {
   compileTimeline,
@@ -210,6 +210,24 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
         steps: [],
         end: fen,
       };
+      if (shot.kind === "position-hold" && shot.inheritAnnotations && !issue) {
+        const sourceTime = after ? (timeline.segments[i]?.finish ?? 0) : a;
+        projection.annotations = [
+          ...p.annotations
+            .filter((ann) => annotationOpacity(ann, sourceTime) > 0)
+            .map((ann) => ({
+              ...ann,
+              id: `source-${ann.id}`,
+              start: 0,
+              end: shot.duration,
+              fade: 0,
+              entrance: "none" as const,
+              exit: "none" as const,
+              opacity: annotationOpacity(ann, sourceTime),
+            })),
+          ...shot.annotations,
+        ];
+      }
     }
     return {
       shot,

@@ -78,8 +78,9 @@ export function productionChecks(
           "Soundtrack asset is missing. Relink or remove it in Soundtrack & output beats.",
       });
     if (
-      p.music.trimStart >= (p.music.trimEnd || p.music.sourceDuration) ||
-      p.music.trimEnd > p.music.sourceDuration
+      !p.music.muted &&
+      (p.music.trimStart >= (p.music.trimEnd || p.music.sourceDuration) ||
+        p.music.trimEnd > p.music.sourceDuration)
     )
       issues.push({
         severity: "error",
@@ -87,7 +88,13 @@ export function productionChecks(
           "Music source trim is invalid. Source end must follow source start and fit the audio duration.",
       });
     const win = soundtrackWindow(p, end);
-    if (!p.music.muted && win.end < end - 0.05)
+    if (!p.music.muted && win.end <= win.start)
+      issues.push({
+        severity: "warning",
+        message:
+          "The soundtrack falls outside the video. Adjust its output offset or source trim to hear it.",
+      });
+    else if (!p.music.muted && win.end < end - 0.05)
       issues.push({
         severity: "warning",
         message: `Music ends at ${win.end.toFixed(2)}s before the video. Adjust trim or choose a longer soundtrack if desired.`,

@@ -471,7 +471,7 @@ export function StoryboardWaveform({
                 pointerEvents="none"
               />
             ))}
-          {p.music.asset && (
+          {p.music.asset && win.end > win.start && (
             <>
               {handle(
                 "trimStart",

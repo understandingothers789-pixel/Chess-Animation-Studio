@@ -118,3 +118,40 @@ it("detects generated rhythmic peaks near their exact sample timestamps", () => 
   for (const t of [0.5, 1, 1.5, 2, 2.5, 3])
     expect(peaks.some((p) => Math.abs(p.time - t) < 0.025)).toBe(true);
 });
+it("warns when music is outside output; unused muted source settings do not block export", () => {
+  const p = blank();
+  p.storyboard.shots = [titleShot(p, "Title", 1)];
+  p.music.asset = "tone";
+  p.music.sourceDuration = 3;
+  p.music.offset = 4;
+  p.assets = [
+    {
+      id: "tone",
+      path: "/test.wav",
+      kind: "audio",
+      name: "tone",
+      source: "test",
+      guidance: "",
+    },
+  ];
+  const o = {
+    mode: "storyboard" as const,
+    format: "square" as const,
+    start: 0,
+    end: 1,
+    width: 1080,
+    height: 1080,
+    fps: 30,
+  };
+  expect(
+    productionChecks(p, o).some(
+      (i) => i.severity === "warning" && i.message.includes("outside"),
+    ),
+  ).toBe(true);
+  p.music.muted = true;
+  p.music.trimStart = 10;
+  p.assets = [];
+  expect(productionChecks(p, o).some((i) => i.severity === "error")).toBe(
+    false,
+  );
+});

@@ -280,6 +280,9 @@ export class VideoJob {
       const parts = [
         `atrim=start=${Math.max(0, trimStart)}${trimEnd > 0 ? `:end=${trimEnd}` : ""}`,
         "asetpts=PTS-STARTPTS",
+        // WAV decoder blocks can be 4096 samples (~85ms). Evaluate the gain
+        // curve on 256-sample blocks (~5ms), without padding the final block.
+        ...(automation ? ["asetnsamples=n=256:p=0"] : []),
         automation ? `volume='${automation}':eval=frame` : `volume=${volume}`,
       ];
       if (fadeIn) parts.push(`afade=t=in:d=${fadeIn}`);
@@ -340,7 +343,7 @@ export class VideoJob {
     }
     if (labels.length) {
       filters.push(
-        `${labels.join("")}amix=inputs=${labels.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95:latency=1,apad,atrim=duration=${seconds}[mix]`,
+        `${labels.join("")}amix=inputs=${labels.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95:level=0:latency=1,apad,atrim=duration=${seconds}[mix]`,
       );
       args.push(
         "-filter_complex",

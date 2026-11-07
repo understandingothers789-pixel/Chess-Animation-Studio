@@ -23,7 +23,7 @@
     "test:timeline": "node --import tsx scripts/timeline-menu-smoke.ts",
     "test:storyboard": "node --import tsx scripts/storyboard-ui-smoke.ts && node --import tsx scripts/storyboard-render-smoke.ts",
     "benchmark:storyboard": "node --import tsx scripts/storyboard-benchmark.ts",
-    "test:finishing": "node --import tsx scripts/finishing-ui-smoke.ts && node --import tsx scripts/storyboard-render-smoke.ts --finishing"
+    "test:finishing": "node --import tsx scripts/finishing-ui-smoke.ts && node --import tsx scripts/storyboard-render-smoke.ts --finishing && node --import tsx docs/finishing-031/audio-check.mjs"
   },
   "dependencies": {
     "chess.js": "1.4.0",

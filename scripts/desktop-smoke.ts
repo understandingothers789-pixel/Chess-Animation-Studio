@@ -6,6 +6,7 @@ import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { blank, VERSION } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
+import { shotFromMove, titleShot } from "../src/core/storyboard";
 import { duration, segments } from "../src/core/timeline";
 const dir = path.resolve("test-results");
 await fs.mkdir(dir, { recursive: true });
@@ -745,6 +746,119 @@ try {
   assert.equal(await win.getByRole("alert").count(), 0);
   console.log(
     "PASS: presentation recovers from simulated context loss with identical paused pixels and no uncaught exceptions.",
+  );
+  // Exercise the storyboard through the packaged IPC, UI and export worker.
+  page.on("dialog", (d) => d.accept());
+  const story = structuredClone(result.project);
+  story.storyboard.shots = [
+    shotFromMove(story, story.moves[20].id),
+    shotFromMove(story, story.moves[0].id),
+    shotFromMove(story, story.moves[10].id, "position-hold", "after"),
+    titleShot(story, "Storyboard outro", 0.3),
+  ];
+  for (const s of story.storyboard.shots) {
+    s.duration = 0.3;
+    s.preHold = 0;
+    s.postHold = 0;
+    s.annotations.forEach((a) => {
+      a.start = 0;
+      a.end = 0.3;
+    });
+  }
+  const storyPath = path.join(dir, "storyboard-roundtrip.castudio");
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__savePath = file;
+  }, storyPath);
+  await page.evaluate((p) => window.studio.save(p, true), story);
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__openPath = file;
+  }, storyPath);
+  await page.getByTitle("Open composition", { exact: true }).click();
+  await expect(page.locator(".shot-card")).toHaveCount(4);
+  await page.locator(".shot-card").first().click();
+  await page
+    .getByLabel("Shot name", { exact: true })
+    .fill("Packaged storyboard edit");
+  await page.getByLabel("Shot name", { exact: true }).blur();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  const reopened = await page.evaluate(() => window.studio.open());
+  assert.equal(
+    reopened!.project.storyboard.shots[0].name,
+    "Packaged storyboard edit",
+  );
+  assert.deepEqual(reopened!.project.moves, story.moves);
+  await page.getByLabel("Play storyboard", { exact: true }).click();
+  await page.waitForTimeout(180);
+  await expect(
+    page.getByLabel("Seek storyboard", { exact: true }),
+  ).not.toHaveValue("0");
+  if (await page.getByLabel("Pause storyboard", { exact: true }).count())
+    await page.getByLabel("Pause storyboard", { exact: true }).click();
+  await page.screenshot({ path: path.join(dir, "packaged-storyboard.png") });
+  const storyFile = path.join(dir, "packaged-storyboard.mp4");
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__savePath = file;
+  }, storyFile);
+  await page.evaluate(async (p) => {
+    (window as any).__progress = null;
+    await window.studio.export(p, {
+      mode: "storyboard",
+      format: "landscape",
+      start: 0,
+      end: 1.2,
+      width: 320,
+      height: 180,
+      fps: 30,
+    });
+  }, reopened!.project);
+  await page.waitForFunction(
+    () => ["Complete", "Failed"].includes((window as any).__progress?.phase),
+    {},
+    { timeout: 180000 },
+  );
+  const storyProgress = await page.evaluate(() => (window as any).__progress);
+  assert.equal(storyProgress.phase, "Complete", storyProgress.error);
+  const storyProbe = JSON.parse(
+    execFileSync(
+      ffprobe,
+      ["-v", "error", "-show_streams", "-of", "json", storyFile],
+      { encoding: "utf8" },
+    ),
+  );
+  assert.equal(
+    storyProbe.streams.find((s: any) => s.codec_type === "video").nb_frames,
+    "36",
+  );
+  assert.equal(
+    storyProbe.streams.find((s: any) => s.codec_type === "audio").codec_name,
+    "aac",
+  );
+  const storyCancel = path.join(dir, "storyboard-cancelled.mp4");
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__savePath = file;
+  }, storyCancel);
+  await page.evaluate(async (p) => {
+    await window.studio.export(p, {
+      mode: "storyboard",
+      format: "landscape",
+      start: 0,
+      end: 1.2,
+    });
+  }, story);
+  await page.evaluate(() => window.studio.cancelExport());
+  assert.equal(
+    await fs.stat(storyCancel).then(
+      () => true,
+      () => false,
+    ),
+    false,
+  );
+  await page.getByTitle("New composition", { exact: true }).click();
+  await expect(page.getByLabel("Project title", { exact: true })).toHaveValue(
+    blank().title,
+  );
+  console.log(
+    "PASS: packaged storyboard creation, shot editing, native save/reopen, preview, nonconsecutive H.264/AAC export, cancellation, new project.",
   );
   assert.deepEqual(errors, []);
   await fs.writeFile(

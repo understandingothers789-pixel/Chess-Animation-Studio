@@ -30,6 +30,7 @@ jobs:
           git worktree add --detach "$RUNNER_TEMP/visual-reference" 9fcf3f54913ac1a27560a61e0db8e80abb998dd5
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
           npm run test:timeline
+          npm run test:storyboard
           npm run test:render -- final
           golden_ref=$(cat docs/cinematic-goldens/source-ref)
           [[ "$golden_ref" =~ ^[0-9a-f]{40}$ ]]
@@ -42,6 +43,8 @@ jobs:
         with:
           name: Chromium-visual-evidence
           path: |
+            test-results/storyboard-render/
+            docs/storyboard-030/*.png
             test-results/context-validation.log
             test-results/timeline-menus/
             test-results/render-final/

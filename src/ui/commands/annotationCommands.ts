@@ -17,6 +17,7 @@ export type AnnotationStyle = Pick<
   | "align"
   | "outline"
   | "shadow"
+  | "layout"
 >;
 const keys = [
   "color",
@@ -31,6 +32,7 @@ const keys = [
   "align",
   "outline",
   "shadow",
+  "layout",
 ] as const;
 export function annotationCommands(
   p: Project,

@@ -12,6 +12,8 @@ export const initialViewport: Viewport = {
 };
 export function ViewportTools({
   view,
+  captionGuides,
+  onCaptionGuides,
   set,
   fit,
   png,
@@ -20,6 +22,8 @@ export function ViewportTools({
   playing = false,
   toggle,
 }: {
+  captionGuides?: boolean;
+  onCaptionGuides?: () => void;
   view: Viewport;
   set: (p: Partial<Viewport>) => void;
   fit: () => void;
@@ -31,6 +35,11 @@ export function ViewportTools({
 }) {
   return (
     <div className="viewport-tools" aria-label="Preview tools">
+      {onCaptionGuides && (
+        <button aria-pressed={captionGuides} onClick={onCaptionGuides}>
+          Caption guides
+        </button>
+      )}
       <div
         className="viewport-group"
         role="group"

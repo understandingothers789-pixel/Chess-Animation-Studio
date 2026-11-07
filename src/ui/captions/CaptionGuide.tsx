@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import type { Annotation } from "../../core/annotations";
 import type { Format } from "../../core/project";
 import type { Edit } from "../state";
@@ -8,14 +8,15 @@ export function CaptionGuide({
   format,
   edit,
   prepare,
+  enabled,
 }: {
+  enabled: boolean;
   a?: Annotation;
   format: Format;
   edit?: Edit;
   prepare: () => void;
 }) {
-  const [enabled, setEnabled] = useState(false),
-    drag = useRef(false);
+  const drag = useRef(false);
   if (!a) return null;
   const safe = safeRect(
     100,
@@ -32,13 +33,6 @@ export function CaptionGuide({
   };
   return (
     <>
-      <button
-        className="caption-guide-toggle"
-        aria-pressed={enabled}
-        onClick={() => setEnabled((v) => !v)}
-      >
-        Caption guides
-      </button>
       {enabled && (
         <div
           className="caption-guides"

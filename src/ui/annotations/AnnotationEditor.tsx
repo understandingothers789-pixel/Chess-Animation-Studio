@@ -1,3 +1,4 @@
+import { CaptionControls } from "../captions/CaptionControls";
 import {
   annotationSchema,
   annotation,
@@ -103,32 +104,7 @@ export function AnnotationEditor({
                 value={a.text}
                 onChange={(e) => patch({ text: e.target.value })}
               />
-              <label>
-                Font
-                <select
-                  value={a.font}
-                  onChange={(e) =>
-                    patch({ font: e.target.value as Annotation["font"] })
-                  }
-                >
-                  {["sans-serif", "serif", "monospace"].map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Alignment
-                <select
-                  value={a.align}
-                  onChange={(e) =>
-                    patch({ align: e.target.value as Annotation["align"] })
-                  }
-                >
-                  {["left", "center", "right"].map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
+              <CaptionControls a={a} format={p.format} patch={patch} />
             </>
           )}
           {(
@@ -137,9 +113,7 @@ export function AnnotationEditor({
               "end",
               "fade",
               "opacity",
-              ...(a.kind === "text" || a.kind === "caption"
-                ? ["x", "y", "size"]
-                : ["width"]),
+              ...(a.kind === "text" || a.kind === "caption" ? [] : ["width"]),
             ] as const
           ).map((key) => (
             <label key={key}>

@@ -70,6 +70,7 @@ export function Preview({
     py: number;
   } | null>(null);
   const annotationStyle = useRef<AnnotationStyle | null>(null);
+  const [captionGuides, setCaptionGuides] = useState(false);
   const [view, setView] = useState(initialViewport);
   const panDrag = useRef<{
     x: number;
@@ -437,6 +438,8 @@ export function Preview({
         />
       )}
       <ViewportTools
+        captionGuides={captionGuides}
+        onCaptionGuides={() => setCaptionGuides((v) => !v)}
         fullscreen={fullscreen}
         playing={playing}
         toggle={onToggle}
@@ -532,6 +535,7 @@ export function Preview({
             }}
           />
           <CaptionGuide
+            enabled={captionGuides}
             a={annotationProject.annotations.find(
               (a) => a.kind === "caption" || a.kind === "text",
             )}

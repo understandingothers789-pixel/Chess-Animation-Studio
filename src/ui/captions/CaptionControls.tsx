@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Annotation } from "../../core/annotations";
 import type { Format } from "../../core/project";
 import { placements, safeDefaults } from "../../core/captions/safeAreas";
@@ -19,8 +19,11 @@ export function CaptionControls({
 }) {
   const [candidate, setCandidate] =
     useState<(typeof captionPresets)[number]>("Clean Tutorial");
+  const ctx = useMemo(
+    () => document.createElement("canvas").getContext("2d")!,
+    [],
+  );
   const measure = (t: string, size: number, font: string, weight: number) => {
-    const ctx = document.createElement("canvas").getContext("2d")!;
     ctx.font = `${weight} ${size}px ${font}`;
     return ctx.measureText(t).width;
   };

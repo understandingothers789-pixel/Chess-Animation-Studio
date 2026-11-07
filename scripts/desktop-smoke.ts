@@ -780,7 +780,16 @@ try {
     .getByLabel("Shot name", { exact: true })
     .fill("Packaged storyboard edit");
   await page.getByLabel("Shot name", { exact: true }).blur();
+  await expect(page.locator(".shot-inspector h2")).toHaveText(
+    "Packaged storyboard edit",
+  );
+  await expect(
+    page.getByText("Unsaved changes", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByText("Saved composition", { exact: true }),
+  ).toBeVisible();
   const reopened = await page.evaluate(() => window.studio.open());
   assert.equal(
     reopened!.project.storyboard.shots[0].name,

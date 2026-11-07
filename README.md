@@ -1,8 +1,10 @@
-# Chess Animation Studio · 0.2.30
+# Chess Animation Studio · 0.2.31
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
 
-![Chess Animation Studio 0.2.30 Storyboard workspace](docs/storyboard-030/02-populated.png)
+![Chess Animation Studio 0.2.31 captions and waveform editor](docs/finishing-031/09-waveform.png)
+
+Version **0.2.31** adds automatic caption wrapping and configurable safe areas. Select a shot and open **Shot caption** for placement, typography presets and overflow warnings. **Caption guides** in the preview toolbar help position text without appearing in exports. Expand **Music waveform** below the preview to edit soundtrack offset, source trims, fades, gain points and output beats. Export's **Production checks** separate warnings from blocking errors. See the [0.2.31 engineering report](docs/finishing-031/REPORT.md) for reviewed screenshots, self-contained projects, decoded video/audio checks and limitations.
 
 The editor usability refinements are documented in [the UI report](docs/ui-refinement/REPORT.md).
 
@@ -17,6 +19,8 @@ Right-click a timeline clip, or click the **⋯** on its track header, to open i
 Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download 0.2.31 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42408035807/artifacts/13588214583).** Adds automatic caption wrapping, format-aware safe areas, caption presets and guides, plus a storyboard waveform editor with music offset, source trims, fades, volume automation and editable output beats. Improves exported music automation timing and pre-export production checks. The visual gate, finishing frame/audio checks, Windows build, packaged app, save/open, preview, export and cancellation checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 
 **[Download 0.2.30 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42336830877/artifacts/13560720389).** Adds a real storyboard for nonconsecutive moves, legal position holds, title cards, editable templates, captions, and chess-aware highlight discovery. Includes continuous output-time music, mapped chess sounds, and 24/30/60 FPS MP4 export. The visual gate, storyboard frame/audio checks, Windows build, packaged app, save/open, preview, export, and cancellation checks passed. This GitHub Actions artifact is retained for 90 days and requires signing in to GitHub.
 

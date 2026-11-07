@@ -1,0 +1,8 @@
+{
+  "automationMaxAbsoluteRmsError": 0.0015738221324423582,
+  "trim10Offset2MaxAbsoluteRmsError": 0.00047329698512525026,
+  "seekTolerance": 0.009,
+  "sourceTrimFrequency660Verified": true,
+  "muteVerified": true,
+  "beatAlignedCutsVerified": true
+}

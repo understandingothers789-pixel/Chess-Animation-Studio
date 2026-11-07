@@ -1,0 +1,13 @@
+{
+  "run": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42408035807",
+  "status": "Success",
+  "source": "4e45bbb05d201bf0a7e78215b8f47b37ee958065",
+  "artifact": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42408035807/artifacts/13588214583",
+  "name": "Chess-Animation-Studio-0.2.31-Windows-Portable",
+  "size": "173 MB",
+  "artifactSHA256": "a30b2463ef23d555b9dc1cc87f09661548c585762f0497169ab750607b03b4f3",
+  "retentionDays": 90,
+  "requiresGitHubSignIn": true,
+  "releasePublished": false,
+  "verification": "Fresh successful run metadata; both job steps success; public release step skipped. Artifact not anonymously downloaded."
+}

@@ -1,0 +1,12 @@
+
+> chess-animation-studio@0.2.31 test:render
+> node --import tsx scripts/render-regression.ts final
+
+PHASE2_METRICS {"frames":60,"resets":59,"resetMs":1.4000000059604645,"playbackMs":292.59999999403954,"renderer":"SwiftShader","width":270,"height":480}
+PHASE3_METRICS {"recovery":"WEBGL_lose_context plus full Scene/canvas reconstruction","measurements":[{"w":1920,"h":1080,"enabled":false,"samplesMs":[2080.9000000059605,1685,1993.2000000029802],"medianMs":1993.2000000029802,"memory":{"geometries":120,"textures":17},"bloomTargetBytes":0},{"w":1920,"h":1080,"enabled":true,"samplesMs":[2624.2000000029802,2093.7999999970198,2057.2000000029802],"medianMs":2093.7999999970198,"memory":{"geometries":124,"textures":21},"bloomTargetBytes":16588800},{"w":3840,"h":2160,"enabled":false,"samplesMs":[4210.79999999702,2785.5999999940395,2453.7000000029802],"medianMs":2785.5999999940395,"memory":{"geometries":124,"textures":17},"bloomTargetBytes":0},{"w":3840,"h":2160,"enabled":true,"samplesMs":[3076.5999999940395,2803.2999999970198,3052.5],"medianMs":3052.5,"memory":{"geometries":124,"textures":21},"bloomTargetBytes":66355200}]}
+PASS: 216 render requests, 168 unique fixtures (final)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

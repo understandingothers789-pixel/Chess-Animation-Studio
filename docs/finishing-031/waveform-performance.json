@@ -1,0 +1,10 @@
+{
+  "seconds": 600,
+  "sampleRate": 8000,
+  "inputBytes": 19200000,
+  "envelopeBytes": 12800,
+  "analysisMs": 38.62336300000004,
+  "viewportAggregation1000Ms": 104.35922900000014,
+  "processRSS": 117366784,
+  "notes": "CPU measurements; normalized analysis envelope reused, no audio decoding on scroll/zoom."
+}

@@ -1,0 +1,41 @@
+
+> chess-animation-studio@0.2.31 test:finishing
+> node --import tsx scripts/finishing-ui-smoke.ts && node --import tsx scripts/storyboard-render-smoke.ts --finishing && node --import tsx docs/finishing-031/audio-check.mjs
+
+PASS: finishing UI, caption presets/drag Undo/Redo, waveform, beat time, fade nudge Undo, volume editing, persistence, export checks, responsive screenshots { layout1000ms: 296.5, cached10000ms: 31.799999997019768 }
+PASS: format-comparison: landscape 24 FPS, 29 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: landscape 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: landscape 60 FPS, 72 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: vertical 24 FPS, 29 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: vertical 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: vertical 60 FPS, 72 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: square 24 FPS, 29 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: square 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: square 60 FPS, 72 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: square-in-vertical 24 FPS, 29 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: square-in-vertical 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: format-comparison: square-in-vertical 60 FPS, 72 actual H.264 frames + continuous AAC across cuts
+PASS: puzzle-challenge: vertical 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: repeated-highlights: vertical 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: caption-stress: vertical 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: audio-synchronization: vertical 30 FPS, 36 actual H.264 frames + continuous AAC across cuts
+PASS: real AAC fade-in/out, seek envelope parity, late soundtrack silence, missing asset rejection
+PASS: project roundtrip, repair rejection, cancellation cleanup {
+  cases: 16,
+  maxMeanAbsolutePixelError: 6.905679012345679,
+  coldCompileMs: 9.534452000000101,
+  cached10000Ms: 1.054023000000143
+}
+PASS: decoded rhythmic automation, 10-second source trim, 2-second offset, fades, seek, mute, beat-aligned cuts {
+  automationMaxAbsoluteRmsError: 0.0015738221324423582,
+  trim10Offset2MaxAbsoluteRmsError: 0.00047329698512525026,
+  seekTolerance: 0.009,
+  sourceTrimFrequency660Verified: true,
+  muteVerified: true,
+  beatAlignedCutsVerified: true
+}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.2
+npm notice To update run: npm install -g npm@12.2.2
+npm notice

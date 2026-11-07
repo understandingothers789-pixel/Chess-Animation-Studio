@@ -107,3 +107,55 @@ it("applies horse cue timing, volume and length controls", async () => {
   expect(gains[0].value).toBe(1.35);
   player.dispose();
 });
+
+it("keeps one continuous storyboard music source and resumes the output-capped fade after seeking", async () => {
+  const gains: any[] = [];
+  const starts: any[] = [];
+  const stop = vi.fn();
+  class Context {
+    currentTime = 0;
+    destination = {};
+    resume = async () => {};
+    close = async () => {};
+    createGain() {
+      const gain = {
+        value: 1,
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
+        setTargetAtTime: vi.fn(),
+      };
+      gains.push(gain);
+      return { gain, connect: (n: any) => n };
+    }
+    createBufferSource() {
+      return {
+        buffer: null,
+        connect: (n: any) => n,
+        start: (...a: any[]) => starts.push(a),
+        stop,
+      };
+    }
+    createOscillator() {
+      throw Error("No chess cues in holds");
+    }
+  }
+  vi.stubGlobal("AudioContext", Context);
+  vi.stubGlobal("performance", { now: () => 0 });
+  const { titleShot } = await import("../src/core/storyboard");
+  const p = blank();
+  p.music.asset = "music";
+  p.music.fadeIn = 0;
+  p.music.fadeOut = 1;
+  p.storyboard.shots = [titleShot(p, "A", 2), titleShot(p, "B", 2)];
+  const player = new AudioPlayer();
+  player.buffers.set("music", { duration: 90 } as AudioBuffer);
+  await player.play(p, 3.8, "storyboard");
+  expect(starts).toHaveLength(1);
+  expect(starts[0][1]).toBe(3.8);
+  expect(starts[0][2]).toBeCloseTo(0.2);
+  expect(gains[2].setValueAtTime.mock.calls[0][0]).toBeCloseTo(0.2);
+  player.updateMusic(p, 3.9);
+  player.clear("old-unrelated-track");
+  expect(stop).not.toHaveBeenCalled();
+  player.dispose();
+});

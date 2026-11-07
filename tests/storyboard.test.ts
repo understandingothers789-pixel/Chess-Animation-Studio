@@ -28,7 +28,9 @@ it("persists a storyboard without duplicating or rearranging the source game", (
     shotFromMove(p, p.moves[6].id),
     shotFromMove(p, p.moves[0].id),
   ];
+  p.storyboard.shots[0].name = "X".repeat(120);
   const copy = duplicateShot(p.storyboard.shots[0]);
+  expect(copy.name.length).toBeLessThanOrEqual(120);
   p.storyboard.shots.push(copy);
   reorderShot(p.storyboard.shots, copy.id, p.storyboard.shots[0].id);
   expect(JSON.stringify(p.moves)).toBe(original);
@@ -130,4 +132,13 @@ it("handles empty, title-only and trimmed shots and clamps annotations on durati
   s.trimStart = 500;
   p.storyboard.shots = [s];
   expect(compileStoryboard({ ...p }).issues[0].message).toMatch(/Trims/);
+});
+it("returns held output intervals in the reverse source mapping", () => {
+  const p = sample(),
+    s = shotFromMove(p, p.moves[2].id, "position-hold", "after");
+  p.storyboard.shots = [s, duplicateShot(s)];
+  expect(sourceToStoryboard(p, segments(p)[2].finish)).toEqual([
+    { id: s.id, time: 0, end: s.duration },
+    { id: p.storyboard.shots[1].id, time: s.duration, end: 2 * s.duration },
+  ]);
 });

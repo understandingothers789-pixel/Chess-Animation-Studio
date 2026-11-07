@@ -1,6 +1,6 @@
 import { audioEvents } from "../core/audioEvents";
 import { presentationDuration } from "../core/storyboard";
-import { musicAt, gainAt, musicVolumeAt } from "../core/audio";
+import { musicAt, musicVolumeAt, musicEnd } from "../core/audio";
 import { segments } from "../core/timeline";
 import { buildGame } from "../core/chess";
 import type { Project, PlaybackMode } from "../core/project";
@@ -41,49 +41,36 @@ export class AudioPlayer {
       const source = this.context.createBufferSource(),
         gain = this.context.createGain();
       source.buffer = b;
-      const master = this.context.createGain();
+      const master = this.context.createGain(),
+        fadeOutGain = this.context.createGain();
       this.musicGain = master;
       master.gain.value = m.muted ? 0 : m.volume;
-      source.connect(gain).connect(master).connect(this.context.destination);
+      source
+        .connect(gain)
+        .connect(fadeOutGain)
+        .connect(master)
+        .connect(this.context.destination);
       const offset = musicAt(p, time),
         start = origin + Math.max(0, -(time - m.offset)),
-        trimEnd = Math.min(
-          m.trimEnd || b.duration,
-          m.trimStart + outputEnd - m.offset,
-        ),
+        trimEnd = musicEnd(p, b.duration, outputEnd),
         sourceStart = Math.max(m.trimStart, offset),
         length = Math.min(trimEnd, b.duration) - sourceStart;
       if (length > 0) {
         const elapsed = Math.max(0, time - m.offset);
         gain.gain.setValueAtTime(
-          gainAt(
-            {
-              ...p,
-              music: { ...m, volume: 1, volumePoints: [], muted: false },
-            },
-            Math.max(time, m.offset),
-            b.duration,
-          ),
+          m.fadeIn ? Math.min(1, elapsed / m.fadeIn) : 1,
           start,
         );
         if (m.fadeIn > elapsed)
           gain.gain.linearRampToValueAtTime(1, start + m.fadeIn - elapsed);
-        const fadeStart = Math.max(start, start + length - m.fadeOut);
-        gain.gain.setValueAtTime(
-          Math.min(
-            1,
-            gainAt(
-              {
-                ...p,
-                music: { ...m, volume: 1, volumePoints: [], muted: false },
-              },
-              m.offset + Math.max(0, trimEnd - m.trimStart - m.fadeOut),
-              b.duration,
-            ),
-          ),
-          fadeStart,
+        fadeOutGain.gain.setValueAtTime(
+          m.fadeOut ? Math.min(1, length / m.fadeOut) : 1,
+          start,
         );
-        gain.gain.linearRampToValueAtTime(0, start + length);
+        if (m.fadeOut && length > m.fadeOut)
+          fadeOutGain.gain.setValueAtTime(1, start + length - m.fadeOut);
+        if (m.fadeOut)
+          fadeOutGain.gain.linearRampToValueAtTime(0, start + length);
         source.start(start, sourceStart, length);
         this.sources.push(source);
       }

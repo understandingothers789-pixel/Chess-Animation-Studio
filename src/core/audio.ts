@@ -55,6 +55,18 @@ export function musicVolumeAt(p: Project, time: number) {
   }
   return points[points.length - 1].value;
 }
+/** Effective source endpoint when a continuous soundtrack is capped by output. */
+export function musicEnd(
+  p: Project,
+  sourceLength: number,
+  outputDuration: number,
+) {
+  return Math.min(
+    p.music.trimEnd || sourceLength,
+    sourceLength,
+    p.music.trimStart + outputDuration - p.music.offset,
+  );
+}
 export function gainAt(p: Project, time: number, length: number) {
   const local = time - p.music.offset,
     end = p.music.trimEnd || length,

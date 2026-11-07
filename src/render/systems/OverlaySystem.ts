@@ -218,6 +218,7 @@ export class OverlaySystem {
         this.overlayIntro = intro;
         this.titlePhase = phase;
         if (canvas.width !== w || canvas.height !== h) {
+          if (c.mode === "storyboard") this.overlayTexture.dispose();
           canvas.width = w;
           canvas.height = h;
         }

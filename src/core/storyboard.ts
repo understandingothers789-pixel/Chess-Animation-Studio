@@ -284,22 +284,31 @@ export function resolveStoryboardFrame(p: Project, outputTime: number) {
 }
 /** Return all occurrences, since one source moment may appear repeatedly in a reel. */
 export function sourceToStoryboard(p: Project, sourceTime: number) {
-  return compileStoryboard(p)
-    .shots.filter(
-      (e) =>
-        e.shot.kind === "move-range" &&
-        !e.issue &&
-        sourceTime >= e.sourceStart &&
-        sourceTime < e.sourceEnd,
-    )
-    .map((e) => ({
-      id: e.shot.id,
-      time:
-        e.start +
-        e.shot.preHold +
-        ((sourceTime - e.sourceStart) / (e.sourceEnd - e.sourceStart)) *
-          (e.shot.duration - e.shot.preHold - e.shot.postHold),
-    }));
+  const c = compileStoryboard(p);
+  return c.shots.flatMap<{ id: string; time: number; end?: number }>((e) => {
+    if (e.issue || e.shot.kind === "title-card") return [];
+    if (e.shot.kind === "position-hold") {
+      const held =
+        e.shot.source?.position === "after"
+          ? (c.source.segments[e.startIndex]?.finish ?? 0)
+          : (c.source.segments[e.startIndex]?.start ?? 0);
+      return Math.abs(sourceTime - held) < 1e-9
+        ? [{ id: e.shot.id, time: e.start, end: e.end }]
+        : [];
+    }
+    if (sourceTime < e.sourceStart || sourceTime >= e.sourceEnd) return [];
+    return [
+      {
+        id: e.shot.id,
+        time:
+          e.start +
+          e.shot.preHold +
+          ((sourceTime - e.sourceStart) / (e.sourceEnd - e.sourceStart)) *
+            (e.shot.duration - e.shot.preHold - e.shot.postHold),
+        end: undefined,
+      },
+    ];
+  });
 }
 export function shotFromMove(
   p: Project,
@@ -402,7 +411,7 @@ export function duplicateShot(shot: StoryboardShot): StoryboardShot {
   return {
     ...structuredClone(shot),
     id: uid(),
-    name: shot.name + " copy",
+    name: shot.name.slice(0, 115) + " copy",
     annotations: shot.annotations.map((a) => ({
       ...structuredClone(a),
       id: uid(),

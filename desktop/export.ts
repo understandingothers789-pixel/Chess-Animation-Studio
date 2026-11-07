@@ -1,3 +1,4 @@
+import { musicEnd } from "../src/core/audio";
 import { audioEvents } from "../src/core/audioEvents";
 import {
   presentationDuration,
@@ -265,6 +266,7 @@ export class VideoJob {
       fadeOut = 0,
       automation = "",
     ) => {
+      if (trimEnd <= trimStart || delay >= seconds) return;
       const idx = input++;
       args.push("-i", file);
       const tag = `a${idx}`;
@@ -286,35 +288,42 @@ export class VideoJob {
     if (music && !p.music.muted) {
       const trim =
           p.music.trimStart + Math.max(0, this.options.start - p.music.offset),
-        end =
-          p.music.trimEnd ||
-          p.music.trimStart +
-            presentationDuration(p, this.options.mode) -
-            p.music.offset;
+        end = musicEnd(
+          p,
+          p.music.sourceDuration || Infinity,
+          presentationDuration(p, this.options.mode),
+        );
       add(
         music.path,
         trim,
         end,
         Math.max(0, p.music.offset - this.options.start),
         p.music.volume,
-        Math.max(
-          0,
-          p.music.fadeIn - Math.max(0, this.options.start - p.music.offset),
-        ),
-        p.music.fadeOut,
+        0,
+        0,
         (() => {
           const points = [...p.music.volumePoints].sort(
             (a, b) => a.time - b.time,
           );
-          if (!points.length) return "";
           const origin = Math.max(this.options.start, p.music.offset);
-          let expr = String(points[points.length - 1].value);
-          for (let i = points.length - 2; i >= 0; i--) {
-            const a = points[i],
-              b = points[i + 1];
-            expr = `if(lt(t+${origin},${b.time}),${a.value}+(${b.value}-${a.value})*(t+${origin}-${a.time})/${b.time - a.time},${expr})`;
+          let expr = String(p.music.volume);
+          if (points.length) {
+            expr = String(points[points.length - 1].value);
+            for (let i = points.length - 2; i >= 0; i--) {
+              const a = points[i],
+                b = points[i + 1];
+              if (b.time === a.time) continue;
+              expr = `if(lt(t+${origin},${b.time}),${a.value}+(${b.value}-${a.value})*(t+${origin}-${a.time})/${b.time - a.time},${expr})`;
+            }
+            expr = `if(lt(t+${origin},${points[0].time}),${points[0].value},${expr})`;
           }
-          return `if(lt(t+${origin},${points[0].time}),${points[0].value},${expr})`;
+          const fadeIn = p.music.fadeIn
+            ? `min(1,max(0,(t+${origin - p.music.offset})/${p.music.fadeIn}))`
+            : "1";
+          const fadeOut = p.music.fadeOut
+            ? `min(1,max(0,(${end - trim}-t)/${p.music.fadeOut}))`
+            : "1";
+          return `(${expr})*(${fadeIn})*(${fadeOut})`;
         })(),
       );
     }

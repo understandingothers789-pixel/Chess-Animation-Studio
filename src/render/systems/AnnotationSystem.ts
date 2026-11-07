@@ -109,6 +109,9 @@ export class AnnotationSystem {
     );
     if (!text.length) return;
     if (this.canvas.width !== c.w || this.canvas.height !== c.h) {
+      // WebGL texture storage is immutable after allocation. Preview/thumbnail/PNG
+      // resizes must reallocate it, or stale caption pixels survive the resize.
+      this.texture.dispose();
       this.canvas.width = c.w;
       this.canvas.height = c.h;
     }

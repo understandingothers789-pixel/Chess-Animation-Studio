@@ -10,4 +10,5 @@ if log.exists():
     shutil.copyfile(log, target)
     tail = log.read_text(errors="replace")[-5000:]
     escaped = tail.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-    print("::error title=Visual validation output::" + escaped)
+    title = sys.argv[2] if len(sys.argv) > 2 else "Visual validation output"
+    print("::error title=" + title + "::" + escaped)

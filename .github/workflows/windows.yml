@@ -76,7 +76,18 @@ jobs:
           $env:STUDIO_PACKAGED_EXE = (Join-Path $fresh 'Chess Animation Studio.exe')
           $env:FFMPEG_PATH = (Get-Command ffmpeg).Source
           $env:FFPROBE_PATH = (Get-Command ffprobe).Source
-          npm run test:desktop
+          $desktopLog = Join-Path $env:RUNNER_TEMP 'desktop-validation.log'
+          $desktopStatus = 1
+          try {
+            npm run test:desktop 2>&1 | Tee-Object -FilePath $desktopLog
+            $desktopStatus = $LASTEXITCODE
+          } catch {
+            $_ | Out-File -FilePath $desktopLog -Append
+          }
+          if ($desktopStatus -ne 0) {
+            python .github/scripts/report-context-failure.py $desktopLog 'Packaged Windows validation output'
+            exit $desktopStatus
+          }
       - name: Upload versioned Windows portable download
         if: success()
         uses: actions/upload-artifact@v4

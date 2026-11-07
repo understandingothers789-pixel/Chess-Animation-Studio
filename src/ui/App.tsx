@@ -593,7 +593,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selected, loadingAudio]);
+  }, [selected, loadingAudio, checked, p]);
   function adopted(project: Project, file: string | null) {
     stop();
     replace(project);

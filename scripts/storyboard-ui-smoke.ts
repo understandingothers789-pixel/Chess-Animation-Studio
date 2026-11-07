@@ -85,6 +85,23 @@ try {
   });
   await snap("02-populated");
   await snap("03-add-source");
+  await page.getByLabel(/^Select source move 3 /).check();
+  await page.getByLabel(/^Select source move 5 /).check();
+  await page.locator(".composition-modebar small").click();
+  await page.keyboard.press("Control+Enter");
+  await expect(page.locator(".shot-card")).toHaveCount(5);
+  assert.deepEqual(
+    (await state()).storyboard.shots
+      .slice(-2)
+      .map((s: any) => s.source.startMoveId),
+    [source[2].id, source[4].id],
+  );
+  await page.getByTitle("Undo", { exact: true }).click();
+  await expect(page.locator(".shot-card")).toHaveCount(3);
+  await page
+    .getByRole("button", { name: "Clear selection", exact: true })
+    .click();
+
   await page.getByLabel("Filter Captures", { exact: true }).check();
   await snap("04-highlight-discovery");
   await page

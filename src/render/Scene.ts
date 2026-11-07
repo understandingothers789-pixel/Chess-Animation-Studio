@@ -1,9 +1,10 @@
+import { evaluatePresentationFrame } from "./engine/presentation";
 import { AnnotationSystem } from "./systems/AnnotationSystem";
 import * as T from "three";
 import { CinematicCaptureSystem } from "./systems/CinematicCaptureSystem";
 import { BloomSystem } from "./systems/BloomSystem";
 import { worldToSquare } from "./engine/coordinates";
-import type { Project, Format } from "../core/project";
+import type { Project, Format, PlaybackMode } from "../core/project";
 import { buildGame, type Game } from "../core/chess";
 import { evaluateRenderFrame, type RenderFrame } from "./engine/frame";
 import { RenderGraph, type Pass } from "./engine/RenderGraph";
@@ -251,6 +252,7 @@ export class Scene {
           ],
           outputs: ["scene-color"],
           render: (c) => {
+            if (c.titleCard) return;
             if (c.square || c.short) {
               this.root.visible = false;
               lighting.moveLight.visible = false;
@@ -278,7 +280,9 @@ export class Scene {
           id: "cinematic-bloom",
           stage: "post",
           after: ["spotlight-post"],
-          render: (c) => bloom.render(c),
+          render: (c) => {
+            if (!c.titleCard) bloom.render(c);
+          },
           dispose: () => bloom.dispose(),
         },
         {
@@ -368,13 +372,15 @@ export class Scene {
     w: number,
     h: number,
     format: Format = p.format,
+    mode: PlaybackMode = "source",
   ) {
     this.assertGraphics();
     const previous = this.current;
     if (
       previous &&
-      previous.p === p &&
-      previous.time === time &&
+      previous.authoring === p &&
+      previous.mode === mode &&
+      previous.outputTime === time &&
       previous.w === w &&
       previous.h === h &&
       previous.format === format &&
@@ -393,7 +399,7 @@ export class Scene {
       h > this.renderer.capabilities.maxTextureSize
     )
       throw RangeError("Render dimensions exceed GPU capabilities");
-    const c = evaluateRenderFrame(p, time, w, h, format, this.game);
+    const c = evaluatePresentationFrame(p, time, w, h, format, mode, this.game);
     const r = this.renderer;
     if (w !== this.width || h !== this.height) {
       this.width = w;
@@ -419,7 +425,7 @@ export class Scene {
       r.setViewport(0, 0, w, h);
       r.setClearColor(c.short ? p.shorts.barColor : "#111918");
       r.clear(true, true, true);
-      this.graph.render(time, c, w, h, p);
+      this.graph.render(time, c, w, h, c.p);
     } finally {
       this.root.visible = visible;
       r.resetState();
@@ -471,7 +477,7 @@ export class Scene {
   pick(clientX: number, clientY: number) {
     this.assertLive();
     const c = this.current;
-    if (!c) return null;
+    if (!c || c.titleCard) return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
     if (
       clientX < rect.left ||

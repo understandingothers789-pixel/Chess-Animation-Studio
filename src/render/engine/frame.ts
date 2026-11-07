@@ -1,7 +1,12 @@
 import { captureImpact } from "./impact";
-import { evaluate, shortsFraming, compileTimeline } from "../../core/timeline";
+import {
+  evaluate,
+  shortsFraming,
+  compileTimeline,
+  type Frame,
+} from "../../core/timeline";
 import { buildGame, type Game } from "../../core/chess";
-import type { Project, Format } from "../../core/project";
+import type { Project, Format, PlaybackMode } from "../../core/project";
 export function evaluateRenderFrame(
   p: Project,
   time: number,
@@ -9,6 +14,7 @@ export function evaluateRenderFrame(
   h: number,
   format: Format = p.format,
   game: Game = buildGame(p),
+  initialCamera?: Frame["camera"],
 ) {
   if (!Number.isFinite(time) || time < 0)
     throw RangeError("Invalid render time");
@@ -16,7 +22,7 @@ export function evaluateRenderFrame(
     throw RangeError("Invalid render dimensions");
   const bg = p.layouts[format];
   const timeline = compileTimeline(p);
-  const e = evaluate(p, time, game, format, timeline);
+  const e = evaluate(p, time, game, format, timeline, initialCamera);
   const impact = captureImpact(p, game, time, timeline.segments);
   e.camera.x += impact.x;
   e.camera.y += impact.y;
@@ -81,6 +87,17 @@ export function evaluateRenderFrame(
 
   const sign = p.style.orientation === "white" ? 1 : -1;
   return {
+    authoring: p,
+    mode: "source" as PlaybackMode,
+    outputTime: time,
+    annotationTime: time,
+    titleCard: false,
+    shot: null as {
+      id: string;
+      index: number;
+      localTime: number;
+      sourceTime: number;
+    } | null,
     p,
     e,
     time,

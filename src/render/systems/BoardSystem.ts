@@ -40,7 +40,8 @@ export class BoardSystem {
     }
   }
   update(c: RenderFrame) {
-    const { p, e, time, shimmer } = c;
+    const { p, e, shimmer } = c;
+    const time = c.mode === "storyboard" ? c.outputTime : c.time;
     if (this.coordinates !== p.style.coordinates) {
       this.rebuildCoordinates(p);
       this.coordinates = p.style.coordinates;

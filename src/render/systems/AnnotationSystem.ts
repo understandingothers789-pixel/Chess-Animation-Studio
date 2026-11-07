@@ -84,14 +84,17 @@ export class AnnotationSystem {
       }
     }
     for (const { mesh, a } of this.shapes) {
-      const opacity = annotationOpacity(a, c.time);
+      const opacity = annotationOpacity(a, c.annotationTime);
       mesh.visible = opacity > 0;
       (mesh.material as T.MeshBasicMaterial).opacity = opacity;
       mesh.scale.setScalar(
         a.entrance === "pop"
           ? Math.max(
               0.01,
-              Math.min(1, (c.time - a.start) / Math.max(0.001, a.fade)),
+              Math.min(
+                1,
+                (c.annotationTime - a.start) / Math.max(0.001, a.fade),
+              ),
             )
           : 1,
       );
@@ -102,7 +105,7 @@ export class AnnotationSystem {
     const text = (c.p.annotations ?? []).filter(
       (a) =>
         (a.kind === "text" || a.kind === "caption") &&
-        annotationOpacity(a, c.time) > 0,
+        annotationOpacity(a, c.annotationTime) > 0,
     );
     if (!text.length) return;
     if (this.canvas.width !== c.w || this.canvas.height !== c.h) {
@@ -113,7 +116,7 @@ export class AnnotationSystem {
     ctx.clearRect(0, 0, c.w, c.h);
     for (const a of text) {
       ctx.save();
-      ctx.globalAlpha = annotationOpacity(a, c.time);
+      ctx.globalAlpha = annotationOpacity(a, c.annotationTime);
       const size = (a.size * c.w) / 1920;
       ctx.font = `600 ${size}px ${a.font}`;
       ctx.textAlign = a.align;
@@ -130,7 +133,10 @@ export class AnnotationSystem {
         a.entrance === "pop"
           ? Math.max(
               0.01,
-              Math.min(1, (c.time - a.start) / Math.max(0.001, a.fade)),
+              Math.min(
+                1,
+                (c.annotationTime - a.start) / Math.max(0.001, a.fade),
+              ),
             )
           : 1;
       this.textBounds.push({
@@ -143,7 +149,7 @@ export class AnnotationSystem {
       if (a.entrance === "pop") {
         const scale = Math.max(
           0.01,
-          Math.min(1, (c.time - a.start) / Math.max(0.001, a.fade)),
+          Math.min(1, (c.annotationTime - a.start) / Math.max(0.001, a.fade)),
         );
         ctx.translate(x, y);
         ctx.scale(scale, scale);

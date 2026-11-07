@@ -217,7 +217,9 @@ export function StoryboardWaveform({
               key === "offset" ? -3600 : 0,
               Math.min(
                 key === "fadeIn" || key === "fadeOut" ? 30 : 3600,
-                p.music[key] + delta,
+                (key === "trimEnd" && !p.music[key]
+                  ? p.music.sourceDuration
+                  : p.music[key]) + delta,
               ),
             );
           });
@@ -228,10 +230,14 @@ export function StoryboardWaveform({
       </title>
     </rect>
   );
-  const curve = Array.from({ length: Math.ceil(width / 4) }, (_, i) => {
-    const t = (scroll + i * 4) / px;
-    return `${i ? "L" : "M"}${scroll + i * 4},${126 - soundtrackGain(p, t, c.duration) * 30}`;
-  }).join(" ");
+  const curve = useMemo(
+    () =>
+      Array.from({ length: Math.ceil(width / 4) }, (_, i) => {
+        const t = (scroll + i * 4) / px;
+        return `${i ? "L" : "M"}${scroll + i * 4},${126 - soundtrackGain(p, t, c.duration) * 30}`;
+      }).join(" "),
+    [p, scroll, width, px, c.duration],
+  );
   const selectedEntry = c.shots.find((e) => e.shot.id === selected),
     beat = beats.find((b) => b.id === activeBeat);
   const alignEnd = () => {

@@ -1,3 +1,4 @@
+import { finishingFixtures } from "./finishing-fixtures";
 /** Real shared-compositor → VideoJob → H.264/AAC verification, without an Electron display. */
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
@@ -16,7 +17,10 @@ import { validateExport } from "../src/core/exportOptions";
 import { VideoJob } from "../desktop/export";
 import { writeProject, readProject } from "../desktop/files";
 const dir = path.resolve(
-  process.env.STORY_TEST_DIR ?? "test-results/storyboard-render",
+  process.env.STORY_TEST_DIR ??
+    (process.env.FINISHING_TEST || process.argv.includes("--finishing")
+      ? "test-results/finishing-render"
+      : "test-results/storyboard-render"),
 );
 await fs.mkdir(dir, { recursive: true });
 const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg",
@@ -66,6 +70,23 @@ for (const s of p.storyboard.shots) {
   });
 }
 p.storyboard.shots[0].annotations = [shotCaption(p, "Earlier caption", 0.3)];
+if (process.env.FINISHING_TEST || process.argv.includes("--finishing")) {
+  p.storyboard.shots[0].annotations = [
+    shotCaption(
+      p,
+      "This bishop sacrifice looks completely losing until you notice the queen is trapped.",
+      0.3,
+    ),
+  ];
+  p.storyboard.shots[1].annotations = [
+    shotCaption(p, "A thinking interval\nThen reveal the move", 0.3),
+  ];
+  p.storyboard.shots[1].annotations[0].font = "serif";
+  p.storyboard.shots[2].annotations = [
+    shotCaption(p, "Unicode café 中文 · 👨‍👩‍👦", 0.3),
+  ];
+  p.storyboard.beats = [{ id: "cut", time: 0.3, accent: true, enabled: true }];
+}
 const order = p.moves.map((m) => m.id);
 await writeProject(path.join(dir, "roundtrip.castudio"), p);
 p = await readProject(path.join(dir, "roundtrip.castudio"));
@@ -165,137 +186,160 @@ try {
   );
   let cases = 0,
     maxError = 0;
-  for (const format of [
-    "landscape",
-    "vertical",
-    "square",
-    "square-in-vertical",
-  ] as Format[]) {
-    const [width, height] =
-      format === "landscape"
-        ? [160, 90]
-        : format === "square"
-          ? [90, 90]
-          : [90, 160];
-    for (const fps of [24, 30, 60] as const) {
-      const options = validateExport(p, {
-        format,
-        mode: "storyboard",
-        start: 0,
-        end: 1.2,
-        width,
-        height,
-        fps,
-      });
-      const file = path.join(dir, `${format}-${fps}.mp4`),
-        job = new VideoJob(p, options, file, ffmpeg, false, () => {});
-      await job.start();
-      const originals: Buffer[] = [];
-      try {
-        for (let i = 0; i < job.frames; i++) {
-          const rgba = Buffer.from(
-            await page.evaluate(
-              ({ time, width, height, format }) => {
-                const w = window as any;
-                w.storyScene.render(
-                  w.storyProject,
-                  time,
-                  width,
-                  height,
-                  format,
-                  "storyboard",
-                );
-                const a = w.storyScene.rgba();
-                let s = "";
-                for (let i = 0; i < a.length; i++)
-                  s += String.fromCharCode(a[i]);
-                return btoa(s);
-              },
-              { time: i / fps, width, height, format },
-            ),
-            "base64",
-          );
-          originals.push(rgba);
-          await job.frame(rgba, i);
+  const baseProject = p;
+  const scenarios =
+    process.env.FINISHING_TEST || process.argv.includes("--finishing")
+      ? finishingFixtures(p)
+      : [
+          {
+            name: "storyboard",
+            project: p,
+            formats: [
+              "landscape",
+              "vertical",
+              "square",
+              "square-in-vertical",
+            ] as Format[],
+            rates: [24, 30, 60],
+          },
+        ];
+  for (const scenario of scenarios) {
+    p = scenario.project;
+    await fs.writeFile(
+      path.join(dir, scenario.name + ".castudio"),
+      JSON.stringify(p, null, 2),
+    );
+    await page.evaluate((p) => {
+      (window as any).storyProject = p;
+    }, p);
+    for (const format of scenario.formats) {
+      const [width, height] =
+        format === "landscape"
+          ? [160, 90]
+          : format === "square"
+            ? [90, 90]
+            : [90, 160];
+      for (const fps of scenario.rates) {
+        const options = validateExport(p, {
+          format,
+          mode: "storyboard",
+          start: 0,
+          end: 1.2,
+          width,
+          height,
+          fps,
+        });
+        const file = path.join(dir, `${scenario.name}-${format}-${fps}.mp4`),
+          job = new VideoJob(p, options, file, ffmpeg, false, () => {});
+        await job.start();
+        const originals: Buffer[] = [];
+        try {
+          for (let i = 0; i < job.frames; i++) {
+            const rgba = Buffer.from(
+              await page.evaluate(
+                ({ time, width, height, format }) => {
+                  const w = window as any;
+                  w.storyScene.render(
+                    w.storyProject,
+                    time,
+                    width,
+                    height,
+                    format,
+                    "storyboard",
+                  );
+                  const a = w.storyScene.rgba();
+                  let s = "";
+                  for (let i = 0; i < a.length; i++)
+                    s += String.fromCharCode(a[i]);
+                  return btoa(s);
+                },
+                { time: i / fps, width, height, format },
+              ),
+              "base64",
+            );
+            originals.push(rgba);
+            await job.frame(rgba, i);
+          }
+          await job.finish();
+        } catch (e) {
+          await job.cancel();
+          throw e;
         }
-        await job.finish();
-      } catch (e) {
-        await job.cancel();
-        throw e;
-      }
-      const probe = JSON.parse(
-        execFileSync(
-          ffprobe,
-          ["-v", "error", "-show_streams", "-of", "json", file],
-          { encoding: "utf8" },
-        ),
-      );
-      const v = probe.streams.find((s: any) => s.codec_type === "video"),
-        a = probe.streams.find((s: any) => s.codec_type === "audio");
-      assert.equal(v.nb_frames, String(job.frames));
-      assert.equal(v.width, width);
-      assert.equal(v.height, height);
-      assert.equal(v.r_frame_rate, `${fps}/1`);
-      assert.equal(a.codec_name, "aac");
-      const decoded = execFileSync(
-        ffmpeg,
-        [
+        const probe = JSON.parse(
+          execFileSync(
+            ffprobe,
+            ["-v", "error", "-show_streams", "-of", "json", file],
+            { encoding: "utf8" },
+          ),
+        );
+        const v = probe.streams.find((s: any) => s.codec_type === "video"),
+          a = probe.streams.find((s: any) => s.codec_type === "audio");
+        assert.equal(v.nb_frames, String(job.frames));
+        assert.equal(v.width, width);
+        assert.equal(v.height, height);
+        assert.equal(v.r_frame_rate, `${fps}/1`);
+        assert.equal(a.codec_name, "aac");
+        const decoded = execFileSync(
+          ffmpeg,
+          [
+            "-v",
+            "error",
+            "-i",
+            file,
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgba",
+            "-an",
+            "pipe:1",
+          ],
+          { maxBuffer: 30e6 },
+        );
+        assert.equal(decoded.length, job.frames * width * height * 4);
+        for (let frame = 0; frame < job.frames; frame++) {
+          let error = 0,
+            n = 0;
+          const expected = originals[frame],
+            offset = frame * expected.length;
+          for (let i = 0; i < expected.length; i += 16)
+            for (let c = 0; c < 3; c++) {
+              error += Math.abs(expected[i + c] - decoded[offset + i + c]);
+              n++;
+            }
+          maxError = Math.max(maxError, error / n);
+          assert.ok(
+            error / n < 14,
+            `Pixel parity ${format}/${fps} frame ${frame}: ${error / n}`,
+          );
+        }
+        const pcm = execFileSync(ffmpeg, [
           "-v",
           "error",
           "-i",
           file,
+          "-vn",
           "-f",
-          "rawvideo",
-          "-pix_fmt",
-          "rgba",
-          "-an",
+          "f32le",
+          "-ac",
+          "1",
+          "-ar",
+          "48000",
           "pipe:1",
-        ],
-        { maxBuffer: 30e6 },
-      );
-      assert.equal(decoded.length, job.frames * width * height * 4);
-      for (let frame = 0; frame < job.frames; frame++) {
-        let error = 0,
-          n = 0;
-        const expected = originals[frame],
-          offset = frame * expected.length;
-        for (let i = 0; i < expected.length; i += 16)
-          for (let c = 0; c < 3; c++) {
-            error += Math.abs(expected[i + c] - decoded[offset + i + c]);
-            n++;
-          }
-        maxError = Math.max(maxError, error / n);
-        assert.ok(
-          error / n < 14,
-          `Pixel parity ${format}/${fps} frame ${frame}: ${error / n}`,
+        ]);
+        for (const t of [0.05, 0.31, 0.61, 0.91, 1.1]) {
+          let power = 0;
+          for (let i = 0; i < 1000; i++)
+            power += pcm.readFloatLE((Math.floor(t * 48000) + i) * 4) ** 2;
+          assert.ok(Math.sqrt(power / 1000) > 0.02, `Continuous music at ${t}`);
+        }
+        cases++;
+        console.log(
+          `PASS: ${scenario.name}: ${format} ${fps} FPS, ${job.frames} actual H.264 frames + continuous AAC across cuts`,
         );
       }
-      const pcm = execFileSync(ffmpeg, [
-        "-v",
-        "error",
-        "-i",
-        file,
-        "-vn",
-        "-f",
-        "f32le",
-        "-ac",
-        "1",
-        "-ar",
-        "48000",
-        "pipe:1",
-      ]);
-      for (const t of [0.05, 0.31, 0.61, 0.91, 1.1]) {
-        let power = 0;
-        for (let i = 0; i < 1000; i++)
-          power += pcm.readFloatLE((Math.floor(t * 48000) + i) * 4) ** 2;
-        assert.ok(Math.sqrt(power / 1000) > 0.02, `Continuous music at ${t}`);
-      }
-      cases++;
-      console.log(
-        `PASS: ${format} ${fps} FPS, ${job.frames} actual H.264 frames + continuous AAC across cuts`,
-      );
     }
   }
+  p = baseProject;
   // Exercise final fades and seeks using real AAC, including a soundtrack entirely outside output.
   const encodeAudio = async (
     project: typeof p,

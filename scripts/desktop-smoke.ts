@@ -6,7 +6,7 @@ import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { blank, VERSION } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
-import { shotFromMove, titleShot } from "../src/core/storyboard";
+import { shotCaption, shotFromMove, titleShot } from "../src/core/storyboard";
 import { duration, segments } from "../src/core/timeline";
 const dir = path.resolve("test-results");
 await fs.mkdir(dir, { recursive: true });
@@ -781,6 +781,16 @@ try {
       a.end = 0.3;
     });
   }
+  story.storyboard.shots[0].annotations = [
+    shotCaption(
+      story,
+      "This bishop sacrifice looks completely losing until you notice the queen is trapped.",
+      0.3,
+    ),
+  ];
+  story.storyboard.beats = [
+    { id: "native-beat", time: 0.1, accent: true, enabled: true },
+  ];
   const storyPath = path.join(dir, "storyboard-roundtrip.castudio");
   await launch.evaluate((_, file) => {
     (globalThis as any).__savePath = file;
@@ -812,6 +822,14 @@ try {
     "Packaged storyboard edit",
   );
   assert.deepEqual(reopened!.project.moves, story.moves);
+  await page.locator(".story-waveform>summary").click();
+  await expect(
+    page.getByLabel("Music waveform and output ruler"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("slider", { name: "Accent 1", exact: true }),
+  ).toHaveCount(1);
+  await page.locator(".story-waveform>summary").click();
   await page.getByLabel("Play storyboard", { exact: true }).click();
   await page.waitForTimeout(180);
   await expect(

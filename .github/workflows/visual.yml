@@ -8,7 +8,7 @@ permissions:
 jobs:
   visual:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +35,7 @@ jobs:
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
           npm run test:timeline
           npm run test:storyboard
+          npm run test:finishing
           npm run test:render -- final
           golden_ref=$(cat docs/cinematic-goldens/source-ref)
           [[ "$golden_ref" =~ ^[0-9a-f]{40}$ ]]
@@ -48,6 +49,9 @@ jobs:
           name: Chromium-visual-evidence
           path: |
             test-results/storyboard-render/
+            test-results/finishing-render/
+            docs/finishing-031/*.png
+            docs/finishing-031/performance.json
             docs/storyboard-030/*.png
             test-results/context-validation.log
             test-results/timeline-menus/

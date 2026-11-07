@@ -1,0 +1,11 @@
+{
+  "fps": [
+    24,
+    30,
+    60
+  ],
+  "maxAmplitudeError": 0.001003406121222676,
+  "seeking": true,
+  "independentCaptureOccurrences": 2,
+  "persistence": true
+}

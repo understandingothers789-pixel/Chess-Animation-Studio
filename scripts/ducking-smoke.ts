@@ -1,3 +1,4 @@
+import { writeProject, readProject } from "../desktop/files";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -188,7 +189,8 @@ await fs.writeFile(
     2,
   ),
 );
-await fs.writeFile(path.join(dir, "fixture.castudio"), JSON.stringify(p));
+await writeProject(path.join(dir, "fixture.castudio"), p);
+assert.deepEqual(await readProject(path.join(dir, "fixture.castudio")), p);
 console.log(
   "PASS: seek, mute, independent repeated capture cues, persisted shot settings",
   maxError,

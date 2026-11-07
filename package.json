@@ -1,7 +1,7 @@
 {
   "name": "chess-animation-studio",
   "productName": "Chess Animation Studio",
-  "version": "0.2.31",
+  "version": "0.2.32",
   "private": true,
   "description": "Local chess animation editor",
   "author": "Chess Animation Studio contributors",
@@ -23,7 +23,8 @@
     "test:timeline": "node --import tsx scripts/timeline-menu-smoke.ts",
     "test:storyboard": "node --import tsx scripts/storyboard-ui-smoke.ts && node --import tsx scripts/storyboard-render-smoke.ts",
     "benchmark:storyboard": "node --import tsx scripts/storyboard-benchmark.ts",
-    "test:finishing": "node --import tsx scripts/finishing-ui-smoke.ts && node --import tsx scripts/storyboard-render-smoke.ts --finishing && node --import tsx docs/finishing-031/audio-check.mjs"
+    "test:finishing": "node --import tsx scripts/finishing-ui-smoke.ts && node --import tsx scripts/storyboard-render-smoke.ts --finishing && node --import tsx docs/finishing-031/audio-check.mjs",
+    "test:ducking": "node --import tsx scripts/ducking-smoke.ts && node --import tsx scripts/ducking-ui-smoke.ts"
   },
   "dependencies": {
     "chess.js": "1.4.0",

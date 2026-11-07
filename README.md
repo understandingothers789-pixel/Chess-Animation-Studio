@@ -1,8 +1,10 @@
-# Chess Animation Studio · 0.2.31
+# Chess Animation Studio · 0.2.32
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
 
-![Chess Animation Studio 0.2.31 captions and waveform editor](docs/finishing-031/09-waveform.png)
+![Chess Animation Studio 0.2.32 shot music ducking](docs/ducking-032/inspector.png)
+
+Version **0.2.32** adds per-shot **Music ducking** in the storyboard Shot Inspector. Set a music level and fade down/up durations; the output waveform, playback and MP4 export share the same envelope. Chess sound effects keep their own levels. See the [focused report](docs/ducking-032/REPORT.md).
 
 Version **0.2.31** adds automatic caption wrapping and configurable safe areas. Select a shot and open **Shot caption** for placement, typography presets and overflow warnings. **Caption guides** in the preview toolbar help position text without appearing in exports. Expand **Music waveform** below the preview to edit soundtrack offset, source trims, fades, gain points and output beats. Export's **Production checks** separate warnings from blocking errors. See the [0.2.31 engineering report](docs/finishing-031/REPORT.md) for reviewed screenshots, self-contained projects, decoded video/audio checks and limitations.
 

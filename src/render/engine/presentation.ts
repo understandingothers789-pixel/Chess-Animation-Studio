@@ -59,6 +59,19 @@ export function evaluatePresentationFrame(
     r.shot.kind === "move-range"
       ? Math.max(0, r.sourceTime - origin)
       : r.localTime;
+  const camera = r.shot.camera;
+  const heldCamera =
+    r.shot.kind === "move-range"
+      ? undefined
+      : camera
+        ? {
+            x: camera.mode === "full" ? 0 : camera.x,
+            y: camera.mode === "full" ? 0 : camera.y,
+            zoom: camera.mode === "full" ? 1 : camera.zoom,
+            tilt: camera.tilt,
+            rotation: camera.rotation,
+          }
+        : { ...r.initialCameras[format] };
   const c = evaluateRenderFrame(
     r.project,
     evaluationTime,
@@ -67,6 +80,7 @@ export function evaluatePresentationFrame(
     format,
     r.game,
     r.initialCameras[format],
+    heldCamera,
   );
   c.authoring = p;
   c.mode = mode;
@@ -79,21 +93,33 @@ export function evaluatePresentationFrame(
     sourceTime: r.sourceTime,
   };
   c.titleCard = r.shot.kind === "title-card";
-  if (r.shot.kind !== "move-range") {
-    const camera = r.shot.camera;
-    c.e.camera = camera
-      ? {
-          x: camera.mode === "full" ? 0 : camera.x,
-          y: camera.mode === "full" ? 0 : camera.y,
-          zoom: camera.mode === "full" ? 1 : camera.zoom,
-          tilt: camera.tilt,
-          rotation: camera.rotation,
-        }
-      : { ...r.initialCameras[format] };
-    if (c.titleCard) {
-      c.short = false;
-      c.square = false;
-    }
+  if (r.shot.kind === "position-hold" && !camera) {
+    // Framing mode is independent of the legal piece list. A static hold has no
+    // projected moves, but must retain the source's game/cropped viewport.
+    const source = evaluateRenderFrame(
+      p,
+      r.sourceTime,
+      w,
+      h,
+      format,
+      compiled.game,
+      undefined,
+      heldCamera,
+    );
+    c.gameFraming = source.gameFraming;
+    c.short = source.short;
+    c.square = source.square;
+    c.crop = source.crop;
+    c.viewH = source.viewH;
+    c.viewY = source.viewY;
+  }
+  if (c.titleCard) {
+    c.short = false;
+    c.square = false;
+    c.gameFraming = false;
+    c.crop = null;
+    c.viewH = h;
+    c.viewY = 0;
   }
   // Source animation clock and soundtrack marker clock are deliberately distinct.
   let pulse = 0;

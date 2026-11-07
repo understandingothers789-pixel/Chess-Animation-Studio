@@ -15,6 +15,7 @@ export function evaluateRenderFrame(
   format: Format = p.format,
   game: Game = buildGame(p),
   initialCamera?: Frame["camera"],
+  cameraOverride?: Frame["camera"],
 ) {
   if (!Number.isFinite(time) || time < 0)
     throw RangeError("Invalid render time");
@@ -28,6 +29,7 @@ export function evaluateRenderFrame(
   e.camera.y += impact.y;
   if (impact.light > e.light.strength)
     e.light = { color: impact.color, strength: impact.light };
+  if (cameraOverride) e.camera = { ...cameraOverride };
   const fx = p.boardFX;
   const gameFraming =
     p.moves[e.index]?.effect.cameras[format]?.mode === "game" && time >= p.lead;
@@ -106,6 +108,7 @@ export function evaluateRenderFrame(
     format,
     game,
     timeline,
+    gameFraming,
     short,
     square,
     crop,

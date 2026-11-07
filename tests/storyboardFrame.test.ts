@@ -117,3 +117,47 @@ it("inherits only annotations visible at a held source position when explicitly 
   expect(a.p.annotations).toEqual(b.p.annotations);
   expect(p.annotations[0].end).toBe(t + 1);
 });
+it("preserves inherited game framing and applies hold camera overrides before Shorts cropping", async () => {
+  const { evaluateRenderFrame } = await import("../src/render/engine/frame");
+  const { shortsFraming } = await import("../src/core/timeline");
+  const p = make();
+  p.moves[2].effect.cameras.landscape = { ...camera(), mode: "game" };
+  p.moves[2].effect.cameras.vertical = { ...camera(), mode: "game" };
+  const s = shotFromMove(p, p.moves[2].id, "position-hold", "after");
+  p.storyboard.shots = [s];
+  for (const f of ["landscape", "vertical"] as const) {
+    const expected = evaluateRenderFrame(p, segments(p)[2].finish, 360, 640, f);
+    const actual = evaluatePresentationFrame(p, 1, 360, 640, f, "storyboard");
+    expect(actual.gameFraming).toBe(expected.gameFraming);
+    expect(actual.short).toBe(expected.short);
+    expect(actual.viewH).toBe(expected.viewH);
+    expect(actual.crop).toEqual(expected.crop);
+  }
+  const q = structuredClone(p);
+  q.shorts.enabled = true;
+  q.storyboard.shots[0].camera = {
+    ...camera(),
+    mode: "manual",
+    zoom: 1.8,
+    x: 1,
+    y: 1,
+  };
+  const frame = evaluatePresentationFrame(
+    q,
+    1,
+    360,
+    640,
+    "vertical",
+    "storyboard",
+  );
+  expect(frame.crop).toEqual(
+    shortsFraming(
+      q,
+      { x: 1, y: 1, zoom: 1.8, tilt: 0, rotation: 0 },
+      360,
+      640,
+      0,
+    ),
+  );
+  expect(frame.e.pieces.every((x) => !x.moving)).toBe(true);
+});

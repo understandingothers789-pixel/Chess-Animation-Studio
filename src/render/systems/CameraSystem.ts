@@ -10,9 +10,7 @@ export class CameraSystem {
     this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
     const bg = p.layouts[format],
       crop = c.crop,
-      gameFraming =
-        p.moves[e.index]?.effect.cameras[format]?.mode === "game" &&
-        time >= p.lead;
+      gameFraming = c.gameFraming;
     const aspect = w / viewH,
       half =
         (format === "vertical" && !short ? 4.11 : 4.65) /

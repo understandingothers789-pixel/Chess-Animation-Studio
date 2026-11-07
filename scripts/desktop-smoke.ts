@@ -450,6 +450,21 @@ try {
       const p = await window.studio.sample();
       p.annotations = [
         {
+          layout: {
+            placement: "standard",
+            maxWidth: 0.88,
+            maxLines: 3,
+            minSize: 28,
+            autoSize: true,
+            scale: 1,
+            lineSpacing: 1.3,
+            weight: 600,
+            customMargins: false,
+            top: 0.06,
+            bottom: 0.12,
+            left: 0.06,
+            right: 0.06,
+          },
           id: "caption-test",
           kind: "caption",
           from: "e2",

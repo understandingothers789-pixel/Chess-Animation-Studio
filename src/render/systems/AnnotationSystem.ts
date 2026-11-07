@@ -3,6 +3,7 @@ import type { Project } from "../../core/project";
 import { xy } from "../../core/chess";
 import { annotationOpacity, type Annotation } from "../../core/annotations";
 import type { RenderFrame } from "../engine/frame";
+import { captionCache } from "../../core/captions/layout";
 export class AnnotationSystem {
   private project?: Project;
   private textBounds: {
@@ -14,6 +15,11 @@ export class AnnotationSystem {
   }[] = [];
   private shapes: { mesh: T.Mesh; a: Annotation }[] = [];
   private canvas = document.createElement("canvas");
+  private layout = captionCache((text, size, font, weight) => {
+    const ctx = this.canvas.getContext("2d")!;
+    ctx.font = `${weight} ${size}px ${font}`;
+    return ctx.measureText(text).width;
+  });
   private texture = new T.CanvasTexture(this.canvas);
   private overlay = new T.Scene();
   private camera = new T.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -120,18 +126,15 @@ export class AnnotationSystem {
     for (const a of text) {
       ctx.save();
       ctx.globalAlpha = annotationOpacity(a, c.annotationTime);
-      const size = (a.size * c.w) / 1920;
-      ctx.font = `600 ${size}px ${a.font}`;
+      const layout = this.layout(a, c.w, c.h, c.format),
+        { lines, x, y } = layout,
+        size = layout.fontSize,
+        width = layout.bounds.width,
+        height = layout.bounds.height,
+        left = layout.bounds.x;
+      ctx.font = `${a.layout.weight} ${size}px ${a.font}`;
       ctx.textAlign = a.align;
       ctx.textBaseline = "middle";
-      const lines = a.text.split("\n"),
-        width = Math.max(...lines.map((l) => ctx.measureText(l).width)),
-        height = lines.length * size * 1.3,
-        x = a.x * c.w,
-        y = a.y * c.h,
-        left =
-          x -
-          (a.align === "center" ? width / 2 : a.align === "right" ? width : 0);
       const pop =
         a.entrance === "pop"
           ? Math.max(
@@ -144,10 +147,10 @@ export class AnnotationSystem {
           : 1;
       this.textBounds.push({
         id: a.id,
-        left: x + (left - size * 0.4 - x) * pop,
-        right: x + (left + width + size * 0.4 - x) * pop,
-        top: y - (height / 2 + size * 0.25) * pop,
-        bottom: y + (height / 2 + size * 0.25) * pop,
+        left: x + (left - x) * pop,
+        right: x + (left + width - x) * pop,
+        top: y - (height / 2) * pop,
+        bottom: y + (height / 2) * pop,
       });
       if (a.entrance === "pop") {
         const scale = Math.max(
@@ -159,12 +162,7 @@ export class AnnotationSystem {
         ctx.translate(-x, -y);
       }
       ctx.fillStyle = a.background;
-      ctx.fillRect(
-        left - size * 0.4,
-        y - height / 2 - size * 0.25,
-        width + size * 0.8,
-        height + size * 0.5,
-      );
+      ctx.fillRect(left, y - height / 2, width, height);
       if (a.shadow) {
         ctx.shadowColor = "#000000";
         ctx.shadowBlur = size * 0.2;
@@ -173,7 +171,7 @@ export class AnnotationSystem {
       ctx.strokeStyle = "#08120b";
       ctx.lineWidth = size * 0.08;
       lines.forEach((line, i) => {
-        const ly = y + (i - (lines.length - 1) / 2) * size * 1.3;
+        const ly = y + (i - (lines.length - 1) / 2) * layout.lineHeight;
         if (a.outline) ctx.strokeText(line, x, ly);
         ctx.fillText(line, x, ly);
       });

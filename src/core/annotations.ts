@@ -1,6 +1,29 @@
 import { z } from "zod";
 const finite = (min: number, max: number) =>
   z.number().finite().min(min).max(max);
+export const captionSettings = z.object({
+  placement: z
+    .enum([
+      "standard",
+      "lower-third",
+      "upper-caption",
+      "centered-title",
+      "social-safe",
+    ])
+    .default("standard"),
+  maxWidth: finite(0.1, 1).default(0.88),
+  maxLines: z.number().int().min(1).max(20).default(3),
+  minSize: finite(12, 160).default(28),
+  autoSize: z.boolean().default(true),
+  scale: finite(0.5, 2).default(1),
+  lineSpacing: finite(1, 2).default(1.3),
+  weight: z.number().int().min(100).max(900).default(600),
+  customMargins: z.boolean().default(false),
+  top: finite(0, 0.45).default(0.06),
+  bottom: finite(0, 0.45).default(0.12),
+  left: finite(0, 0.4).default(0.06),
+  right: finite(0, 0.4).default(0.06),
+});
 export const annotationSchema = z
   .object({
     id: z.string().max(100),
@@ -24,6 +47,7 @@ export const annotationSchema = z
     align: z.enum(["left", "center", "right"]),
     outline: z.boolean(),
     shadow: z.boolean(),
+    layout: captionSettings.prefault({}),
   })
   .refine((a) => a.end > a.start, {
     message: "Annotation end must follow its start",
@@ -65,5 +89,6 @@ export function annotation(
     align: "center",
     outline: true,
     shadow: true,
+    layout: captionSettings.parse({}),
   };
 }

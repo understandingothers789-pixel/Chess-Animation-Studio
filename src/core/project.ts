@@ -491,7 +491,72 @@ export const cinematicSchema = z
   })
   .default({ ...cinematicPresets.Cinematic, enabled: false });
 export type CinematicSettings = z.infer<typeof cinematicSchema>;
+export const storyboardShotSchema = z
+  .object({
+    id: z.string().min(1).max(100),
+    name: z.string().min(1).max(120),
+    kind: z.enum(["move-range", "position-hold", "title-card"]),
+    source: z
+      .object({
+        startMoveId: str,
+        endMoveId: str,
+        position: z.enum(["before", "after"]),
+      })
+      .nullable(),
+    duration: n(0.1, 600),
+    preHold: n(0, 120),
+    postHold: n(0, 120),
+    trimStart: n(0, 86400),
+    trimEnd: n(0, 86400),
+    preset: z.enum(["inherit", ...presets]),
+    camera: cameraSchema.nullable(),
+    inheritAnnotations: z.boolean(),
+    annotations: z.array(annotationSchema).max(50),
+  })
+  .superRefine((shot, ctx) => {
+    if (shot.kind !== "title-card" && !shot.source)
+      ctx.addIssue({
+        code: "custom",
+        message: "Shot requires source move references.",
+      });
+    if (
+      shot.kind === "move-range" &&
+      shot.preHold + shot.postHold >= shot.duration - 0.01
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Holds must leave time for the source animation.",
+      });
+    if (
+      new Set(shot.annotations.map((a) => a.id)).size !==
+      shot.annotations.length
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Duplicate shot annotation identities.",
+      });
+  });
+export const storyboardSchema = z
+  .object({
+    shots: z.array(storyboardShotSchema).max(200),
+    beats: z
+      .array(
+        z.object({
+          id: str,
+          time: n(0, 86400),
+          enabled: z.boolean(),
+          accent: z.boolean(),
+        }),
+      )
+      .max(10000),
+  })
+  .refine((s) => new Set(s.shots.map((s) => s.id)).size === s.shots.length, {
+    message: "Duplicate storyboard shot identities.",
+  });
+export type StoryboardShot = z.infer<typeof storyboardShotSchema>;
+export type PlaybackMode = "source" | "storyboard";
 export const projectSchema = z.object({
+  storyboard: storyboardSchema.default({ shots: [], beats: [] }),
   annotations: z.array(annotationSchema).max(100).default([]),
   bloom: bloomSchema,
   cinematic: cinematicSchema,
@@ -737,6 +802,7 @@ export type Move = Project["moves"][number];
 export const uid = () => crypto.randomUUID();
 export function blank(): Project {
   return {
+    storyboard: { shots: [], beats: [] },
     annotations: [],
     cinematic: { ...cinematicPresets.Cinematic, enabled: false },
     bloom: { ...bloomDefaults },

@@ -217,6 +217,7 @@ export function evaluate(
   g = buildGame(p),
   format = p.format,
   compiled?: CompiledTimeline,
+  initialCamera?: Frame["camera"],
 ): Frame {
   time = clamp(time, 0, compiled?.duration ?? duration(p));
   const seq = compiled?.segments ?? segments(p);
@@ -380,7 +381,10 @@ export function evaluate(
       impact = 0;
     }
   }
-  const previous = cameraTarget(p, g, index - 1, format, true),
+  const previous =
+      index === 0 && initialCamera
+        ? initialCamera
+        : cameraTarget(p, g, index - 1, format, true),
     target = cameraTarget(p, g, index, format, u >= 1);
   if (e && e.cameras[format]?.mode === "follow") {
     const subject = pieces.find((v) => v.id === step.pieceId);

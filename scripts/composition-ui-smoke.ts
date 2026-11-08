@@ -145,6 +145,9 @@ try {
     fixture.storyboard.shots[0].annotations[2].text,
   );
   await expect(layer).toHaveClass(/text-selected/);
+  await expect(
+    page.getByLabel("Shot caption", { exact: true }),
+  ).toBeInViewport();
   await page.screenshot({ path: "docs/composition-033/selected-layers.png" });
   console.log(
     "PASS: selection and inspector synchronization; source ownership is preserved",

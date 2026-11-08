@@ -83,3 +83,7 @@ Validation follow-ups: the original CI run stopped during Playwright dependency 
 `npm run test:finishing` passed all 16 encoded cases. Maximum decoded pixel error was **6.9057/255**. Rhythmic volume-automation RMS error was **0.0015738**; a 10-second source trim with a 2-second output offset measured **0.0004733** RMS error. Seek, source-frequency identification, mute and beat-aligned cuts passed.
 
 The composition UI suite additionally passed topmost overlapping-layer selection, proof that editor handles do not alter canvas pixels, square framing at 150% preview zoom, fullscreen selection and 150% UI scaling. See [zoomed square](zoom-square.png) and [fullscreen](fullscreen.png).
+
+`npm run test:render -- final` passed **216 render requests / 168 unique fixtures**, including graphics recovery and repeated-size rendering. It measured software-rendered 1080p median frame costs of 733.7 ms without bloom and 851.6 ms with bloom under local validation load; 4K medians were 1578.5/2007.9 ms. These figures describe this SwiftShader environment, not interactive physical GPU frame rates. Transition textures are allocated on first use and retained for reuse until resize or scene disposal.
+
+A final visual-review correction makes text selection reveal its actual inspector field without stealing focus from the drag/keyboard surface. Fullscreen selection keeps the editor surface in focus. The production build passed again after that correction.

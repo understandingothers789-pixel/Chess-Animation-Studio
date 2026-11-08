@@ -813,6 +813,25 @@ export function App() {
       shotIdRef.current = id;
     }
   }
+  function selectVisualAnnotation(id: string) {
+    stop();
+    setAnnotationId(id);
+    if (!id) return;
+    workspace.patch({ hideRight: false });
+    requestAnimationFrame(() => {
+      // Keep focus on the drag surface; reveal controls in the scrolling inspector.
+      if (document.fullscreenElement) return;
+      const drawer = document.querySelector<HTMLDetailsElement>(
+        modeRef.current === "storyboard"
+          ? ".story-annotation-editor"
+          : ".annotation-drawer",
+      );
+      if (drawer) {
+        drawer.open = true;
+        drawer.querySelector("textarea")?.scrollIntoView({ block: "nearest" });
+      }
+    });
+  }
   function previewStoryShot(id: string) {
     const entry = compileStoryboard(p).shots.find((s) => s.shot.id === id);
     if (!entry) return;
@@ -1389,10 +1408,7 @@ export function App() {
               onPause={stop}
               edit={annotationEdit}
               selectedAnnotation={annotationId}
-              onSelectAnnotation={(id) => {
-                setAnnotationId(id);
-                if (id) workspace.patch({ hideRight: false });
-              }}
+              onSelectAnnotation={selectVisualAnnotation}
               seek={seek}
               onEditAnnotation={(id) => {
                 stop();
@@ -1643,7 +1659,7 @@ export function App() {
               }}
               preview={previewStoryShot}
               annotationId={annotationId}
-              setAnnotationId={setAnnotationId}
+              setAnnotationId={selectVisualAnnotation}
               draw={(kind) => {
                 const entry = compileStoryboard(p).shots.find(
                   (s) => s.shot.id === shotId,

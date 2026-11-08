@@ -56,7 +56,7 @@ Text is selected one layer at a time; simultaneous group selection is not implem
 
 ## Q–R. Windows download and final status
 
-The previously validated 0.2.32 artifact was rechecked and its missing README entry restored. The 0.2.33 download will be advertised only after the existing workflow and expanded packaged validation pass. Final validation results follow in the completion record.
+The previously validated 0.2.32 artifact was rechecked and its missing README entry restored. The 0.2.33 workflow and expanded packaged validation passed. The verified artifact is linked in the README; final details follow in the completion record.
 
 ## Completion record
 
@@ -89,3 +89,25 @@ The composition UI suite additionally passed topmost overlapping-layer selection
 A final visual-review correction makes text selection reveal its actual inspector field without stealing focus from the drag/keyboard surface. Fullscreen selection keeps the editor surface in focus. The production build passed again after that correction.
 
 Final narrow-layout polish keeps the leading words of each text-layer label visible and suppresses explanatory guide labels on very small editor windows. The guide rectangle and editing handles remain available. A fresh composition UI run passed after the inspector and layout corrections, with zero page errors. At small sizes, Full preview and the existing panel toggles provide more composition space.
+
+
+## Final Git and Windows verification
+
+Validated implementation/build source: [`6bea5e518ca65d2f7f91e78157bddefdb59f3d8c`](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/6bea5e518ca65d2f7f91e78157bddefdb59f3d8c). Starting HEAD was `17cc0866ff426dce6ac4e6f88a8f74226ad13efa`. All implementation and documentation changes were pushed exclusively to `architecture/effect-compositor`; the final README/report-only commit is a descendant of the validated source. Local/remote HEAD equality and a clean working tree were checked after pushing.
+
+Implementation commits: [selection/manipulation](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/e3021a6), [transition rendering](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/729cf5b), [transition UI and validation](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/f785f47), [supported CI runner](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/7548faa), [alignment-aware snapping](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/7e9d15a), [inspector reveal](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/9f36ec3), [narrow layout polish](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/commit/6bea5e5).
+
+Protected references remained unchanged:
+
+| Branch | Initial and final SHA |
+| --- | --- |
+| `studio-main` | `9e2eccc56e228fee5b526c9fc097316400c2ab08` |
+| `main` | `e4ce9a7c61c250c6e1f84707d643da5942ea4cf7` |
+| `fresh-start` | `5030ba80ff8444b312d775257319b594bf9b3fba` |
+| `windows-download` | `6c185b473c2f4d855eb42517d1f8367d4edc8319` |
+
+[Windows workflow 42527895715](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42527895715) succeeded for the validated source. The Linux visual gate passed its reference comparisons, storyboard suite, finishing suite, new composition suite, ducking suite, deterministic render fixtures and cinematic goldens. Windows compilation, unit/service tests, portable packaging, runtime signature check, packaged-app visual editing, native save/reopen, preview, PNG/render checks, MP4 export, graphics recovery and cancellation all passed. Public release publication was **skipped** as required. These are automated runner checks, not a claim of testing the owner's physical PC.
+
+**[Download 0.2.33 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42527895715/artifacts/13636552632)** — 185 MB; GitHub sign-in required, 90-day artifact retention. GitHub artifact SHA-256: `62a180deabecb604f64649b8653a15db13878959924ad7c6eabbee7e794389ea`. The run's artifact table and packaged validation success were inspected directly; the URL was not guessed. Machine-readable evidence: [verification.json](verification.json).
+
+**Final status:** P0 direct editing and P1 transitions are implemented and verified. Production build, automated UI, legal storyboard evaluation, audio ducking, real encoded video, save/reopen, Windows packaged validation and download delivery passed. Group selection, automatic inherited-text cloning and transition audio crossfades remain explicitly outside this implementation; see the limitations above. No public release, PR, stable-branch change or environment publication was performed.

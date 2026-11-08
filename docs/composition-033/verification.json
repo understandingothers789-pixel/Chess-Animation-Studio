@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-08",
+  "initialHead": "17cc0866ff426dce6ac4e6f88a8f74226ad13efa",
+  "validatedSource": "6bea5e518ca65d2f7f91e78157bddefdb59f3d8c",
+  "branch": "architecture/effect-compositor",
+  "workflowRun": "42527895715",
+  "status": "Success",
+  "portableArtifact": {
+    "name": "Chess-Animation-Studio-0.2.33-Windows-Portable",
+    "id": "13636552632",
+    "size": "185 MB",
+    "url": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/42527895715/artifacts/13636552632",
+    "githubArtifactSha256": "62a180deabecb604f64649b8653a15db13878959924ad7c6eabbee7e794389ea"
+  },
+  "protectedHeads": {
+    "studio-main": "9e2eccc56e228fee5b526c9fc097316400c2ab08",
+    "main": "e4ce9a7c61c250c6e1f84707d643da5942ea4cf7",
+    "fresh-start": "5030ba80ff8444b312d775257319b594bf9b3fba",
+    "windows-download": "6c185b473c2f4d855eb42517d1f8367d4edc8319"
+  }
+}

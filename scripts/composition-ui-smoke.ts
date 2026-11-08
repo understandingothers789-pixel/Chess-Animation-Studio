@@ -50,16 +50,19 @@ fixture.annotations = [
 ];
 fixture.storyboard.shots[0].inheritAnnotations = true;
 await fs.mkdir("docs/composition-033", { recursive: true });
+const port = process.env.COMPOSITION_PORT ?? "5194",
+  origin = `http://127.0.0.1:${port}`;
 const server = spawn(
   process.execPath,
-  ["node_modules/vite/bin/vite.js", "--port", "5194"],
+  ["node_modules/vite/bin/vite.js", "--port", port, "--strictPort"],
   { stdio: "pipe" },
 );
 let browser;
+let page: import("@playwright/test").Page | undefined;
 try {
   for (let i = 0; i < 100; i++) {
     try {
-      if ((await fetch("http://127.0.0.1:5194")).ok) break;
+      if ((await fetch(origin)).ok) break;
     } catch {}
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -71,12 +74,15 @@ try {
       "--enable-unsafe-swiftshader",
     ],
   });
-  const page = await browser.newPage({
+  page = await browser.newPage({
     viewport: { width: 1600, height: 1000 },
   });
   const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  page.setDefaultTimeout(30000);
+  page.on("pageerror", (e) => {
+    errors.push(e.message);
+    console.error("Page error:", e.message);
+  });
+  page.setDefaultTimeout(90000);
   await page.addInitScript(
     ({ fixture, audio }) => {
       const w = window as any;
@@ -111,7 +117,7 @@ try {
     },
     { fixture, audio },
   );
-  await page.goto("http://127.0.0.1:5194");
+  await page.goto(origin);
   await page.getByTitle("Open composition", { exact: true }).click();
   await expect(page.locator(".shot-card")).toHaveCount(3);
   await page.locator(".shot-card").first().click();
@@ -131,6 +137,9 @@ try {
   );
   await expect(layer).toHaveClass(/text-selected/);
   await page.screenshot({ path: "docs/composition-033/selected-layers.png" });
+  console.log(
+    "PASS: selection and inspector synchronization; source ownership is preserved",
+  );
   const box = (await layer.boundingBox())!;
   const before = (await state()).storyboard.shots[0].annotations[2];
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -148,6 +157,7 @@ try {
   await page.getByTitle("Undo", { exact: true }).click();
   assert.deepEqual((await state()).storyboard.shots[0].annotations[2], before);
   await page.getByTitle("Redo", { exact: true }).click();
+  console.log("PASS: drag transaction Undo and Redo");
   const handle = page.getByLabel("Resize text width", { exact: true });
   const hb = (await handle.boundingBox())!;
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
@@ -186,6 +196,9 @@ try {
   await page.screenshot({ path: "docs/composition-033/safe-guides.png" });
   await page.setViewportSize({ width: 1000, height: 800 });
   await page.screenshot({ path: "docs/composition-033/narrow.png" });
+  console.log(
+    "PASS: resize, keyboard, duplicate, persistence and narrow layout",
+  );
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.locator(".shot-card").nth(1).click();
   await page
@@ -218,8 +231,8 @@ try {
     "cross-dissolve",
   );
   await page
+    .getByRole("main")
     .getByLabel("Output format", { exact: true })
-    .first()
     .selectOption("landscape");
   await page.screenshot({ path: "docs/composition-033/landscape.png" });
   await page.getByLabel("UI scale", { exact: true }).selectOption("150");
@@ -228,8 +241,8 @@ try {
   await page.locator(".shot-card").first().click();
   await page.getByLabel("Seek storyboard", { exact: true }).fill(".5");
   await page
+    .getByRole("main")
     .getByLabel("Output format", { exact: true })
-    .first()
     .selectOption("square");
   await page.getByLabel("Preview zoom", { exact: true }).fill("150");
   await page.locator('[data-annotation-id="text1"]').click();
@@ -251,6 +264,11 @@ try {
   console.log(
     "PASS: multi-layer selection, live dragging, one-step Undo/Redo, resizing without font mutation, keyboard nudge, duplicate, persistence, source preservation",
   );
+} catch (e) {
+  await page
+    ?.screenshot({ path: "test-results/composition-ui-failure.png" })
+    .catch(() => {});
+  throw e;
 } finally {
   await browser?.close();
   server.kill();

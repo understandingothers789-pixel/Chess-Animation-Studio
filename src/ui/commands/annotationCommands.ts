@@ -81,6 +81,25 @@ export function annotationCommands(
         inspect(index, "annotations", copy.id);
       },
     },
+    ...(a.kind === "text" || a.kind === "caption"
+      ? [
+          {
+            label: "Center horizontally",
+            run: () =>
+              patch("Center text", (a) => {
+                a.x = 0.5;
+              }),
+          },
+          {
+            label: "Reset position",
+            run: () =>
+              patch("Reset text position", (a) => {
+                a.x = 0.5;
+                a.y = 0.18;
+              }),
+          },
+        ]
+      : []),
     {
       label: "Copy style",
       run: () => {

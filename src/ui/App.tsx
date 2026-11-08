@@ -190,7 +190,9 @@ export function App() {
         drawer,
         undefined,
         a?.kind === "text" || a?.kind === "caption"
-          ? "Annotation text"
+          ? mode === "storyboard"
+            ? "Shot caption"
+            : "Annotation text"
           : "Annotation width",
       );
     }
@@ -1386,6 +1388,11 @@ export function App() {
               onReport={message}
               onPause={stop}
               edit={annotationEdit}
+              selectedAnnotation={annotationId}
+              onSelectAnnotation={(id) => {
+                setAnnotationId(id);
+                if (id) workspace.patch({ hideRight: false });
+              }}
               seek={seek}
               onEditAnnotation={(id) => {
                 stop();

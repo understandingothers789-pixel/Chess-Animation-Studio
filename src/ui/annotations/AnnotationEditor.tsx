@@ -14,8 +14,10 @@ export function AnnotationEditor({
   onSelect,
   onDraw,
   allowBoard = true,
+  textLabel = "Annotation text",
 }: {
   allowBoard?: boolean;
+  textLabel?: string;
   project: Project;
   edit: Edit;
   time: number;
@@ -33,8 +35,9 @@ export function AnnotationEditor({
     <section className="annotation-editor">
       <h3>Explanations</h3>
       <p className="hint">
-        Draw arrows with two square clicks; circles with one. Alt-click the
-        preview to position selected text.
+        Draw arrows with two square clicks; circles with one. Click text in the
+        preview to move it; drag its side handle to resize wrapping. Alt
+        bypasses snapping.
       </p>
       <div className="button-row">
         {(["arrow", "circle", "text", "caption"] as const)
@@ -62,6 +65,20 @@ export function AnnotationEditor({
             </button>
           ))}
       </div>
+      <div className="text-layer-list" aria-label="Text layers">
+        {p.annotations
+          .filter((a) => a.kind === "text" || a.kind === "caption")
+          .map((a) => (
+            <button
+              key={a.id}
+              aria-pressed={a.id === selected}
+              onClick={() => onSelect(a.id)}
+            >
+              {a.text || "Empty text"} · {a.start.toFixed(2)}–{a.end.toFixed(2)}
+              s
+            </button>
+          ))}
+      </div>
       <select
         aria-label="Selected annotation"
         value={selected ?? ""}
@@ -77,7 +94,38 @@ export function AnnotationEditor({
       </select>
       {a && (
         <>
-          <div className="button-row">
+          <div className="button-row layer-actions">
+            <button
+              onClick={() => {
+                const copy = structuredClone(a);
+                copy.id = crypto.randomUUID();
+                copy.y = Math.min(0.95, a.y + 0.03);
+                edit("Duplicate text layer", (p) => {
+                  if (p.annotations.length < 50) p.annotations.push(copy);
+                });
+                onSelect(copy.id);
+              }}
+            >
+              Duplicate layer
+            </button>
+            {[-1, 1].map((dir) => (
+              <button
+                key={dir}
+                disabled={
+                  p.annotations.indexOf(a) + dir < 0 ||
+                  p.annotations.indexOf(a) + dir >= p.annotations.length
+                }
+                onClick={() =>
+                  edit("Reorder text layer", (p) => {
+                    const i = p.annotations.findIndex((v) => v.id === a.id);
+                    const [item] = p.annotations.splice(i, 1);
+                    p.annotations.splice(i + dir, 0, item);
+                  })
+                }
+              >
+                {dir < 0 ? "Send backward" : "Bring forward"}
+              </button>
+            ))}
             <button
               onClick={() =>
                 onDraw(
@@ -85,7 +133,7 @@ export function AnnotationEditor({
                 )
               }
             >
-              Reposition on board
+              Edit placement
             </button>
             <button
               onClick={() =>
@@ -100,7 +148,7 @@ export function AnnotationEditor({
           {(a.kind === "text" || a.kind === "caption") && (
             <>
               <textarea
-                aria-label="Annotation text"
+                aria-label={textLabel}
                 value={a.text}
                 onChange={(e) => patch({ text: e.target.value })}
               />

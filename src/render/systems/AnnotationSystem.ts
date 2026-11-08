@@ -182,6 +182,9 @@ export class AnnotationSystem {
     this.renderer.clearDepth();
     this.renderer.render(this.overlay, this.camera);
   }
+  get bounds() {
+    return this.textBounds;
+  }
   /** Hit-test the visible geometry/text already used by the render passes. */
   pick(px: number, py: number, ray?: T.Raycaster) {
     const text = [...this.textBounds]

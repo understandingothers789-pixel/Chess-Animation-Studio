@@ -1,3 +1,4 @@
+import { TextComposition, type TextBounds } from "./captions/TextComposition";
 import { CaptionGuide } from "./captions/CaptionGuide";
 import { compileStoryboard, resolveStoryboardFrame } from "../core/storyboard";
 import type { PlaybackMode } from "../core/project";
@@ -33,6 +34,8 @@ export function Preview({
   onPause,
   edit,
   onEditAnnotation,
+  selectedAnnotation,
+  onSelectAnnotation,
   seek,
 }: {
   project: Project;
@@ -48,6 +51,8 @@ export function Preview({
   onPause?: () => void;
   edit?: Edit;
   onEditAnnotation?: (id: string) => void;
+  selectedAnnotation?: string | null;
+  onSelectAnnotation?: (id: string) => void;
   seek?: (time: number) => void;
   onError: (message: string) => void;
   onContextAnnotation?: (
@@ -70,6 +75,8 @@ export function Preview({
     py: number;
   } | null>(null);
   const annotationStyle = useRef<AnnotationStyle | null>(null);
+  const [textBounds, setTextBounds] = useState<TextBounds[]>([]);
+  const geometryKey = useRef("");
   const [captionGuides, setCaptionGuides] = useState(false);
   const [view, setView] = useState(initialViewport);
   const panDrag = useRef<{
@@ -166,6 +173,12 @@ export function Preview({
             project.format,
             mode,
           );
+          const bounds = s.textGeometry(),
+            key = JSON.stringify(bounds);
+          if (geometryKey.current !== key) {
+            geometryKey.current = key;
+            setTextBounds(bounds);
+          }
           renderError = "";
         } catch (error) {
           if (error instanceof ContextLostError) {
@@ -530,15 +543,35 @@ export function Preview({
                 return;
               }
               if (view.pan || e.button === 1) return;
+              onSelectAnnotation?.("");
               const square = scene.current?.pick(e.clientX, e.clientY);
               if (square) click.current(square);
             }}
           />
+          <TextComposition
+            format={project.format}
+            bounds={textBounds}
+            annotations={annotationProject.annotations}
+            selected={selectedAnnotation ?? null}
+            disabled={view.pan || !!playing}
+            select={(id) => {
+              prepareAnnotation();
+              onSelectAnnotation?.(id);
+            }}
+            prepare={prepareAnnotation}
+            edit={edit}
+            report={onReport}
+          />
           <CaptionGuide
             enabled={captionGuides}
-            a={annotationProject.annotations.find(
-              (a) => a.kind === "caption" || a.kind === "text",
-            )}
+            a={
+              annotationProject.annotations.find(
+                (a) => a.id === selectedAnnotation,
+              ) ??
+              annotationProject.annotations.find(
+                (a) => a.kind === "caption" || a.kind === "text",
+              )
+            }
             format={project.format}
             edit={edit}
             prepare={prepareAnnotation}

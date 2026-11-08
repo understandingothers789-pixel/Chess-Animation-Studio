@@ -446,6 +446,15 @@ export class Scene {
     this.renderedRevision = frameRevision;
     return c.e;
   }
+  textGeometry() {
+    return this.annotations.bounds.map((b) => ({
+      id: b.id,
+      left: b.left / this.width,
+      top: b.top / this.height,
+      right: b.right / this.width,
+      bottom: b.bottom / this.height,
+    }));
+  }
   pickAnnotation(clientX: number, clientY: number) {
     this.assertLive();
     const c = this.current,

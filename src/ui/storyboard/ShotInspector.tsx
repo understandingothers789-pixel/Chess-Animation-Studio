@@ -1,13 +1,7 @@
-import { CaptionControls } from "../captions/CaptionControls";
 import { useEffect, useMemo, useState } from "react";
 import type { Project, StoryboardShot } from "../../core/project";
 import { camera, presets } from "../../core/project";
-import {
-  compileStoryboard,
-  resizeShot,
-  shotCaption,
-} from "../../core/storyboard";
-import { annotation } from "../../core/annotations";
+import { compileStoryboard, resizeShot } from "../../core/storyboard";
 import type { Edit } from "../state";
 import { Section, Range, Select, Toggle } from "../controls";
 import { AnnotationEditor } from "../annotations/AnnotationEditor";
@@ -74,27 +68,10 @@ export function ShotInspector({
         <p>Add or select a shot to edit its presentation.</p>
       </aside>
     );
-  const caption = s.annotations.find(
-      (a) =>
-        a.kind === "caption" || (s.kind === "title-card" && a.kind === "text"),
-    ),
-    cam = s.camera;
+  const cam = s.camera;
   const sourceOptions = p.moves.map(
     (m, i) => [m.id, `${i + 1}. ${m.san}`] as const,
   );
-  const captionChange = (field: string, value: any) =>
-    change("Shot caption", (shot) => {
-      let a = shot.annotations.find(
-        (a) =>
-          a.kind === "caption" ||
-          (shot.kind === "title-card" && a.kind === "text"),
-      );
-      if (!a) {
-        a = shotCaption(p, "", shot.duration);
-        shot.annotations.push(a);
-      }
-      Object.assign(a, { [field]: value });
-    });
   return (
     <aside className="shot-inspector" aria-label="Shot settings">
       <span className="eyebrow">
@@ -123,6 +100,24 @@ export function ShotInspector({
       <button className="primary wide" onClick={() => preview(s.id)}>
         Preview selected shot
       </button>
+      <details className="story-annotation-editor" open>
+        <summary>Text layers and annotations · selected shot</summary>
+        <AnnotationEditor
+          allowBoard={s.kind !== "title-card"}
+          project={annotationProject}
+          edit={annotationEdit}
+          time={0}
+          selected={
+            annotationId ??
+            s.annotations.find((a) => a.kind === "caption" || a.kind === "text")
+              ?.id ??
+            null
+          }
+          onSelect={setAnnotationId}
+          onDraw={draw}
+          textLabel="Shot caption"
+        />
+      </details>
       <Section title="Music ducking">
         <Toggle
           label="Lower music during this shot"
@@ -416,78 +411,6 @@ export function ShotInspector({
           />
         </Section>
       )}
-      <Section title="Shot caption">
-        <label>
-          On-screen caption
-          <textarea
-            aria-label="Shot caption"
-            rows={3}
-            maxLength={500}
-            value={caption?.text ?? ""}
-            placeholder="Explain this moment…"
-            onChange={(e) => captionChange("text", e.target.value)}
-          />
-        </label>
-        {caption && (
-          <CaptionControls
-            a={caption}
-            format={p.format}
-            patch={(v) =>
-              change("Caption layout", (s) => {
-                Object.assign(
-                  s.annotations.find((a) => a.id === caption.id)!,
-                  v,
-                );
-              })
-            }
-          />
-        )}
-        <button disabled={!caption} onClick={() => preview(s.id)}>
-          Preview caption
-        </button>
-        <Range
-          label="Caption start"
-          min={0}
-          max={Math.max(0, (caption?.end ?? s.duration) - 0.05)}
-          step={0.05}
-          value={caption?.start ?? 0}
-          unit="s"
-          onChange={(v) => captionChange("start", v)}
-        />
-        <Range
-          label="Caption end"
-          min={(caption?.start ?? 0) + 0.05}
-          max={s.duration}
-          step={0.05}
-          value={Math.min(s.duration, caption?.end ?? s.duration)}
-          unit="s"
-          onChange={(v) => captionChange("end", v)}
-        />
-        <Select
-          label="Caption entrance"
-          value={caption?.entrance ?? "fade"}
-          options={["fade", "pop", "none"]}
-          onChange={(v) => captionChange("entrance", v)}
-        />
-        <Select
-          label="Caption exit"
-          value={caption?.exit ?? "fade"}
-          options={["fade", "none"]}
-          onChange={(v) => captionChange("exit", v)}
-        />
-      </Section>
-      <details className="story-annotation-editor">
-        <summary>Arrows, circles and text</summary>
-        <AnnotationEditor
-          allowBoard={s.kind !== "title-card"}
-          project={annotationProject}
-          edit={annotationEdit}
-          time={0}
-          selected={annotationId}
-          onSelect={setAnnotationId}
-          onDraw={draw}
-        />
-      </details>
     </aside>
   );
 }

@@ -547,3 +547,64 @@
 .wave-handle.accent {
   fill: #f7be7e;
 }
+.text-composition {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.text-hit {
+  position: absolute;
+  pointer-events: auto;
+  cursor: move;
+  outline: none;
+}
+.text-hit:hover {
+  outline: 1px dashed #a9d98c;
+}
+.text-hit.text-selected {
+  outline: 2px solid #c8e79c;
+}
+.text-layer-label {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding: 3px 5px;
+  background: #173322;
+  color: #e2f0d9;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.text-resize {
+  position: absolute;
+  width: 12px;
+  height: 20px;
+  right: -6px;
+  top: calc(50% - 10px);
+  background: #c8e79c;
+  border: 2px solid #173322;
+  cursor: ew-resize;
+}
+.text-layer-list {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+}
+.text-layer-list button {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.text-layer-list button[aria-pressed="true"] {
+  border-color: #c8e79c;
+  background: #294536;
+}
+.annotation-editor .layer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.annotation-editor .layer-actions button {
+  flex: 1 1 80px;
+}

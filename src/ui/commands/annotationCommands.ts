@@ -88,6 +88,7 @@ export function annotationCommands(
             run: () =>
               patch("Center text", (a) => {
                 a.x = 0.5;
+                a.align = "center";
               }),
           },
           {

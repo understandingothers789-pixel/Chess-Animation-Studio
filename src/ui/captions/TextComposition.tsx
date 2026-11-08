@@ -1,3 +1,4 @@
+import { positionText } from "../../core/captions/manipulation";
 import { useRef } from "react";
 import type { Annotation } from "../../core/annotations";
 import { safeDefaults, safeRect } from "../../core/captions/safeAreas";
@@ -114,14 +115,6 @@ export function TextComposition({
                       1,
                     );
                   } else {
-                    const anchor =
-                      d.a.align === "left"
-                        ? d.b.left
-                        : d.a.align === "right"
-                          ? d.b.right
-                          : (d.b.left + d.b.right) / 2;
-                    let x = anchor + dx,
-                      y = (d.b.top + d.b.bottom) / 2 + dy;
                     const safe = safeRect(
                       100,
                       100,
@@ -129,16 +122,21 @@ export function TextComposition({
                         ? d.a.layout
                         : safeDefaults(format, d.a.layout.placement),
                     );
-                    const snap = (v: number, lo: number, hi: number) =>
-                      !e.altKey
-                        ? ([0.5, lo, hi].find((n) => Math.abs(v - n) < 0.012) ??
-                          v)
-                        : v;
-                    t.x = clamp(
-                      snap(x, safe.x / 100, (safe.x + safe.width) / 100),
-                    );
-                    t.y = clamp(
-                      snap(y, safe.y / 100, (safe.y + safe.height) / 100),
+                    Object.assign(
+                      t,
+                      positionText(
+                        d.b,
+                        {
+                          left: safe.x / 100,
+                          top: safe.y / 100,
+                          right: (safe.x + safe.width) / 100,
+                          bottom: (safe.y + safe.height) / 100,
+                        },
+                        dx,
+                        dy,
+                        d.a.align,
+                        !e.altKey,
+                      ),
                     );
                   }
                 });

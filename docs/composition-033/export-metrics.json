@@ -1,0 +1,6 @@
+{
+  "cases": 6,
+  "maxMeanAbsolutePixelError": 4.3170370370370375,
+  "coldCompileMs": 33.21542099999988,
+  "cached10000Ms": 2.5847359999997934
+}

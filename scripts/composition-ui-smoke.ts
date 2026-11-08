@@ -2,7 +2,6 @@ import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
-import { readProject } from "../desktop/files";
 import { blank } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
 import { titleShot, shotFromMove } from "../src/core/storyboard";
@@ -121,7 +120,7 @@ try {
   await page.getByTitle("Open composition", { exact: true }).click();
   await expect(page.locator(".shot-card")).toHaveCount(3);
   await page.locator(".shot-card").first().click();
-  const state = () => page.evaluate(() => (window as any).__state.project);
+  const state = () => page!.evaluate(() => (window as any).__state.project);
   const layer = page.locator('[data-annotation-id="text2"]');
   await expect(layer).toBeVisible();
   await page.locator('[data-annotation-id="source-inherited"]').click();
@@ -131,7 +130,17 @@ try {
     ),
   ).toBeVisible();
   assert.deepEqual((await state()).annotations, fixture.annotations);
+  const pixelsBeforeSelection = await page
+    .getByLabel("Chess composition preview", { exact: true })
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
   await layer.click();
+  assert.equal(
+    await page
+      .getByLabel("Chess composition preview", { exact: true })
+      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    pixelsBeforeSelection,
+    "Selection handles must not change composited/export pixels",
+  );
   await expect(page.getByLabel("Shot caption", { exact: true })).toHaveValue(
     fixture.storyboard.shots[0].annotations[2].text,
   );
@@ -180,6 +189,20 @@ try {
   await expect
     .poll(async () => (await state()).storyboard.shots[0].annotations.length)
     .toBe(4);
+  const copyId = (await state()).storyboard.shots[0].annotations[3].id;
+  const copyLayer = page.locator(`[data-annotation-id="${copyId}"]`);
+  const cb = (await copyLayer.boundingBox())!,
+    ob = (await layer.boundingBox())!;
+  const left = Math.max(cb.x, ob.x),
+    right = Math.min(cb.x + cb.width, ob.x + ob.width),
+    top = Math.max(cb.y, ob.y),
+    bottom = Math.min(cb.y + cb.height, ob.y + ob.height);
+  assert(
+    right > left && bottom > top,
+    "Duplicate fixture must overlap for hit testing",
+  );
+  await page.mouse.click((left + right) / 2, (top + bottom) / 2);
+  await expect(copyLayer).toHaveClass(/text-selected/);
   await page
     .getByLabel("Shot caption", { exact: true })
     .fill("Another editable layer");
@@ -239,7 +262,7 @@ try {
   await page.screenshot({ path: "docs/composition-033/scale150.png" });
   await page.getByLabel("UI scale", { exact: true }).selectOption("100");
   await page.locator(".shot-card").first().click();
-  await page.getByLabel("Seek storyboard", { exact: true }).fill(".5");
+  await page.getByLabel("Seek storyboard", { exact: true }).fill("0.5");
   await page
     .getByRole("main")
     .getByLabel("Output format", { exact: true })

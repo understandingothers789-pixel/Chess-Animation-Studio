@@ -57,3 +57,29 @@ Text is selected one layer at a time; simultaneous group selection is not implem
 ## Q–R. Windows download and final status
 
 The previously validated 0.2.32 artifact was rechecked and its missing README entry restored. The 0.2.33 download will be advertised only after the existing workflow and expanded packaged validation pass. Final validation results follow in the completion record.
+
+## Completion record
+
+Baseline: `npm test` passed 138 tests in 25 files. Updated unit suite: 146 tests in 27 files, no skips. Focused transition/ducking unit run: 9 passed. Production build and TypeScript compilation passed. Three additional geometry tests verify that center and safe-edge snapping use the visible box for left-, center- and right-aligned text.
+
+| Command | Result |
+| --- | --- |
+| `npm test` | 146 passed |
+| `npm run build` | TypeScript, Vite and desktop build passed |
+| `node --import tsx scripts/storyboard-ui-smoke.ts` | Passed; captions, timing, save/reopen, templates, source preservation, no page errors |
+| `npm run test:ui` | Passed |
+| `npm run test:creator` | Passed |
+| `npm run test:timeline` | Passed, including 504 transformed board-square picks |
+| `npm run test:ducking` | Passed; 24/30/60 FPS decoded envelopes, seek, mute, independent repeated capture cues, persistence and inspector |
+| `DISPLAY=:108 npm run test:desktop` | Passed on Linux Electron/SwiftShader; includes new direct text editing and persisted transitions, native export and cancellation |
+| `node --import tsx scripts/storyboard-render-smoke.ts --composition` | Passed: six real MP4 cases, decoded frames/audio, project roundtrip, missing-reference rejection and cancellation cleanup |
+
+Measured transition evidence: [frame validation](frame-validation.json), [encoded-output metrics](export-metrics.json). Uncompressed out-of-order seek difference: **0 bytes**. Independent linear-light dissolve mean error: **0.1251/255**. Fade midpoint maximum RGB: **0**. Maximum decoded H.264 mean absolute error: **4.3171/255**, below the existing tolerance of 14. Cold storyboard compilation: **33.22 ms**; 10,000 cached calls: **2.58 ms**. These local timings include contention from parallel validation and are not hardware GPU benchmarks. The finishing UI measured 1,000 caption layouts at **323.30 ms**, and 10,000 cached lookups at **37.60 ms**. Ducking gain error remained **0.0010034**.
+
+Reviewed evidence: [selected layers](selected-layers.png), [dragging](dragging.png), [resizing and wrapping](resizing.png), [safe guides](safe-guides.png), [narrow workspace](narrow.png), [cross-dissolve with inspector/timeline](transition-dissolve.png), [fade-through-black](transition-black.png), [landscape](landscape.png), [150% scale](scale150.png), [rendered dissolve midpoint](dissolve-midpoint.png), [rendered black midpoint](fade-midpoint.png).
+
+Validation follow-ups: the original CI run stopped during Playwright dependency installation on `ubuntu-latest`, before application checks. The runner is pinned to Ubuntu 24.04; the next run passed browser/dependency installation. New test-harness issues with an opening title's missing source, hidden duplicate format controls, and a malformed range value were corrected without weakening assertions. A TypeScript narrowing issue in failure-screenshot diagnostics was also corrected. The final completion record distinguishes CI results from local results.
+
+`npm run test:finishing` passed all 16 encoded cases. Maximum decoded pixel error was **6.9057/255**. Rhythmic volume-automation RMS error was **0.0015738**; a 10-second source trim with a 2-second output offset measured **0.0004733** RMS error. Seek, source-frequency identification, mute and beat-aligned cuts passed.
+
+The composition UI suite additionally passed topmost overlapping-layer selection, proof that editor handles do not alter canvas pixels, square framing at 150% preview zoom, fullscreen selection and 150% UI scaling. See [zoomed square](zoom-square.png) and [fullscreen](fullscreen.png).

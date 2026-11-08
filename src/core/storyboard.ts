@@ -9,6 +9,7 @@ import {
 import {
   effect,
   musicDucking,
+  transition,
   camera,
   uid,
   type Project,
@@ -366,6 +367,7 @@ export function shotFromMove(
     camera: null,
     inheritAnnotations: false,
     musicDucking: musicDucking(),
+    transition: transition(),
     annotations: [],
   };
 }
@@ -404,6 +406,7 @@ export function titleShot(
     camera: { ...camera(), mode: "full" },
     inheritAnnotations: false,
     musicDucking: musicDucking(),
+    transition: transition(),
     annotations: [
       {
         ...shotCaption(p, title, duration),
@@ -417,6 +420,7 @@ export function titleShot(
 export function resizeShot(shot: StoryboardShot, duration: number) {
   const next = clamp(duration, 0.1, 600);
   shot.duration = next;
+  shot.transition.duration = Math.min(shot.transition.duration, next);
   if (shot.preHold + shot.postHold >= next - 0.01) {
     const scale = (next - 0.02) / Math.max(0.001, shot.preHold + shot.postHold);
     shot.preHold *= scale;

@@ -498,6 +498,12 @@ export const musicDuckingSchema = z.object({
   fadeUp: n(0.01, 5).default(0.4),
 });
 export const musicDucking = () => musicDuckingSchema.parse({});
+export const transitionSchema = z.object({
+  type: z.enum(["cut", "fade-through-black", "cross-dissolve"]).default("cut"),
+  duration: n(0, 5).default(0),
+  easing: z.enum(["linear", "smooth"]).default("linear"),
+});
+export const transition = () => transitionSchema.parse({});
 export const storyboardShotSchema = z
   .object({
     id: z.string().min(1).max(100),
@@ -519,9 +525,15 @@ export const storyboardShotSchema = z
     camera: cameraSchema.nullable(),
     inheritAnnotations: z.boolean(),
     musicDucking: musicDuckingSchema.prefault({}),
+    transition: transitionSchema.prefault({}),
     annotations: z.array(annotationSchema).max(50),
   })
   .superRefine((shot, ctx) => {
+    if (shot.transition.duration > shot.duration)
+      ctx.addIssue({
+        code: "custom",
+        message: "Incoming transition must fit inside its destination shot.",
+      });
     if (shot.kind !== "title-card" && !shot.source)
       ctx.addIssue({
         code: "custom",

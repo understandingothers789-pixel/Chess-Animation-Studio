@@ -1,3 +1,5 @@
+import { transitionAt } from "../core/transitions";
+import { TransitionSystem } from "./systems/TransitionSystem";
 import { compileStoryboard } from "../core/storyboard";
 import { evaluatePresentationFrame } from "./engine/presentation";
 import { AnnotationSystem } from "./systems/AnnotationSystem";
@@ -60,6 +62,10 @@ export class Scene {
   private cameras: CameraSystem;
   private board: BoardSystem;
   private annotations: AnnotationSystem;
+  private transitions: TransitionSystem;
+  private blendedBounds: ReturnType<
+    AnnotationSystem["bounds"]["slice"]
+  > | null = null;
   private project?: Project;
   private game?: Game;
   private current?: RenderFrame;
@@ -86,6 +92,7 @@ export class Scene {
     });
     canvas.addEventListener("webglcontextlost", this.lost);
     const r = this.renderer;
+    this.transitions = new TransitionSystem(r);
     r.setPixelRatio(1);
     r.outputColorSpace = T.SRGBColorSpace;
     r.autoClear = false;
@@ -110,6 +117,7 @@ export class Scene {
     );
     const bloom = new BloomSystem(r, this.world, camera);
     const systems = [
+      this.transitions,
       annotations,
       bloom,
       cinematic,
@@ -425,9 +433,39 @@ export class Scene {
       r.setRenderTarget(null);
       r.setScissorTest(false);
       r.setViewport(0, 0, w, h);
+      const transition = mode === "storyboard" ? transitionAt(p, time) : null;
+      this.blendedBounds = null;
+      let outgoingBounds: AnnotationSystem["bounds"] | null = null;
+      if (transition) {
+        const outgoing = evaluatePresentationFrame(
+          p,
+          transition.previousTime,
+          w,
+          h,
+          format,
+          mode,
+          this.game,
+        );
+        r.setClearColor(outgoing.short ? p.shorts.barColor : "#111918");
+        r.clear(true, true, true);
+        this.graph.render(transition.previousTime, outgoing, w, h, outgoing.p);
+        this.transitions.capture(0, w, h);
+        outgoingBounds = this.annotations.bounds.map((b) => ({
+          ...b,
+          id: `outgoing-${b.id}`,
+        }));
+      }
       r.setClearColor(c.short ? p.shorts.barColor : "#111918");
       r.clear(true, true, true);
       this.graph.render(time, c, w, h, c.p);
+      if (transition) {
+        this.blendedBounds = [
+          ...(transition.outgoing > 0.001 ? (outgoingBounds ?? []) : []),
+          ...(transition.incoming > 0.001 ? this.annotations.bounds : []),
+        ];
+        this.transitions.capture(1, w, h);
+        this.transitions.blend(transition.outgoing, transition.incoming);
+      }
     } finally {
       this.root.visible = visible;
       r.resetState();
@@ -447,7 +485,7 @@ export class Scene {
     return c.e;
   }
   textGeometry() {
-    return this.annotations.bounds.map((b) => ({
+    return (this.blendedBounds ?? this.annotations.bounds).map((b) => ({
       id: b.id,
       left: b.left / this.width,
       top: b.top / this.height,
@@ -558,6 +596,7 @@ export class Scene {
     this.readback = new Uint8Array(0);
     const errors: unknown[] = [];
     for (const cleanup of [
+      () => this.transitions.dispose(),
       () => this.graph.dispose(),
       () => this.assetStore.dispose(),
       () => this.world.clear(),

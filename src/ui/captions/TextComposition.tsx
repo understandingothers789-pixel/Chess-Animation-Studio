@@ -78,7 +78,7 @@ export function TextComposition({
                 e.stopPropagation();
                 if (!a) {
                   report?.(
-                    "Inherited source text is read-only here. Edit it in Source, or disable inheritance and add a shot-local text layer.",
+                    "Text inherited from Source or an outgoing transition is read-only in this shot. Select its owning shot or edit it in Source. You can also disable inheritance and add a local text layer.",
                   );
                   return;
                 }

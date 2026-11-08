@@ -4,11 +4,20 @@ import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { readProject } from "../desktop/files";
 import { blank } from "../src/core/project";
-import { titleShot } from "../src/core/storyboard";
+import { importPgn } from "../src/core/chess";
+import { titleShot, shotFromMove } from "../src/core/storyboard";
 import { annotation } from "../src/core/annotations";
-const fixture = blank();
+const fixture = importPgn(blank(), "1. e4 e5 2. Nf3 Nc6");
 fixture.format = "vertical";
-fixture.storyboard.shots = [titleShot(fixture, "Composition", 4)];
+fixture.storyboard.shots = [
+  shotFromMove(fixture, fixture.moves[0].id, "position-hold", "after"),
+  titleShot(fixture, "Transition title", 1),
+  shotFromMove(fixture, fixture.moves[3].id),
+];
+fixture.storyboard.shots[0].duration = 4;
+fixture.storyboard.shots[2].duration = 1;
+fixture.storyboard.shots[2].preHold = 0;
+fixture.storyboard.shots[2].postHold = 0;
 fixture.storyboard.shots[0].annotations = [0, 1, 2].map((i) => ({
   ...annotation("caption", 0),
   id: "text" + i,
@@ -27,7 +36,19 @@ fixture.storyboard.shots[0].annotations = [0, 1, 2].map((i) => ({
     autoSize: false,
   },
 }));
-const audio = {};
+const audio: Record<string, string> = {};
+fixture.annotations = [
+  {
+    ...annotation("caption", 0),
+    id: "inherited",
+    text: "Source-owned caption",
+    y: 0.35,
+    end: 60,
+    entrance: "none",
+    exit: "none",
+  },
+];
+fixture.storyboard.shots[0].inheritAnnotations = true;
 await fs.mkdir("docs/composition-033", { recursive: true });
 const server = spawn(
   process.execPath,
@@ -92,11 +113,18 @@ try {
   );
   await page.goto("http://127.0.0.1:5194");
   await page.getByTitle("Open composition", { exact: true }).click();
-  await expect(page.locator(".shot-card")).toHaveCount(1);
+  await expect(page.locator(".shot-card")).toHaveCount(3);
   await page.locator(".shot-card").first().click();
   const state = () => page.evaluate(() => (window as any).__state.project);
   const layer = page.locator('[data-annotation-id="text2"]');
   await expect(layer).toBeVisible();
+  await page.locator('[data-annotation-id="source-inherited"]').click();
+  await expect(
+    page.getByText(
+      /Text inherited from Source or an outgoing transition is read-only/,
+    ),
+  ).toBeVisible();
+  assert.deepEqual((await state()).annotations, fixture.annotations);
   await layer.click();
   await expect(page.getByLabel("Shot caption", { exact: true })).toHaveValue(
     fixture.storyboard.shots[0].annotations[2].text,
@@ -158,6 +186,66 @@ try {
   await page.screenshot({ path: "docs/composition-033/safe-guides.png" });
   await page.setViewportSize({ width: 1000, height: 800 });
   await page.screenshot({ path: "docs/composition-033/narrow.png" });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.locator(".shot-card").nth(1).click();
+  await page
+    .getByLabel("Transition type", { exact: true })
+    .selectOption("cross-dissolve");
+  await page
+    .getByLabel("Transition duration value", { exact: true })
+    .fill("0.4");
+  await page.getByLabel("Seek storyboard", { exact: true }).fill("4.2");
+  await page.screenshot({
+    path: "docs/composition-033/transition-dissolve.png",
+  });
+  await page
+    .getByRole("button", { name: "Preview transition", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Pause storyboard", { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Pause storyboard", { exact: true }).click();
+  await page.locator(".shot-card").nth(2).click();
+  await page
+    .getByLabel("Transition type", { exact: true })
+    .selectOption("fade-through-black");
+  await page.getByLabel("Seek storyboard", { exact: true }).fill("5.25");
+  await page.screenshot({ path: "docs/composition-033/transition-black.png" });
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByTitle("Open composition", { exact: true }).click();
+  assert.equal(
+    (await state()).storyboard.shots[1].transition.type,
+    "cross-dissolve",
+  );
+  await page
+    .getByLabel("Output format", { exact: true })
+    .first()
+    .selectOption("landscape");
+  await page.screenshot({ path: "docs/composition-033/landscape.png" });
+  await page.getByLabel("UI scale", { exact: true }).selectOption("150");
+  await page.screenshot({ path: "docs/composition-033/scale150.png" });
+  await page.getByLabel("UI scale", { exact: true }).selectOption("100");
+  await page.locator(".shot-card").first().click();
+  await page.getByLabel("Seek storyboard", { exact: true }).fill(".5");
+  await page
+    .getByLabel("Output format", { exact: true })
+    .first()
+    .selectOption("square");
+  await page.getByLabel("Preview zoom", { exact: true }).fill("150");
+  await page.locator('[data-annotation-id="text1"]').click();
+  await expect(page.getByLabel("Shot caption", { exact: true })).toHaveValue(
+    "White to move",
+  );
+  await page.screenshot({ path: "docs/composition-033/zoom-square.png" });
+  await page.getByRole("button", { name: "Reset view", exact: true }).click();
+  await page.getByRole("button", { name: "Full preview", exact: true }).click();
+  await page.locator('[data-annotation-id="text0"]').click();
+  await expect(page.locator('[data-annotation-id="text0"]')).toHaveClass(
+    /text-selected/,
+  );
+  await page.screenshot({ path: "docs/composition-033/fullscreen.png" });
+  await page.keyboard.press("Escape");
+  assert.deepEqual((await state()).annotations, fixture.annotations);
   assert.deepEqual((await state()).moves, fixture.moves);
   assert.deepEqual(errors, []);
   console.log(

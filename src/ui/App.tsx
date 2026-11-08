@@ -1624,6 +1624,23 @@ export function App() {
               edit={storyEdit}
               sourceId={p.moves[selected]?.id ?? null}
               openSource={openSource}
+              previewTransition={(id) => {
+                const e = compileStoryboard(p).shots.find(
+                  (e) => e.shot.id === id,
+                );
+                if (!e) return;
+                stop();
+                seek(Math.max(0, e.start - 0.35));
+                setPlaying(true);
+                setAudition({
+                  time: Math.max(0, e.start - 0.35),
+                  playing: false,
+                  end: Math.min(
+                    e.end,
+                    e.start + e.shot.transition.duration + 0.35,
+                  ),
+                });
+              }}
               preview={previewStoryShot}
               annotationId={annotationId}
               setAnnotationId={setAnnotationId}

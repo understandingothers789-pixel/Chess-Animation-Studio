@@ -16,11 +16,14 @@ import {
 import { validateExport } from "../src/core/exportOptions";
 import { VideoJob } from "../desktop/export";
 import { writeProject, readProject } from "../desktop/files";
+const composition = process.argv.includes("--composition");
 const dir = path.resolve(
   process.env.STORY_TEST_DIR ??
-    (process.env.FINISHING_TEST || process.argv.includes("--finishing")
-      ? "test-results/finishing-render"
-      : "test-results/storyboard-render"),
+    (composition
+      ? "test-results/composition-render"
+      : process.env.FINISHING_TEST || process.argv.includes("--finishing")
+        ? "test-results/finishing-render"
+        : "test-results/storyboard-render"),
 );
 await fs.mkdir(dir, { recursive: true });
 const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg",
@@ -87,6 +90,49 @@ if (process.env.FINISHING_TEST || process.argv.includes("--finishing")) {
   ];
   p.storyboard.beats = [{ id: "cut", time: 0.3, accent: true, enabled: true }];
 }
+if (composition) {
+  p.storyboard.shots = [
+    titleShot(p, "Find the winning move", 0.3),
+    shotFromMove(p, p.moves[3].id, "position-hold", "before"),
+    shotFromMove(p, p.moves[6].id),
+    shotFromMove(p, p.moves[0].id),
+  ];
+  for (const [i, s] of p.storyboard.shots.entries()) {
+    s.duration = 0.3;
+    s.preHold = 0;
+    s.postHold = 0;
+    s.annotations = [
+      shotCaption(
+        p,
+        [
+          "Opening title",
+          "Legal position hold",
+          "Capture highlight",
+          "Earlier move",
+        ][i],
+        0.3,
+      ),
+      { ...shotCaption(p, "White to move", 0.3), y: 0.8 },
+    ];
+    s.annotations.forEach((a) => {
+      a.fade = 0;
+      a.entrance = "none";
+      a.exit = "none";
+    });
+    if (i === 1 || i === 3)
+      s.transition = {
+        type: i === 1 ? "cross-dissolve" : "fade-through-black",
+        duration: 0.2,
+        easing: "linear",
+      };
+  }
+  p.storyboard.shots[2].musicDucking = {
+    enabled: true,
+    volume: 0.5,
+    fadeDown: 0.03,
+    fadeUp: 0.03,
+  };
+}
 const order = p.moves.map((m) => m.id);
 await writeProject(path.join(dir, "roundtrip.castudio"), p);
 p = await readProject(path.join(dir, "roundtrip.castudio"));
@@ -139,6 +185,89 @@ try {
     await s.ready;
     Object.assign(window, { storyScene: s, storyProject: p });
   }, p);
+  if (composition) {
+    const parity = await page.evaluate(() => {
+      const w = window as any,
+        s = w.storyScene,
+        p = w.storyProject;
+      const raw = (time: number, project = p) => {
+        s.render(project, time, 320, 180, "landscape", "storyboard");
+        return s.rgba();
+      };
+      const direct = raw(0.4);
+      raw(0.95);
+      raw(0.1);
+      const seek = raw(0.4);
+      const cut = structuredClone(p);
+      cut.storyboard.shots.forEach((v: any) => (v.transition.type = "cut"));
+      const a = raw(0.3 - 1e-7, cut),
+        b = raw(0.4, cut);
+      let different = 0,
+        error = 0;
+      const linear = (v: number) =>
+        v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+      const encode = (v: number) =>
+        v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
+      for (let i = 0; i < direct.length; i += 4)
+        for (let ch = 0; ch < 3; ch++) {
+          different += direct[i + ch] !== seek[i + ch] ? 1 : 0;
+          error += Math.abs(
+            direct[i + ch] -
+              255 *
+                encode(
+                  (linear(a[i + ch] / 255) + linear(b[i + ch] / 255)) * 0.5,
+                ),
+          );
+        }
+      const black = raw(1);
+      let maxBlack = 0;
+      for (let i = 0; i < black.length; i += 4)
+        for (let c = 0; c < 3; c++) maxBlack = Math.max(maxBlack, black[i + c]);
+      raw(0.4);
+      const dissolve = s.renderer.domElement.toDataURL();
+      raw(1);
+      const fade = s.renderer.domElement.toDataURL();
+      return {
+        different,
+        meanError: error / (320 * 180 * 3),
+        maxBlack,
+        dissolve,
+        fade,
+      };
+    });
+    assert.equal(
+      parity.different,
+      0,
+      "Direct seeking must equal out-of-order rendering",
+    );
+    assert(
+      parity.meanError < 2,
+      `Linear-light whole-frame blending error ${parity.meanError}`,
+    );
+    assert(parity.maxBlack <= 1, "Fade-through-black midpoint");
+    await fs.mkdir("docs/composition-033", { recursive: true });
+    for (const name of ["dissolve", "fade"] as const)
+      await fs.writeFile(
+        `docs/composition-033/${name}-midpoint.png`,
+        Buffer.from(parity[name].split(",")[1], "base64"),
+      );
+    await fs.writeFile(
+      "docs/composition-033/frame-validation.json",
+      JSON.stringify(
+        {
+          different: parity.different,
+          meanError: parity.meanError,
+          maxBlack: parity.maxBlack,
+        },
+        null,
+        2,
+      ),
+    );
+    console.log(
+      "PASS: direct/out-of-order determinism, complete-frame linear-light dissolve and black midpoint",
+      parity.meanError,
+    );
+  }
   const resizeCheck = await page.evaluate(async () => {
     const w = window as any,
       canvas = document.createElement("canvas"),
@@ -188,18 +317,21 @@ try {
     maxError = 0;
   const baseProject = p;
   const scenarios =
-    process.env.FINISHING_TEST || process.argv.includes("--finishing")
+    !composition &&
+    (process.env.FINISHING_TEST || process.argv.includes("--finishing"))
       ? finishingFixtures(p)
       : [
           {
             name: "storyboard",
             project: p,
-            formats: [
-              "landscape",
-              "vertical",
-              "square",
-              "square-in-vertical",
-            ] as Format[],
+            formats: (composition
+              ? ["landscape", "vertical"]
+              : [
+                  "landscape",
+                  "vertical",
+                  "square",
+                  "square-in-vertical",
+                ]) as Format[],
             rates: [24, 30, 60],
           },
         ];
@@ -459,7 +591,8 @@ try {
     false,
   );
   const missing = structuredClone(p);
-  missing.storyboard.shots[0].source!.startMoveId = "missing";
+  missing.storyboard.shots.find((s) => s.source)!.source!.startMoveId =
+    "missing";
   assert.throws(
     () =>
       validateExport(missing, {

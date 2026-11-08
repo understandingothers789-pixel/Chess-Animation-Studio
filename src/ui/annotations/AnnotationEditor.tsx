@@ -96,6 +96,7 @@ export function AnnotationEditor({
         <>
           <div className="button-row layer-actions">
             <button
+              disabled={p.annotations.length >= 50}
               onClick={() => {
                 const copy = structuredClone(a);
                 copy.id = crypto.randomUUID();

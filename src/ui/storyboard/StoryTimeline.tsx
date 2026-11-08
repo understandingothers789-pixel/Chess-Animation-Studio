@@ -356,6 +356,19 @@ function ShotCard({
         <small>{index + 1}</small>
         <strong>{shot.name}</strong>
       </div>
+      {index > 0 && shot.transition.type !== "cut" && (
+        <button
+          className="shot-transition"
+          title={`Transition: ${shot.transition.type} · ${shot.transition.duration.toFixed(2)}s · select shot to edit`}
+          onClick={(e) => {
+            e.stopPropagation();
+            select();
+          }}
+        >
+          {shot.transition.type === "cross-dissolve" ? "◩" : "◐"}{" "}
+          {shot.transition.duration.toFixed(2)}s
+        </button>
+      )}
       <span className="shot-duration">
         {(draft ?? shot.duration).toFixed(2)}s
       </span>

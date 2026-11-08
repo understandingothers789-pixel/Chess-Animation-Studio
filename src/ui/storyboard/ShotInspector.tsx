@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Project, StoryboardShot } from "../../core/project";
 import { camera, presets } from "../../core/project";
-import { compileStoryboard, resizeShot } from "../../core/storyboard";
+import {
+  compileStoryboard,
+  resizeShot,
+  shotCaption,
+} from "../../core/storyboard";
 import type { Edit } from "../state";
 import { Section, Range, Select, Toggle } from "../controls";
 import { AnnotationEditor } from "../annotations/AnnotationEditor";
@@ -16,6 +20,7 @@ export function ShotInspector({
   annotationId,
   setAnnotationId,
   draw,
+  previewTransition,
 }: {
   p: Project;
   id: string | null;
@@ -25,6 +30,7 @@ export function ShotInspector({
   preview: (id: string) => void;
   annotationId: string | null;
   setAnnotationId: (id: string) => void;
+  previewTransition: (id: string) => void;
   draw: (kind: "arrow" | "circle" | null) => void;
 }) {
   const s = p.storyboard.shots.find((s) => s.id === id),
@@ -102,13 +108,34 @@ export function ShotInspector({
       </button>
       <details className="story-annotation-editor" open>
         <summary>Text layers and annotations · selected shot</summary>
+        {!s.annotations.some(
+          (a) => a.kind === "text" || a.kind === "caption",
+        ) && (
+          <label>
+            On-screen caption
+            <textarea
+              aria-label="Shot caption"
+              placeholder="Add an explanation…"
+              value=""
+              onChange={(e) => {
+                const a = shotCaption(p, e.target.value, s.duration);
+                change("Add shot caption", (s) => {
+                  s.annotations.push(a);
+                });
+                setAnnotationId(a.id);
+              }}
+            />
+          </label>
+        )}
         <AnnotationEditor
           allowBoard={s.kind !== "title-card"}
           project={annotationProject}
           edit={annotationEdit}
           time={0}
           selected={
-            annotationId ??
+            (s.annotations.some((a) => a.id === annotationId)
+              ? annotationId
+              : null) ??
             s.annotations.find((a) => a.kind === "caption" || a.kind === "text")
               ?.id ??
             null
@@ -118,6 +145,65 @@ export function ShotInspector({
           textLabel="Shot caption"
         />
       </details>
+      {entry.index > 0 && (
+        <Section title="Transition into this shot">
+          <Select
+            label="Transition type"
+            value={s.transition.type}
+            options={[
+              ["cut", "Cut"],
+              ["fade-through-black", "Fade through black"],
+              ["cross-dissolve", "Cross-dissolve"],
+            ]}
+            onChange={(type) =>
+              change("Shot transition", (s) => {
+                s.transition.type = type;
+                s.transition.duration =
+                  type === "cut"
+                    ? 0
+                    : Math.min(s.duration, s.transition.duration || 0.5);
+              })
+            }
+          />
+          {s.transition.type !== "cut" && (
+            <>
+              <Range
+                label="Transition duration"
+                value={s.transition.duration}
+                min={0}
+                max={Math.min(5, s.duration)}
+                step={0.01}
+                unit="s"
+                onChange={(v) =>
+                  change("Transition duration", (s) => {
+                    s.transition.duration = v;
+                  })
+                }
+              />
+              <Select
+                label="Transition easing"
+                value={s.transition.easing}
+                options={[
+                  ["linear", "Linear"],
+                  ["smooth", "Smooth"],
+                ]}
+                onChange={(v) =>
+                  change("Transition easing", (s) => {
+                    s.transition.easing = v;
+                  })
+                }
+              />
+              <button onClick={() => previewTransition(s.id)}>
+                Preview transition
+              </button>
+              <p className="hint">
+                Uses the beginning of this shot. Music and shot durations stay
+                continuous.
+              </p>
+            </>
+          )}
+        </Section>
+      )}
       <Section title="Music ducking">
         <Toggle
           label="Lower music during this shot"

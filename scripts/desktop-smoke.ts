@@ -788,6 +788,29 @@ try {
       0.3,
     ),
   ];
+  story.storyboard.shots[0].annotations.push({
+    ...shotCaption(story, "Second editable text layer", 0.3),
+    y: 0.8,
+    entrance: "none",
+    exit: "none",
+    fade: 0,
+  });
+  story.storyboard.shots[1].transition = {
+    type: "cross-dissolve",
+    duration: 0.2,
+    easing: "linear",
+  };
+  story.storyboard.shots[2].transition = {
+    type: "fade-through-black",
+    duration: 0.2,
+    easing: "linear",
+  };
+  story.storyboard.shots[2].musicDucking = {
+    enabled: true,
+    volume: 0.5,
+    fadeDown: 0.03,
+    fadeUp: 0.03,
+  };
   story.storyboard.beats = [
     { id: "native-beat", time: 0.1, accent: true, enabled: true },
   ];
@@ -802,6 +825,28 @@ try {
   await page.getByTitle("Open composition", { exact: true }).click();
   await expect(page.locator(".shot-card")).toHaveCount(4);
   await page.locator(".shot-card").first().click();
+  await page.getByLabel("Seek storyboard", { exact: true }).fill("0.15");
+  const textLayer = page.locator(
+    `[data-annotation-id="${story.storyboard.shots[0].annotations[1].id}"]`,
+  );
+  await expect(textLayer).toBeVisible();
+  await textLayer.click();
+  await expect(page.getByLabel("Shot caption", { exact: true })).toHaveValue(
+    "Second editable text layer",
+  );
+  const tb = (await textLayer.boundingBox())!;
+  await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tb.x + tb.width / 2 + 20, tb.y + tb.height / 2 - 20, {
+    steps: 5,
+  });
+  await page.mouse.up();
+  await expect(
+    page.getByLabel("Resize text width", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Shot caption", { exact: true })
+    .fill("Packaged multi-text edit");
   await page
     .getByLabel("Shot name", { exact: true })
     .fill("Packaged storyboard edit");
@@ -822,6 +867,19 @@ try {
     "Packaged storyboard edit",
   );
   assert.deepEqual(reopened!.project.moves, story.moves);
+  assert.equal(
+    reopened!.project.storyboard.shots[0].annotations[1].text,
+    "Packaged multi-text edit",
+  );
+  assert.equal(
+    reopened!.project.storyboard.shots[1].transition.type,
+    "cross-dissolve",
+  );
+  assert.equal(
+    reopened!.project.storyboard.shots[2].transition.type,
+    "fade-through-black",
+  );
+
   await page.locator(".story-waveform>summary").click();
   await expect(
     page.getByLabel("Music waveform and output ruler"),

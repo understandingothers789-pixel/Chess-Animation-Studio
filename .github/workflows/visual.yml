@@ -36,6 +36,7 @@ jobs:
           npm run test:timeline
           npm run test:storyboard
           npm run test:finishing
+          npm run test:composition
           npm run test:ducking
           npm run test:render -- final
           golden_ref=$(cat docs/cinematic-goldens/source-ref)
@@ -51,6 +52,8 @@ jobs:
           path: |
             test-results/storyboard-render/
             test-results/finishing-render/
+            test-results/composition-render/
+            docs/composition-033/
             test-results/ducking/
             docs/ducking-032/
             docs/finishing-031/*.png

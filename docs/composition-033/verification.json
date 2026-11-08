@@ -17,5 +17,6 @@
     "main": "e4ce9a7c61c250c6e1f84707d643da5942ea4cf7",
     "fresh-start": "5030ba80ff8444b312d775257319b594bf9b3fba",
     "windows-download": "6c185b473c2f4d855eb42517d1f8367d4edc8319"
-  }
+  },
+  "downloadAccess": "GitHub sign-in required. Anonymous artifact request returned HTTP 404; artifact metadata and packaged Windows validation were verified from the successful workflow."
 }

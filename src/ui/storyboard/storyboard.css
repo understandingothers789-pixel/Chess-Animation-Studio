@@ -608,3 +608,14 @@
 .annotation-editor .layer-actions button {
   flex: 1 1 80px;
 }
+/* Layer labels keep their leading words when space is limited. */
+.text-layer-list button {
+  display: block;
+  width: 100%;
+}
+@media (max-width: 1100px) {
+  .caption-guides > span,
+  .text-layer-label {
+    display: none;
+  }
+}

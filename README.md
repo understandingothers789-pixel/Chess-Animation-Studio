@@ -4,7 +4,7 @@ A local desktop studio for animated chess videos. Import a game, shape each move
 
 ![Chess Animation Studio 0.2.33 visual text editor](docs/composition-033/selected-layers.png)
 
-Version **0.2.33** adds direct text selection, dragging, text-area width handles, keyboard positioning and a synchronized multi-layer inspector. Shot transitions blend complete frames with configurable cross-dissolve or fade through black; output timing and continuous soundtrack ducking are preserved. See the [composition report](docs/composition-033/REPORT.md).
+Version **0.2.33** adds direct text selection, dragging, text-area width handles, keyboard positioning and a synchronized multi-layer inspector. Shot transitions blend complete frames with configurable cross-dissolve or fade through black; output timing and continuous soundtrack ducking are preserved. See the [composition report](docs/composition-033/REPORT.md). The [November 13 audit](docs/composition-033/REVALIDATION-2026-11-13.md) corrects wrapping-area resizing and records fresh local validation plus the pending Windows workflow.
 
 Version **0.2.32** adds per-shot **Music ducking** in the storyboard Shot Inspector. Set a music level and fade down/up durations; the output waveform, playback and MP4 export share the same envelope. Chess sound effects keep their own levels. See the [focused report](docs/ducking-032/REPORT.md).
 

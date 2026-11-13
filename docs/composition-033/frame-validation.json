@@ -1,5 +1,8 @@
 {
   "different": 0,
+  "sequentialDifferent": 0,
+  "lazyTextures": true,
+  "reusedTextures": true,
   "meanError": 0.12508356875953608,
   "maxBlack": 0
 }

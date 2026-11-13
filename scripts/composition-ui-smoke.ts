@@ -123,6 +123,13 @@ try {
   await expect(page.locator(".shot-card")).toHaveCount(3);
   await page.locator(".shot-card").first().click();
   const state = () => page!.evaluate(() => (window as any).__state.project);
+  const settleGeometry = () =>
+    page!.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
   const layer = page.locator('[data-annotation-id="text2"]');
   await expect(layer).toBeVisible();
   await page.locator('[data-annotation-id="source-inherited"]').click();
@@ -171,6 +178,7 @@ try {
   await page.getByTitle("Undo", { exact: true }).click();
   assert.deepEqual((await state()).storyboard.shots[0].annotations[2], before);
   await page.getByTitle("Redo", { exact: true }).click();
+  await settleGeometry();
   console.log("PASS: drag transaction Undo and Redo");
   const handle = page.getByLabel("Resize text width", { exact: true });
   const hb = (await handle.boundingBox())!;
@@ -185,6 +193,10 @@ try {
   await page.mouse.up();
   const resized = (await state()).storyboard.shots[0].annotations[2];
   assert(resized.layout.maxWidth > before.layout.maxWidth);
+  assert(
+    Math.abs(resized.layout.maxWidth - 0.88) < 1e-10,
+    "Resize is capped by the configured safe width",
+  );
   assert.equal(resized.size, before.size);
   await page.screenshot({ path: `${evidenceDir}/resizing.png` });
   await page.getByTitle("Undo", { exact: true }).click();
@@ -209,6 +221,7 @@ try {
   await expect(page.getByLabel("Shot caption", { exact: true })).toHaveValue(
     "White to move",
   );
+  await settleGeometry();
   const shortBefore = (await state()).storyboard.shots[0].annotations[1];
   const shortHandle = (await handle.boundingBox())!;
   await page.mouse.move(

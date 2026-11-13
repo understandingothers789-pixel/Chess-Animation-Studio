@@ -116,15 +116,15 @@ export function TextComposition({
                   if (!t) return;
                   if (d.resize) {
                     const safe = safeRect(
-                      1,
-                      1,
+                      100,
+                      100,
                       d.a.layout.customMargins
                         ? d.a.layout
                         : safeDefaults(format, d.a.layout.placement),
                     );
                     t.layout.maxWidth = resizeTextWidth(
                       d.a,
-                      safe.width,
+                      safe.width / 100,
                       dx,
                       d.b.scale,
                     );
@@ -205,7 +205,9 @@ export function TextComposition({
               {active && (
                 <>
                   <span className="text-layer-label">
-                    Text · {Math.round((a?.layout.maxWidth ?? 0) * 100)}% width
+                    Text area ·{" "}
+                    {Math.round(((b.areaRight - b.areaLeft) / b.scale) * 100)}%
+                    width
                   </span>
                   <span
                     className="text-width-box"

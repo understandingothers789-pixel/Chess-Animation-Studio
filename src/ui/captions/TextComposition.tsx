@@ -1,8 +1,9 @@
 import {
   positionText,
   resizeTextWidth,
+  textResizeSide,
 } from "../../core/captions/manipulation";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Annotation } from "../../core/annotations";
 import { safeDefaults, safeRect } from "../../core/captions/safeAreas";
 import type { Format } from "../../core/project";
@@ -16,6 +17,7 @@ export type TextBounds = {
   areaLeft: number;
   areaRight: number;
   scale: number;
+  anchorX: number;
 };
 const clamp = (v: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
 /** Normalized geometry comes from the rendered text, including its entrance scale.
@@ -41,6 +43,10 @@ export function TextComposition({
   edit?: Edit;
   report?: (s: string) => void;
 }) {
+  const [resizing, setResizing] = useState<{
+    id: string;
+    side: "left" | "right";
+  } | null>(null);
   const drag = useRef<{
     a: Annotation;
     b: TextBounds;
@@ -49,10 +55,12 @@ export function TextComposition({
     width: number;
     height: number;
     resize: boolean;
+    side: "left" | "right";
   } | null>(null);
   const end = () => {
     if (drag.current) {
       drag.current = null;
+      setResizing(null);
       edit?.end();
     }
   };
@@ -61,7 +69,13 @@ export function TextComposition({
       {!disabled &&
         bounds.map((b) => {
           const a = annotations.find((a) => a.id === b.id),
-            active = selected === b.id;
+            active = selected === b.id,
+            side =
+              resizing?.id === b.id
+                ? resizing.side
+                : a
+                  ? textResizeSide(a, b)
+                  : "right";
           return (
             <div
               key={b.id}
@@ -103,7 +117,9 @@ export function TextComposition({
                   width: rect.width,
                   height: rect.height,
                   resize: (e.target as HTMLElement).dataset.resize === "true",
+                  side,
                 };
+                if (drag.current.resize) setResizing({ id: a.id, side });
                 e.currentTarget.setPointerCapture(e.pointerId);
               }}
               onPointerMove={(e) => {
@@ -127,7 +143,23 @@ export function TextComposition({
                       safe.width / 100,
                       dx,
                       d.b.scale,
+                      d.side,
                     );
+                    if (t.layout.maxWidth !== d.a.layout.maxWidth) {
+                      const change =
+                        t.layout.maxWidth -
+                        Math.min(d.a.layout.maxWidth, safe.width / 100);
+                      // When the aligned edge lies outside the frame, resize
+                      // from the reachable opposite edge and move its anchor.
+                      t.x = clamp(
+                        d.b.anchorX +
+                          (d.a.align === "left" && d.side === "left"
+                            ? -change
+                            : d.a.align === "right" && d.side === "right"
+                              ? change
+                              : 0),
+                      );
+                    } else t.x = d.a.x;
                   } else {
                     const safe = safeRect(
                       100,
@@ -217,7 +249,7 @@ export function TextComposition({
                     }}
                   >
                     <span
-                      className={`text-resize ${a?.align === "right" ? "text-resize-left" : ""}`}
+                      className={`text-resize ${side === "left" ? "text-resize-left" : ""}`}
                       data-resize="true"
                       title="Resize text width · keeps font size"
                       aria-label="Resize text width"

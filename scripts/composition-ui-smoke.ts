@@ -249,6 +249,44 @@ try {
     (await state()).storyboard.shots[0].annotations[1],
     shortBefore,
   );
+  for (const align of ["right", "left"] as const) {
+    await page
+      .getByLabel("Caption alignment", { exact: true })
+      .selectOption(align);
+    await settleGeometry();
+    const edgeBefore = (await state()).storyboard.shots[0].annotations[1];
+    const edge = (await handle.boundingBox())!;
+    assert(
+      edge.x + edge.width / 2 >= frame.x &&
+        edge.x + edge.width / 2 <= frame.x + frame.width,
+      "An off-frame wrapping edge must leave a reachable resize handle",
+    );
+    const dx = align === "right" ? -8 : 8;
+    await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(
+      edge.x + edge.width / 2 + dx,
+      edge.y + edge.height / 2,
+      { steps: 4 },
+    );
+    await page.mouse.up();
+    const edgeAfter = (await state()).storyboard.shots[0].annotations[1];
+    assert(
+      Math.abs(
+        edgeAfter.layout.maxWidth -
+          (edgeBefore.layout.maxWidth - 8 / frame.width),
+      ) < 0.005,
+    );
+    assert(Math.abs(edgeAfter.x - (edgeBefore.x + dx / frame.width)) < 0.005);
+    await page.getByTitle("Undo", { exact: true }).click();
+    assert.deepEqual(
+      (await state()).storyboard.shots[0].annotations[1],
+      edgeBefore,
+    );
+  }
+  await page
+    .getByLabel("Caption alignment", { exact: true })
+    .selectOption("center");
   await layer.click();
   console.log(
     "PASS: live width resize, one-step Undo/Redo, short text area, empty selection and keyboard selection",

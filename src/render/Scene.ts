@@ -494,6 +494,7 @@ export class Scene {
       areaLeft: b.areaLeft / this.width,
       areaRight: b.areaRight / this.width,
       scale: b.scale,
+      anchorX: b.anchorX / this.width,
     }));
   }
   pickAnnotation(clientX: number, clientY: number) {

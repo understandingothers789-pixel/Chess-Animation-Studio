@@ -13,11 +13,20 @@ export function resizeTextWidth(
   safeWidth: number,
   dx: number,
   scale = 1,
+  side: "left" | "right" = a.align === "right" ? "left" : "right",
 ) {
   const base = Math.min(a.layout.maxWidth, safeWidth);
-  const factor = a.align === "center" ? 2 : a.align === "right" ? -1 : 1;
+  const factor = (a.align === "center" ? 2 : 1) * (side === "left" ? -1 : 1);
   const next = Math.max(0.1, Math.min(safeWidth, base + (dx * factor) / scale));
   return next === base ? a.layout.maxWidth : next;
+}
+/** Prefer the aligned handle, but keep one reachable inside the output frame. */
+export function textResizeSide(
+  a: Annotation,
+  area: { areaLeft: number; areaRight: number },
+) {
+  if (a.align === "right") return area.areaLeft >= 0 ? "left" : "right";
+  return area.areaRight <= 1 ? "right" : "left";
 }
 /** Snap the visible rectangle, then recover the renderer's alignment anchor.
  * Inputs are fractions of the output frame, independent of preview transforms. */

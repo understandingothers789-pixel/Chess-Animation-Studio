@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import {
   positionText,
   resizeTextWidth,
+  textResizeSide,
 } from "../src/core/captions/manipulation";
 import { annotation } from "../src/core/annotations";
 import { layoutCaption } from "../src/core/captions/layout";
@@ -35,6 +36,19 @@ it("keeps output anchors valid at extreme pointer deltas", () => {
     x: 1,
     y: 1,
   });
+});
+it("keeps a resize handle reachable when the wrapping area extends outside the frame", () => {
+  for (const align of ["left", "center", "right"] as const) {
+    const a = annotation("caption", 0);
+    a.align = align;
+    a.layout.maxWidth = 0.5;
+    const right = textResizeSide(a, { areaLeft: -0.2, areaRight: 0.3 });
+    expect(right).toBe("right");
+    expect(resizeTextWidth(a, 0.88, 0.01, 1, right)).toBeGreaterThan(0.5);
+    const left = textResizeSide(a, { areaLeft: 0.7, areaRight: 1.2 });
+    expect(left).toBe("left");
+    expect(resizeTextWidth(a, 0.88, -0.01, 1, left)).toBeGreaterThan(0.5);
+  }
 });
 it("resizes the wrapping area without collapsing short text or changing font settings", () => {
   const measure = (text: string, size: number) => text.length * size * 0.5;

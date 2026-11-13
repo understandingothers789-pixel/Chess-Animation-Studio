@@ -12,6 +12,9 @@ export class AnnotationSystem {
     top: number;
     right: number;
     bottom: number;
+    areaLeft: number;
+    areaRight: number;
+    scale: number;
   }[] = [];
   private shapes: { mesh: T.Mesh; a: Annotation }[] = [];
   private canvas = document.createElement("canvas");
@@ -151,6 +154,9 @@ export class AnnotationSystem {
         right: x + (left + width - x) * pop,
         top: y - (height / 2) * pop,
         bottom: y + (height / 2) * pop,
+        areaLeft: x + (layout.area.left - x) * pop,
+        areaRight: x + (layout.area.right - x) * pop,
+        scale: pop,
       });
       if (a.entrance === "pop") {
         const scale = Math.max(

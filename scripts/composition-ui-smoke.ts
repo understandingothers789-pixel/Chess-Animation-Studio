@@ -48,7 +48,9 @@ fixture.annotations = [
   },
 ];
 fixture.storyboard.shots[0].inheritAnnotations = true;
-await fs.mkdir("docs/composition-033", { recursive: true });
+const evidenceDir =
+  process.env.COMPOSITION_EVIDENCE_DIR ?? "docs/composition-033";
+await fs.mkdir(evidenceDir, { recursive: true });
 const port = process.env.COMPOSITION_PORT ?? "5194",
   origin = `http://127.0.0.1:${port}`;
 const server = spawn(
@@ -148,7 +150,7 @@ try {
   await expect(
     page.getByLabel("Shot caption", { exact: true }),
   ).toBeInViewport();
-  await page.screenshot({ path: "docs/composition-033/selected-layers.png" });
+  await page.screenshot({ path: `${evidenceDir}/selected-layers.png` });
   console.log(
     "PASS: selection and inspector synchronization; source ownership is preserved",
   );
@@ -161,7 +163,7 @@ try {
     box.y + box.height / 2 - 45,
     { steps: 8 },
   );
-  await page.screenshot({ path: "docs/composition-033/dragging.png" });
+  await page.screenshot({ path: `${evidenceDir}/dragging.png` });
   await page.mouse.up();
   await expect
     .poll(async () => (await state()).storyboard.shots[0].annotations[2].y)
@@ -172,16 +174,72 @@ try {
   console.log("PASS: drag transaction Undo and Redo");
   const handle = page.getByLabel("Resize text width", { exact: true });
   const hb = (await handle.boundingBox())!;
+  const beforeResize = (await state()).storyboard.shots[0].annotations[2];
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
   await page.mouse.down();
   await page.mouse.move(hb.x + hb.width / 2 + 60, hb.y + hb.height / 2, {
     steps: 10,
   });
+  const liveResize = (await state()).storyboard.shots[0].annotations[2];
+  assert(liveResize.layout.maxWidth > beforeResize.layout.maxWidth);
   await page.mouse.up();
   const resized = (await state()).storyboard.shots[0].annotations[2];
   assert(resized.layout.maxWidth > before.layout.maxWidth);
   assert.equal(resized.size, before.size);
-  await page.screenshot({ path: "docs/composition-033/resizing.png" });
+  await page.screenshot({ path: `${evidenceDir}/resizing.png` });
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.deepEqual(
+    (await state()).storyboard.shots[0].annotations[2],
+    beforeResize,
+  );
+  await page.getByTitle("Redo", { exact: true }).click();
+  assert.deepEqual((await state()).storyboard.shots[0].annotations[2], resized);
+  // A wide text area containing short words must not collapse to word width
+  // on the first pointer movement. The selected guide exposes the true area.
+  const shortLayer = page.locator('[data-annotation-id="text1"]');
+  const frame = (await page
+    .getByLabel("Chess composition preview", { exact: true })
+    .boundingBox())!;
+  await page.mouse.click(frame.x + 2, frame.y + 2);
+  await expect(page.locator(".text-selected")).toHaveCount(0);
+  await expect(page.getByLabel("Shot caption", { exact: true })).toHaveCount(0);
+  await shortLayer.focus();
+  await page.keyboard.press("Enter");
+  await expect(shortLayer).toHaveClass(/text-selected/);
+  await expect(page.getByLabel("Shot caption", { exact: true })).toHaveValue(
+    "White to move",
+  );
+  const shortBefore = (await state()).storyboard.shots[0].annotations[1];
+  const shortHandle = (await handle.boundingBox())!;
+  await page.mouse.move(
+    shortHandle.x + shortHandle.width / 2,
+    shortHandle.y + shortHandle.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    shortHandle.x + shortHandle.width / 2 - 8,
+    shortHandle.y + shortHandle.height / 2,
+    { steps: 4 },
+  );
+  await page.mouse.up();
+  const shortAfter = (await state()).storyboard.shots[0].annotations[1];
+  assert(
+    Math.abs(
+      shortAfter.layout.maxWidth -
+        (shortBefore.layout.maxWidth - 16 / frame.width),
+    ) < 0.005,
+  );
+  assert.equal(shortAfter.size, shortBefore.size);
+  await page.screenshot({ path: `${evidenceDir}/short-text-width.png` });
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.deepEqual(
+    (await state()).storyboard.shots[0].annotations[1],
+    shortBefore,
+  );
+  await layer.click();
+  console.log(
+    "PASS: live width resize, one-step Undo/Redo, short text area, empty selection and keyboard selection",
+  );
   await layer.focus();
   await page.keyboard.press("ArrowLeft");
   const nudged = (await state()).storyboard.shots[0].annotations[2];
@@ -219,9 +277,9 @@ try {
   await page
     .getByRole("button", { name: "Caption guides", exact: true })
     .click();
-  await page.screenshot({ path: "docs/composition-033/safe-guides.png" });
+  await page.screenshot({ path: `${evidenceDir}/safe-guides.png` });
   await page.setViewportSize({ width: 1000, height: 800 });
-  await page.screenshot({ path: "docs/composition-033/narrow.png" });
+  await page.screenshot({ path: `${evidenceDir}/narrow.png` });
   console.log(
     "PASS: resize, keyboard, duplicate, persistence and narrow layout",
   );
@@ -235,7 +293,7 @@ try {
     .fill("0.4");
   await page.getByLabel("Seek storyboard", { exact: true }).fill("4.2");
   await page.screenshot({
-    path: "docs/composition-033/transition-dissolve.png",
+    path: `${evidenceDir}/transition-dissolve.png`,
   });
   await page
     .getByRole("button", { name: "Preview transition", exact: true })
@@ -249,7 +307,7 @@ try {
     .getByLabel("Transition type", { exact: true })
     .selectOption("fade-through-black");
   await page.getByLabel("Seek storyboard", { exact: true }).fill("5.25");
-  await page.screenshot({ path: "docs/composition-033/transition-black.png" });
+  await page.screenshot({ path: `${evidenceDir}/transition-black.png` });
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByTitle("Open composition", { exact: true }).click();
   assert.equal(
@@ -260,9 +318,9 @@ try {
     .getByRole("main")
     .getByLabel("Output format", { exact: true })
     .selectOption("landscape");
-  await page.screenshot({ path: "docs/composition-033/landscape.png" });
+  await page.screenshot({ path: `${evidenceDir}/landscape.png` });
   await page.getByLabel("UI scale", { exact: true }).selectOption("150");
-  await page.screenshot({ path: "docs/composition-033/scale150.png" });
+  await page.screenshot({ path: `${evidenceDir}/scale150.png` });
   await page.getByLabel("UI scale", { exact: true }).selectOption("100");
   await page.locator(".shot-card").first().click();
   await page.getByLabel("Seek storyboard", { exact: true }).fill("0.5");
@@ -275,14 +333,14 @@ try {
   await expect(page.getByLabel("Shot caption", { exact: true })).toHaveValue(
     "White to move",
   );
-  await page.screenshot({ path: "docs/composition-033/zoom-square.png" });
+  await page.screenshot({ path: `${evidenceDir}/zoom-square.png` });
   await page.getByRole("button", { name: "Reset view", exact: true }).click();
   await page.getByRole("button", { name: "Full preview", exact: true }).click();
   await page.locator('[data-annotation-id="text0"]').click();
   await expect(page.locator('[data-annotation-id="text0"]')).toHaveClass(
     /text-selected/,
   );
-  await page.screenshot({ path: "docs/composition-033/fullscreen.png" });
+  await page.screenshot({ path: `${evidenceDir}/fullscreen.png` });
   await page.keyboard.press("Escape");
   assert.deepEqual((await state()).annotations, fixture.annotations);
   assert.deepEqual((await state()).moves, fixture.moves);

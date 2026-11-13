@@ -1,4 +1,7 @@
-import { positionText } from "../../core/captions/manipulation";
+import {
+  positionText,
+  resizeTextWidth,
+} from "../../core/captions/manipulation";
 import { useRef } from "react";
 import type { Annotation } from "../../core/annotations";
 import { safeDefaults, safeRect } from "../../core/captions/safeAreas";
@@ -10,6 +13,9 @@ export type TextBounds = {
   top: number;
   right: number;
   bottom: number;
+  areaLeft: number;
+  areaRight: number;
+  scale: number;
 };
 const clamp = (v: number, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
 /** Normalized geometry comes from the rendered text, including its entrance scale.
@@ -109,10 +115,18 @@ export function TextComposition({
                   const t = p.annotations.find((a) => a.id === d.a.id);
                   if (!t) return;
                   if (d.resize) {
-                    t.layout.maxWidth = clamp(
-                      d.b.right - d.b.left + dx,
-                      0.1,
+                    const safe = safeRect(
                       1,
+                      1,
+                      d.a.layout.customMargins
+                        ? d.a.layout
+                        : safeDefaults(format, d.a.layout.placement),
+                    );
+                    t.layout.maxWidth = resizeTextWidth(
+                      d.a,
+                      safe.width,
+                      dx,
+                      d.b.scale,
                     );
                   } else {
                     const safe = safeRect(
@@ -145,6 +159,13 @@ export function TextComposition({
               onPointerCancel={end}
               onLostPointerCapture={end}
               onKeyDown={(e) => {
+                if (a && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  prepare();
+                  select(a.id);
+                  return;
+                }
                 if (
                   !a ||
                   !edit ||
@@ -187,11 +208,19 @@ export function TextComposition({
                     Text · {Math.round((a?.layout.maxWidth ?? 0) * 100)}% width
                   </span>
                   <span
-                    className="text-resize"
-                    data-resize="true"
-                    title="Resize text width · keeps font size"
-                    aria-label="Resize text width"
-                  />
+                    className="text-width-box"
+                    style={{
+                      left: `${((b.areaLeft - b.left) / (b.right - b.left)) * 100}%`,
+                      width: `${((b.areaRight - b.areaLeft) / (b.right - b.left)) * 100}%`,
+                    }}
+                  >
+                    <span
+                      className={`text-resize ${a?.align === "right" ? "text-resize-left" : ""}`}
+                      data-resize="true"
+                      title="Resize text width · keeps font size"
+                      aria-label="Resize text width"
+                    />
+                  </span>
                 </>
               )}
             </div>

@@ -133,12 +133,15 @@ export function ShotInspector({
           edit={annotationEdit}
           time={0}
           selected={
-            (s.annotations.some((a) => a.id === annotationId)
-              ? annotationId
-              : null) ??
-            s.annotations.find((a) => a.kind === "caption" || a.kind === "text")
-              ?.id ??
-            null
+            annotationId === ""
+              ? null
+              : ((s.annotations.some((a) => a.id === annotationId)
+                  ? annotationId
+                  : null) ??
+                s.annotations.find(
+                  (a) => a.kind === "caption" || a.kind === "text",
+                )?.id ??
+                null)
           }
           onSelect={setAnnotationId}
           onDraw={draw}

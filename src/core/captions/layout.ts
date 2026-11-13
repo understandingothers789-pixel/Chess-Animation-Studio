@@ -6,6 +6,8 @@ export type CaptionLayout = {
   fontSize: number;
   lineHeight: number;
   bounds: { x: number; y: number; width: number; height: number };
+  /** Wrapping area, distinct from the tightly measured visible text bounds. */
+  area: { left: number; right: number };
   safe: { x: number; y: number; width: number; height: number };
   overflow: boolean;
   x: number;
@@ -96,6 +98,16 @@ export function layoutCaption(
     lineHeight: size * opts.lineSpacing,
     safe,
     bounds: { x: left, y: top, width, height },
+    area: {
+      left:
+        left +
+        width * anchor -
+        Math.min(safe.width, w * opts.maxWidth) * anchor,
+      right:
+        left +
+        width * anchor +
+        Math.min(safe.width, w * opts.maxWidth) * (1 - anchor),
+    },
     x: left + padding + (width - 2 * padding) * anchor,
     y: top + height / 2,
     overflow:

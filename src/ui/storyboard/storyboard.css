@@ -575,7 +575,15 @@
   white-space: nowrap;
   pointer-events: none;
 }
+.text-width-box {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  outline: 1px dashed #a9d98c;
+  pointer-events: none;
+}
 .text-resize {
+  pointer-events: auto;
   position: absolute;
   width: 12px;
   height: 20px;
@@ -584,6 +592,10 @@
   background: #c8e79c;
   border: 2px solid #173322;
   cursor: ew-resize;
+}
+.text-resize-left {
+  left: -6px;
+  right: auto;
 }
 .text-layer-list {
   display: grid;

@@ -5,6 +5,20 @@ export type TextRect = {
   right: number;
   bottom: number;
 };
+/** Resize the configured wrapping area, not the measured width of its words.
+ * Center-aligned text expands on both sides; right-aligned text uses its left
+ * handle. Work from the effective safe width so a capped area has no dead zone. */
+export function resizeTextWidth(
+  a: Annotation,
+  safeWidth: number,
+  dx: number,
+  scale = 1,
+) {
+  const base = Math.min(a.layout.maxWidth, safeWidth);
+  const factor = a.align === "center" ? 2 : a.align === "right" ? -1 : 1;
+  const next = Math.max(0.1, Math.min(safeWidth, base + (dx * factor) / scale));
+  return next === base ? a.layout.maxWidth : next;
+}
 /** Snap the visible rectangle, then recover the renderer's alignment anchor.
  * Inputs are fractions of the output frame, independent of preview transforms. */
 export function positionText(

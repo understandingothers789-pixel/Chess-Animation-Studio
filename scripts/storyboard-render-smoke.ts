@@ -7,6 +7,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { blank, type Format } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
+import { annotation } from "../src/core/annotations";
 import {
   shotFromMove,
   titleShot,
@@ -132,6 +133,16 @@ if (composition) {
     fadeDown: 0.03,
     fadeUp: 0.03,
   };
+  p.storyboard.shots[2].annotations.push(
+    ...(["arrow", "circle"] as const).map((kind) => ({
+      ...annotation(kind, 0),
+      from: kind === "arrow" ? "b5" : "c6",
+      to: "c6",
+      end: 0.3,
+      entrance: "none" as const,
+      exit: "none" as const,
+    })),
+  );
 }
 const order = p.moves.map((m) => m.id);
 await writeProject(path.join(dir, "roundtrip.castudio"), p);
@@ -146,10 +157,11 @@ const cold = performance.now() - start;
 const cached = performance.now();
 for (let i = 0; i < 10000; i++) compileStoryboard(p);
 const hot = performance.now() - cached;
-const origin = "http://127.0.0.1:5187",
+const port = process.env.STORY_TEST_PORT ?? "5187",
+  origin = `http://127.0.0.1:${port}`,
   server = spawn(
     process.execPath,
-    ["node_modules/vite/bin/vite.js", "--port", "5187"],
+    ["node_modules/vite/bin/vite.js", "--port", port, "--strictPort"],
     { stdio: "pipe" },
   );
 let browser;
@@ -194,15 +206,26 @@ try {
         s.render(project, time, 320, 180, "landscape", "storyboard");
         return s.rgba();
       };
-      const direct = raw(0.4);
+      raw(0.1);
+      const lazyTextures = s.transitions.frames.length === 0;
+      const direct = raw(0.4),
+        textures = [...s.transitions.frames];
       raw(0.95);
       raw(0.1);
       const seek = raw(0.4);
+      for (const time of [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]) raw(time);
+      const sequential = raw(0.4);
+      const reusedTextures =
+        textures.length === 2 &&
+        textures.every(
+          (t: unknown, i: number) => t === s.transitions.frames[i],
+        );
       const cut = structuredClone(p);
       cut.storyboard.shots.forEach((v: any) => (v.transition.type = "cut"));
       const a = raw(0.3 - 1e-7, cut),
         b = raw(0.4, cut);
       let different = 0,
+        sequentialDifferent = 0,
         error = 0;
       const linear = (v: number) =>
         v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
@@ -211,6 +234,7 @@ try {
       for (let i = 0; i < direct.length; i += 4)
         for (let ch = 0; ch < 3; ch++) {
           different += direct[i + ch] !== seek[i + ch] ? 1 : 0;
+          sequentialDifferent += direct[i + ch] !== sequential[i + ch] ? 1 : 0;
           error += Math.abs(
             direct[i + ch] -
               255 *
@@ -229,6 +253,9 @@ try {
       const fade = s.renderer.domElement.toDataURL();
       return {
         different,
+        sequentialDifferent,
+        lazyTextures,
+        reusedTextures,
         meanError: error / (320 * 180 * 3),
         maxBlack,
         dissolve,
@@ -239,6 +266,15 @@ try {
       parity.different,
       0,
       "Direct seeking must equal out-of-order rendering",
+    );
+    assert.equal(
+      parity.sequentialDifferent,
+      0,
+      "Sequential playback must equal direct rendering",
+    );
+    assert(
+      parity.lazyTextures && parity.reusedTextures,
+      "Transition textures must be allocated lazily and reused",
     );
     assert(
       parity.meanError < 2,
@@ -256,6 +292,9 @@ try {
       JSON.stringify(
         {
           different: parity.different,
+          sequentialDifferent: parity.sequentialDifferent,
+          lazyTextures: parity.lazyTextures,
+          reusedTextures: parity.reusedTextures,
           meanError: parity.meanError,
           maxBlack: parity.maxBlack,
         },

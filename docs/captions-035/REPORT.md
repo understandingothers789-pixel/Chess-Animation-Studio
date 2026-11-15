@@ -16,7 +16,7 @@ The app already supported manually styled text annotations and shot captions. Th
 
 In **Captions & transcript → Automatic transcription**, choose **Set up local transcription** on Windows x64. One-time setup downloads about 80 MB from GitHub, verifies both files and caches them in the app's user-data folder. There is no Python installation, API key, subscription or Hugging Face setup. Click **Import narration soundtrack**, then **Transcribe soundtrack locally**. Review the resulting words and generate captions.
 
-Importing narration replaces the current soundtrack. This version uses the existing single soundtrack; it does not add a separate voiceover mixer track. FFmpeg must be available through the app's existing tool setting. The transcript offset starts at soundtrack offset minus source trim. After changing soundtrack alignment or storyboard timing, adjust the transcript offset and regenerate.
+Importing narration replaces the current soundtrack. This version uses the existing single soundtrack; it does not add a separate voiceover mixer track. FFmpeg must be available through the app's existing tool setting. The transcript offset starts at soundtrack offset minus source trim. Recognition excludes speech outside the current soundtrack trims. After changing trims, transcribe again; after changing the soundtrack offset or storyboard timing, adjust the transcript offset and regenerate.
 
 The bundled setup choice is the small English-only `tiny.en` model. It favors a quick setup and CPU recognition over maximum accuracy. An existing **whisper.cpp whisper-cli** executable and compatible GGML model can be selected manually, including multilingual models; the Python `whisper` command uses a different interface. On Linux/macOS, select an existing installation. Setup needs internet access to GitHub once; recognition then runs offline, without uploading audio. Cancel or close the dialog to stop an active task. Temporary converted audio and JSON are removed after success, cancellation or failure.
 
@@ -39,7 +39,7 @@ Source captions and storyboard captions are independent tracks. Source text rema
 
 ## Validation
 
-- The local suite passed: 171 tests passed, one existing conditional test skipped. Core tests cover word/cue parsing, timing provenance, short phrases, clipping/offsets, replacement ownership, project persistence, shot boundary splitting, inherited-caption deduplication and compiled-projection invalidation.
+- The local suite passed: 172 tests passed, one existing conditional test skipped. Core tests cover word/cue parsing, timing provenance, short phrases, clipping/offsets, replacement ownership, project persistence, shot boundary splitting, inherited-caption deduplication and compiled-projection invalidation.
 - Process-boundary tests cover argument handling (including paths with spaces), cancellation and temporary-file cleanup.
 - Browser smoke covers direct caption creation, word seeking, generated-caption selection, Undo/Redo, native-shaped save/reopen, timing offset, search, word edits, cue warnings, replacement and narrow layout.
 - A real CPU test with the official Whisper JFK speech sample recognized 22 timed words, including “Americans”, and produced five short phrases. No sample/model is included in the app package; setup downloads the model on request.

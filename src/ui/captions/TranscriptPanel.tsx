@@ -9,6 +9,7 @@ import {
   captionPhrases,
   replaceTranscript,
   generateTranscriptCaptions,
+  alignNarrationTranscript,
 } from "../../core/transcripts";
 import { presentationDuration } from "../../core/storyboard";
 import "./transcript.css";
@@ -270,8 +271,9 @@ export function TranscriptPanel({
         </p>
         <p>
           Use a soundtrack containing narration. Importing narration here
-          replaces the current soundtrack. Captions align using its current trim
-          and output offset; regenerate after changing alignment.
+          replaces the current soundtrack. Recognition uses its current trims;
+          transcribe again after changing them. After moving the soundtrack,
+          adjust the transcript offset and regenerate captions.
         </p>
         <div className="transcript-actions">
           <button disabled={busy} onClick={() => perform(importAudio)}>
@@ -295,9 +297,11 @@ export function TranscriptPanel({
                 );
                 inFlight.current = true;
                 try {
-                  const imported = await window.studio.transcribe(asset, mode);
+                  const imported = alignNarrationTranscript(
+                    await window.studio.transcribe(asset, mode),
+                    p.music,
+                  );
                   if (!alive.current) return;
-                  imported.offset = p.music.offset - p.music.trimStart;
                   edit("Transcribe soundtrack", (d) =>
                     replaceTranscript(d, imported),
                   );

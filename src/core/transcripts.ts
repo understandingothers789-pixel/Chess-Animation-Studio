@@ -198,6 +198,25 @@ export function replaceTranscript(p: Project, t: Transcript) {
     { ...structuredClone(t), id },
   ];
 }
+/** Recognition uses the original file; retain only the audible soundtrack range. */
+export function alignNarrationTranscript(
+  t: Transcript,
+  music: Project["music"],
+): Transcript {
+  const end = music.trimEnd > 0 ? music.trimEnd : Infinity;
+  const words = t.words
+    .filter((w) => w.end > music.trimStart && w.start < end)
+    .map((w) => ({
+      ...w,
+      start: Math.max(music.trimStart, w.start),
+      end: Math.min(end, w.end),
+    }));
+  if (!words.length)
+    throw Error(
+      "No recognized speech falls within the soundtrack trim. Adjust its trim and try again.",
+    );
+  return { ...t, words, offset: music.offset - music.trimStart };
+}
 /** Generated phrases are ordinary editable annotations. Clip them at shot
  * boundaries in OUTPUT time, without changing source moves or audio mappings. */
 export function generateTranscriptCaptions(

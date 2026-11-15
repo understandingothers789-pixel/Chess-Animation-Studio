@@ -8,6 +8,7 @@ import {
   generateTranscriptCaptions,
   replaceTranscript,
   quickCaption,
+  alignNarrationTranscript,
 } from "../src/core/transcripts";
 import { importPgn } from "../src/core/chess";
 import { shotFromMove } from "../src/core/storyboard";
@@ -21,6 +22,19 @@ const input = JSON.stringify({
       })),
     },
   ],
+});
+it("aligns narration with both soundtrack trims and excludes inaudible speech", () => {
+  const t = parseTranscript(input, "narration", "storyboard");
+  const music = { ...blank().music, trimStart: 0.5, trimEnd: 2.1, offset: 1 };
+  const result = alignNarrationTranscript(t, music);
+  expect(result.offset).toBe(0.5);
+  expect(result.words[0].start).toBe(0.5);
+  expect(result.words.at(-1)!.end).toBe(2.1);
+  expect(result.words.every((w) => w.start >= 0.5 && w.end <= 2.1)).toBe(true);
+  expect(t.words).toHaveLength(11);
+  expect(() =>
+    alignNarrationTranscript(t, { ...music, trimStart: 10, trimEnd: 12 }),
+  ).toThrow(/No recognized speech/);
 });
 it("parses actual word timestamps and creates at most five words per phrase without lost content", () => {
   const t = parseTranscript(input, "words", "source"),

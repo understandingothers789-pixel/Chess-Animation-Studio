@@ -26,6 +26,14 @@ export function CaptionGuide({
       ? a.layout
       : safeDefaults(format, a.layout.placement),
   );
+  const change = (
+    label: string,
+    fn: (p: { annotations: Annotation[] }) => void,
+  ) => {
+    if (edit?.annotations)
+      edit.annotations(label, (annotations) => fn({ annotations }));
+    else edit?.(label, fn);
+  };
   const end = () => {
     if (drag.current) {
       drag.current = false;
@@ -49,7 +57,7 @@ export function CaptionGuide({
             {a.layout.placement === "social-safe"
               ? "Approximate social safe area · configurable"
               : "Caption safe area"}{" "}
-            · drag crosshair to position
+            {edit && " · drag crosshair to position"}
           </span>
           <i />
           <b />
@@ -92,7 +100,7 @@ export function CaptionGuide({
                 safe.y / 100,
                 (safe.y + safe.height) / 100,
               );
-            edit("Position caption", (d) => {
+            change("Position caption", (d) => {
               const target = d.annotations.find((v) => v.id === a.id);
               if (target) Object.assign(target, { x, y });
             });
@@ -108,7 +116,7 @@ export function CaptionGuide({
             )
               return;
             e.preventDefault();
-            edit("Position caption", (d) => {
+            change("Position caption", (d) => {
               const t = d.annotations.find((v) => v.id === a.id);
               if (t) {
                 t.x = Math.max(

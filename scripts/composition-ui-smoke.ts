@@ -242,6 +242,15 @@ try {
     "Measured left edges align",
   );
   await page.screenshot({ path: `${evidenceDir}/group-align.png` });
+  await page
+    .getByRole("button", { name: "Caption guides", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Drag caption position", { exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Caption guides", exact: true })
+    .click();
   await page.getByTitle("Undo", { exact: true }).click();
   assert.deepEqual(
     (await state()).storyboard.shots[0].annotations,

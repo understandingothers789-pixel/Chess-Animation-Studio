@@ -659,7 +659,7 @@ export function Preview({
               )
             }
             format={project.format}
-            edit={edit}
+            edit={groupIds.length > 1 ? undefined : edit}
             prepare={prepareAnnotation}
           />
           {view.guides !== "none" && (

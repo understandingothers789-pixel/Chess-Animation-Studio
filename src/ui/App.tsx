@@ -1459,6 +1459,12 @@ export function App() {
                   .map((a) => [a.id, assets[a.id]]),
               )}
               onCompositionPoint={(x, y) => {
+                if (annotationIds.length > 1) {
+                  message(
+                    "Drag the selected group or use its layout toolbar. Select one layer for Alt-click placement.",
+                  );
+                  return;
+                }
                 const a = currentAnnotations.find((a) => a.id === annotationId);
                 if (
                   a &&

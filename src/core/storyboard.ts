@@ -40,6 +40,10 @@ export type CompiledStoryboard = {
   game: Game;
 };
 const cache = new WeakMap<Project, CompiledStoryboard>();
+/** Draft operations that compile before mutating must invalidate that draft. */
+export function invalidateStoryboard(p: Project) {
+  cache.delete(p);
+}
 const sourceContexts = new Map<
   string,
   {
@@ -175,6 +179,17 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
           ...p.annotations
             .filter(
               (ann) =>
+                !ann.transcriptId ||
+                !p.transcripts?.some(
+                  (t) =>
+                    t.mode === "storyboard" &&
+                    shot.annotations.some(
+                      (local) => local.transcriptId === t.id,
+                    ),
+                ),
+            )
+            .filter(
+              (ann) =>
                 !shot.annotations.some(
                   (local) => local.sourceAnnotationId === ann.id,
                 ),
@@ -222,6 +237,17 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
         const sourceTime = after ? (timeline.segments[i]?.finish ?? 0) : a;
         projection.annotations = [
           ...p.annotations
+            .filter(
+              (ann) =>
+                !ann.transcriptId ||
+                !p.transcripts?.some(
+                  (t) =>
+                    t.mode === "storyboard" &&
+                    shot.annotations.some(
+                      (local) => local.transcriptId === t.id,
+                    ),
+                ),
+            )
             .filter(
               (ann) =>
                 !shot.annotations.some(

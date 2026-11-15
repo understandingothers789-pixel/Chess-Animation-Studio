@@ -9,6 +9,10 @@ import { blank, type Format } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
 import { annotation } from "../src/core/annotations";
 import {
+  parseTranscript,
+  generateTranscriptCaptions,
+} from "../src/core/transcripts";
+import {
   shotFromMove,
   titleShot,
   compileStoryboard,
@@ -18,13 +22,16 @@ import { validateExport } from "../src/core/exportOptions";
 import { VideoJob } from "../desktop/export";
 import { writeProject, readProject } from "../desktop/files";
 const composition = process.argv.includes("--composition");
+const transcript = process.argv.includes("--transcript");
 const dir = path.resolve(
   process.env.STORY_TEST_DIR ??
-    (composition
-      ? "test-results/composition-render"
-      : process.env.FINISHING_TEST || process.argv.includes("--finishing")
-        ? "test-results/finishing-render"
-        : "test-results/storyboard-render"),
+    (transcript
+      ? "test-results/transcript-render"
+      : composition
+        ? "test-results/composition-render"
+        : process.env.FINISHING_TEST || process.argv.includes("--finishing")
+          ? "test-results/finishing-render"
+          : "test-results/storyboard-render"),
 );
 await fs.mkdir(dir, { recursive: true });
 const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg",
@@ -144,6 +151,28 @@ if (composition) {
     })),
   );
 }
+if (transcript) {
+  p.storyboard.shots.forEach((s) => {
+    s.annotations = [];
+    s.inheritAnnotations = false;
+  });
+  const t = parseTranscript(
+    JSON.stringify({
+      words: "Find the winning move and then capture the queen with check now"
+        .split(" ")
+        .map((word, i) => ({ word, start: i * 0.09, end: (i + 1) * 0.09 })),
+    }),
+    "Export transcript fixture",
+    "storyboard",
+  );
+  generateTranscriptCaptions(p, t, 5);
+  assert.ok(p.storyboard.shots.every((s) => s.annotations.length > 0));
+  assert.ok(
+    p.storyboard.shots.every((s) =>
+      s.annotations.every((a) => a.start >= 0 && a.end <= s.duration),
+    ),
+  );
+}
 const order = p.moves.map((m) => m.id);
 await writeProject(path.join(dir, "roundtrip.castudio"), p);
 p = await readProject(path.join(dir, "roundtrip.castudio"));
@@ -197,6 +226,32 @@ try {
     await s.ready;
     Object.assign(window, { storyScene: s, storyProject: p });
   }, p);
+  if (transcript) {
+    const changed = await page.evaluate(() => {
+      const w = window as any,
+        s = w.storyScene,
+        p = w.storyProject;
+      s.render(p, 0.15, 640, 360, "landscape", "storyboard");
+      const caption = s.rgba();
+      const hidden = structuredClone(p);
+      hidden.storyboard.shots.forEach((shot: any) => {
+        shot.annotations = [];
+      });
+      s.render(hidden, 0.15, 640, 360, "landscape", "storyboard");
+      const empty = s.rgba();
+      return caption.reduce(
+        (n: number, v: number, i: number) => n + (v !== empty[i] ? 1 : 0),
+        0,
+      );
+    });
+    assert.ok(
+      changed > 100,
+      "Generated transcript captions must produce visible pixels",
+    );
+    console.log(
+      "PASS: generated transcript captions visibly render through the shared compositor",
+    );
+  }
   if (composition) {
     const resources = await page.evaluate(() => {
       const w = window as any,
@@ -403,7 +458,7 @@ try {
           {
             name: "storyboard",
             project: p,
-            formats: (composition
+            formats: (composition || transcript
               ? ["landscape", "vertical"]
               : [
                   "landscape",
@@ -411,7 +466,7 @@ try {
                   "square",
                   "square-in-vertical",
                 ]) as Format[],
-            rates: [24, 30, 60],
+            rates: transcript ? [24, 30] : [24, 30, 60],
           },
         ];
   for (const scenario of scenarios) {

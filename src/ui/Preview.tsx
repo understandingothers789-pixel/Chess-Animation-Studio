@@ -24,6 +24,8 @@ export function Preview({
   project,
   mode = "source",
   thumbnailPort,
+  onAddCaption,
+  onTranscript,
   onAddMove,
   onAddPosition,
   onPrepareShotEdit,
@@ -47,6 +49,8 @@ export function Preview({
   project: Project;
   mode?: PlaybackMode;
   thumbnailPort?: ThumbnailPort;
+  onAddCaption?: () => void;
+  onTranscript?: () => void;
   onAddMove?: () => void;
   onAddPosition?: () => void;
   onPrepareShotEdit?: (id: string, localTime: number) => void;
@@ -497,6 +501,8 @@ export function Preview({
         />
       )}
       <ViewportTools
+        addCaption={onAddCaption}
+        transcript={onTranscript}
         captionGuides={captionGuides}
         onCaptionGuides={() => setCaptionGuides((v) => !v)}
         fullscreen={fullscreen}

@@ -4,6 +4,9 @@ export interface Settings {
   stockfish: string;
   encoder: "auto" | "software";
   tokenPresent: boolean;
+  whisper?: string;
+  whisperModel?: string;
+  platform?: string;
 }
 export interface ExportOptions {
   mode?: PlaybackMode;
@@ -22,6 +25,15 @@ export interface ExportProgress {
   error?: string;
 }
 export interface Studio {
+  chooseTranscript(): Promise<{ text: string; name: string } | null>;
+  whisperTool(kind: "binary" | "model"): Promise<Settings>;
+  whisperSetup(): Promise<void>;
+  whisperInstall(): Promise<Settings>;
+  transcribe(
+    asset: Asset,
+    mode: PlaybackMode,
+  ): Promise<import("./core/transcriptModel").Transcript>;
+  cancelTranscription(): Promise<void>;
   sample(): Promise<Project>;
   open(): Promise<{ project: Project; path: string } | null>;
   openPath(path: string): Promise<{ project: Project; path: string }>;

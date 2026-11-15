@@ -1,6 +1,8 @@
-# Chess Animation Studio · 0.2.34
+# Chess Animation Studio · 0.2.35
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
+
+Version **0.2.35** adds one-click captions, a clickable timed transcript and short phrase generation (five words by default). Import SRT/VTT/word JSON, or use **Captions & transcript → Automatic transcription → Set up local transcription** on Windows x64. Setup downloads verified open-source Whisper tools and a small English model from GitHub once; recognition stays local. Click words to seek, correct timings, then generate editable captions for Full Game or Storyboard and MP4 export. See the [caption guide and validation](docs/captions-035/REPORT.md).
 
 Version **0.2.34** adds group text selection, measured alignment and equal-gap distribution. Shift/Ctrl/Command-click text or layer names to select a group, then drag, nudge or use the preview layout toolbar. Annotation gestures copy only the target layer list, and text edits reuse arrow/circle resources. Inherited captions can also be made local to a shot; layers can be hidden or locked on the canvas. See the [0.2.34 validation and performance report](docs/group-layout-034/REPORT.md). See the [project review and five improvement ideas](docs/PROJECT-REVIEW-2026-11-15.md) for architecture, implementation and validation details.
 

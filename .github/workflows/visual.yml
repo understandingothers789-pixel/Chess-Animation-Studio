@@ -37,6 +37,8 @@ jobs:
           npm run test:storyboard
           npm run test:finishing
           npm run test:composition
+          TRANSCRIPT_EVIDENCE_DIR=test-results/transcript-ui npm run test:transcript
+          node --import tsx scripts/storyboard-render-smoke.ts --transcript
           npm run test:ducking
           npm run test:render -- final
           golden_ref=$(cat docs/cinematic-goldens/source-ref)
@@ -53,6 +55,8 @@ jobs:
             test-results/storyboard-render/
             test-results/finishing-render/
             test-results/composition-render/
+            test-results/transcript-ui/
+            test-results/transcript-render/
             docs/composition-033/
             test-results/ducking/
             docs/ducking-032/

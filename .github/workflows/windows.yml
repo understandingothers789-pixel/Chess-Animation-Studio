@@ -88,6 +88,8 @@ jobs:
             python .github/scripts/report-context-failure.py $desktopLog 'Packaged Windows validation output'
             exit $desktopStatus
           }
+          npm run test:transcript:desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload versioned Windows portable download
         if: success()
         uses: actions/upload-artifact@v4

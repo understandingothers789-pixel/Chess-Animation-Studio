@@ -11,6 +11,8 @@ export const initialViewport: Viewport = {
   offset: { x: 0, y: 0 },
 };
 export function ViewportTools({
+  addCaption,
+  transcript,
   view,
   captionGuides,
   onCaptionGuides,
@@ -22,6 +24,8 @@ export function ViewportTools({
   playing = false,
   toggle,
 }: {
+  addCaption?: () => void;
+  transcript?: () => void;
   captionGuides?: boolean;
   onCaptionGuides?: () => void;
   view: Viewport;
@@ -35,6 +39,10 @@ export function ViewportTools({
 }) {
   return (
     <div className="viewport-tools" aria-label="Preview tools">
+      {addCaption && <button onClick={addCaption}>Add caption</button>}
+      {transcript && (
+        <button onClick={transcript}>Captions & transcript</button>
+      )}
       {onCaptionGuides && (
         <button aria-pressed={captionGuides} onClick={onCaptionGuides}>
           Caption guides

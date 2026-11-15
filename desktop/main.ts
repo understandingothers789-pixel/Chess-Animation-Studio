@@ -1,3 +1,5 @@
+import { installWhisper } from "./whisperSetup";
+import { transcribeLocal } from "./transcription";
 import { requiredAssetIds } from "../src/core/exportAssets";
 import { productionChecks } from "../src/core/productionChecks";
 import { validateExport } from "../src/core/exportOptions";
@@ -39,6 +41,7 @@ let editor: BrowserWindow | null = null,
   worker: BrowserWindow | null = null,
   job: VideoJob | null = null,
   analysis: AbortController | null = null;
+let transcription: AbortController | null = null;
 let exportGeneration = 0;
 let pathProjectId: string | null = null;
 let currentPath: string | null = null,
@@ -54,6 +57,7 @@ let recoveryTimer: NodeJS.Timeout | undefined,
   recoveryWrite = Promise.resolve(),
   lastState: unknown = null;
 let quitting = false;
+app.on("before-quit", () => transcription?.abort());
 app.setPath(
   "userData",
   process.env.STUDIO_USER_DATA ??
@@ -223,6 +227,9 @@ app.whenReady().then(async () => {
     ffmpeg: process.env.FFMPEG_PATH ?? saved.ffmpeg ?? "",
     stockfish: process.env.STOCKFISH_PATH ?? saved.stockfish ?? "",
     tokenPresent: !!(await readToken()),
+    platform: process.platform,
+    whisper: process.env.WHISPER_PATH ?? saved.whisper,
+    whisperModel: process.env.WHISPER_MODEL_PATH ?? saved.whisperModel,
   };
   Menu.setApplicationMenu(null);
   editor = windowOf("editor");
@@ -308,6 +315,86 @@ app.whenReady().then(async () => {
     await fs.rm(store("recovery.json"), { force: true });
   });
   handle("recent", () => json("recent.json", []));
+  handle("chooseTranscript", async () => {
+    const file = await chooseFile([
+      { name: "Timed transcript", extensions: ["json", "srt", "vtt"] },
+    ]);
+    if (!file) return null;
+    if ((await fs.stat(file)).size > 4_000_000)
+      throw Error("Transcript exceeds 4 MB.");
+    return { text: await fs.readFile(file, "utf8"), name: path.basename(file) };
+  });
+  handle("whisperInstall", async () => {
+    if (transcription)
+      throw Error("A transcription/setup task is already running.");
+    const controller = new AbortController();
+    transcription = controller;
+    try {
+      const tools = await installWhisper(
+        app.getPath("userData"),
+        controller.signal,
+      );
+      preferences.whisper = tools.binary;
+      preferences.whisperModel = tools.model;
+      await atomic(store("settings.json"), JSON.stringify(preferences));
+      return preferences;
+    } finally {
+      if (transcription === controller) transcription = null;
+    }
+  });
+  handle("whisperTool", async (kind: string) => {
+    if (kind !== "binary" && kind !== "model")
+      throw Error("Invalid Whisper tool kind.");
+    const file = await chooseFile([
+      {
+        name: kind === "model" ? "Whisper GGML model" : "whisper-cli",
+        extensions:
+          kind === "model"
+            ? ["bin"]
+            : process.platform === "win32"
+              ? ["exe"]
+              : ["*"],
+      },
+    ]);
+    if (file) {
+      preferences[kind === "model" ? "whisperModel" : "whisper"] = file;
+      await atomic(store("settings.json"), JSON.stringify(preferences));
+    }
+    return preferences;
+  });
+  handle("whisperSetup", async () => {
+    await shell.openExternal(
+      "https://github.com/ggml-org/whisper.cpp/releases",
+    );
+  });
+  handle("cancelTranscription", () => {
+    transcription?.abort();
+  });
+  handle("transcribe", async (asset: Asset, mode: string) => {
+    if (mode !== "source" && mode !== "storyboard")
+      throw Error("Invalid transcript timeline.");
+    if (transcription) throw Error("A local transcription is already running.");
+    if (
+      asset.kind !== "audio" ||
+      allowed.get(asset.id) !== path.resolve(asset.path)
+    )
+      throw Error("Import this audio into the project first.");
+    const controller = new AbortController();
+    transcription = controller;
+    try {
+      await validAsset(asset);
+      return await transcribeLocal({
+        audio: asset.path,
+        binary: preferences.whisper ?? "",
+        model: preferences.whisperModel ?? "",
+        ffmpeg: preferences.ffmpeg || "ffmpeg",
+        mode,
+        signal: controller.signal,
+      });
+    } finally {
+      if (transcription === controller) transcription = null;
+    }
+  });
   handle("chooseText", async (kind: string) => {
     if (!["pgn", "fen"].includes(kind)) throw Error("Invalid import type.");
     const f = await chooseFile([

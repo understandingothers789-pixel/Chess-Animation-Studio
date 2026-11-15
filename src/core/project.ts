@@ -1,3 +1,4 @@
+import { transcriptSchema } from "./transcriptModel";
 import { annotationSchema } from "./annotations";
 import { z } from "zod";
 import packageInfo from "../../package.json";
@@ -526,7 +527,7 @@ export const storyboardShotSchema = z
     inheritAnnotations: z.boolean(),
     musicDucking: musicDuckingSchema.prefault({}),
     transition: transitionSchema.prefault({}),
-    annotations: z.array(annotationSchema).max(50),
+    annotations: z.array(annotationSchema).max(2000),
   })
   .superRefine((shot, ctx) => {
     if (shot.transition.duration > shot.duration)
@@ -577,7 +578,14 @@ export type StoryboardShot = z.infer<typeof storyboardShotSchema>;
 export type PlaybackMode = "source" | "storyboard";
 export const projectSchema = z.object({
   storyboard: storyboardSchema.default({ shots: [], beats: [] }),
-  annotations: z.array(annotationSchema).max(100).default([]),
+  annotations: z.array(annotationSchema).max(5000).default([]),
+  transcripts: z
+    .array(transcriptSchema)
+    .max(2)
+    .refine((v) => new Set(v.map((t) => t.mode)).size === v.length, {
+      message: "Only one transcript per timeline is supported",
+    })
+    .optional(),
   bloom: bloomSchema,
   cinematic: cinematicSchema,
   schema: z.literal(2),

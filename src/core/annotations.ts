@@ -27,6 +27,7 @@ export const captionSettings = z.object({
 export const annotationSchema = z
   .object({
     id: z.string().max(100),
+    transcriptId: z.string().max(100).optional(),
     kind: z.enum(["arrow", "circle", "text", "caption"]),
     from: z.string().regex(/^[a-h][1-8]$/),
     to: z.string().regex(/^[a-h][1-8]$/),

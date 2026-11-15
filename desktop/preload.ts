@@ -9,6 +9,12 @@ const on = (name: string) => (cb: (value: unknown) => void) => {
   return () => ipcRenderer.removeListener(name, f);
 };
 contextBridge.exposeInMainWorld("studio", {
+  chooseTranscript: invoke("chooseTranscript"),
+  whisperTool: invoke("whisperTool"),
+  whisperSetup: invoke("whisperSetup"),
+  whisperInstall: invoke("whisperInstall"),
+  transcribe: invoke("transcribe"),
+  cancelTranscription: invoke("cancelTranscription"),
   sample: invoke("sample"),
   open: invoke("open"),
   openPath: invoke("openPath"),

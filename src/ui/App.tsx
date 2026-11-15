@@ -1,3 +1,5 @@
+import { TranscriptPanel } from "./captions/TranscriptPanel";
+import { quickCaption } from "../core/transcripts";
 import type { Annotation } from "../core/annotations";
 import "./storyboard/storyboard.css";
 import { StoryMusic } from "./storyboard/StoryMusic";
@@ -125,6 +127,7 @@ export function App() {
     control?: string;
     serial: number;
   } | null>(null);
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [annotationFocus, setAnnotationFocus] = useState(0);
   const [annotationId, setAnnotationId] = useState<string | null>(null);
   const [annotationIds, setAnnotationIds] = useState<string[]>([]);
@@ -989,6 +992,24 @@ export function App() {
     if (shotId && !p.storyboard.shots.some((s) => s.id === shotId))
       setShotId(p.storyboard.shots[0]?.id ?? null);
   }, [p.storyboard]);
+  const addQuickCaption = () => {
+    try {
+      const length =
+        modeRef.current === "storyboard"
+          ? (currentStory?.shot.duration ?? 0)
+          : presentationDuration(p, "source");
+      const a = quickCaption(annotationTime, length);
+      if (modeRef.current === "storyboard" && currentStory) {
+        setShotId(currentStory.shot.id);
+        shotIdRef.current = currentStory.shot.id;
+      }
+      annotationEdit("Add caption at playhead", (d) => d.annotations.push(a));
+      selectVisualAnnotation(a.id);
+      setAnnotationFocus((n) => n + 1);
+    } catch (e) {
+      message((e as Error).message);
+    }
+  };
   const props: PanelProps = {
     project: p,
     edit,
@@ -1437,6 +1458,11 @@ export function App() {
               edit={annotationEdit}
               selectedAnnotation={annotationId}
               selectedAnnotations={annotationIds}
+              onAddCaption={addQuickCaption}
+              onTranscript={() => {
+                stop();
+                setTranscriptOpen(true);
+              }}
               onSelectAnnotation={selectVisualAnnotation}
               seek={seek}
               onEditAnnotation={(id) => {
@@ -1813,6 +1839,25 @@ export function App() {
               : "Cburnett"}
         </span>
       </footer>
+      {transcriptOpen && (
+        <TranscriptPanel
+          p={p}
+          mode={mode}
+          time={time}
+          playing={playing}
+          edit={edit}
+          settings={settings}
+          setSettings={setSettings}
+          seek={seek}
+          toggle={() => {
+            setAudition(null);
+            setPlaying((v) => !v);
+          }}
+          addCaption={addQuickCaption}
+          importAudio={() => importAsset("audio", "music")}
+          close={() => setTranscriptOpen(false)}
+        />
+      )}
       {exportOpen && (
         <ExportDialog
           project={p}

@@ -1,5 +1,9 @@
 /** Explanations shared by hover tooltips and accessible control descriptions. */
 const help: Record<string, string> = {
+  "Show text layer":
+    "Show or hide this text in preview and export without deleting its content, timing or style.",
+  "Lock text on canvas":
+    "Prevent canvas dragging, width resizing, guide positioning and keyboard nudging. Inspector controls remain editable.",
   "Background color":
     "Base background color for the composition; image and gradient treatments are configured below.",
   "Enable cinematic captures":

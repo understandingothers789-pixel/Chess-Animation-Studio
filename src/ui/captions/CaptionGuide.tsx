@@ -17,7 +17,8 @@ export function CaptionGuide({
   prepare: () => void;
 }) {
   const drag = useRef(false);
-  if (!a) return null;
+  if (!a || a.hidden) return null;
+  if (a.canvasLocked) edit = undefined;
   const safe = safeRect(
     100,
     100,

@@ -35,6 +35,9 @@ export const annotationSchema = z
     background: z.string().regex(/^#[0-9a-f]{6}$/i),
     width: finite(0.02, 0.3),
     opacity: finite(0, 1),
+    hidden: z.boolean().optional(),
+    canvasLocked: z.boolean().optional(),
+    sourceAnnotationId: z.string().max(100).optional(),
     start: finite(0, 86400),
     end: finite(0, 86400),
     fade: finite(0, 5),
@@ -54,7 +57,7 @@ export const annotationSchema = z
   });
 export type Annotation = z.infer<typeof annotationSchema>;
 export function annotationOpacity(a: Annotation, time: number) {
-  if (time < a.start || time >= a.end) return 0;
+  if (a.hidden || time < a.start || time >= a.end) return 0;
   const ramp = (n: number) =>
     a.fade === 0 ? 1 : Math.min(1, Math.max(0, n / a.fade));
   return (

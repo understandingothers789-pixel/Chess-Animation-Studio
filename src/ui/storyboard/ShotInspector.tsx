@@ -3,6 +3,7 @@ import type { Project, StoryboardShot } from "../../core/project";
 import { camera, presets } from "../../core/project";
 import {
   compileStoryboard,
+  localizeInheritedText,
   resizeShot,
   shotCaption,
 } from "../../core/storyboard";
@@ -126,6 +127,42 @@ export function ShotInspector({
               }}
             />
           </label>
+        )}
+        {entry.project.annotations.filter(
+          (a) =>
+            a.id.startsWith("source-") &&
+            (a.kind === "text" || a.kind === "caption"),
+        ).length > 0 && (
+          <details>
+            <summary>Inherited source text</summary>
+            <p className="hint">
+              Make a local copy to edit this shot. The source game stays intact.
+              Deleting the copy restores the inherited text.
+            </p>
+            {entry.project.annotations
+              .filter(
+                (a) =>
+                  a.id.startsWith("source-") &&
+                  (a.kind === "text" || a.kind === "caption"),
+              )
+              .map((a) => (
+                <button
+                  key={a.id}
+                  className="wide"
+                  disabled={s.annotations.length >= 50}
+                  aria-label={`Make local copy: ${a.text}`}
+                  onClick={() => {
+                    let localId: string | null = null;
+                    edit("Make inherited text local", (draft) => {
+                      localId = localizeInheritedText(draft, s.id, a.id);
+                    });
+                    if (localId) setAnnotationId(localId);
+                  }}
+                >
+                  Make local copy · {a.text}
+                </button>
+              ))}
+          </details>
         )}
         <AnnotationEditor
           allowBoard={s.kind !== "title-card"}

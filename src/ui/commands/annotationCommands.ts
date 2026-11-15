@@ -85,6 +85,7 @@ export function annotationCommands(
       ? [
           {
             label: "Center horizontally",
+            disabled: !!a.canvasLocked,
             run: () =>
               patch("Center text", (a) => {
                 a.x = 0.5;
@@ -93,6 +94,7 @@ export function annotationCommands(
           },
           {
             label: "Reset position",
+            disabled: !!a.canvasLocked,
             run: () =>
               patch("Reset text position", (a) => {
                 a.x = 0.5;

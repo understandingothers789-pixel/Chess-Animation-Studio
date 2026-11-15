@@ -1430,7 +1430,11 @@ export function App() {
               )}
               onCompositionPoint={(x, y) => {
                 const a = currentAnnotations.find((a) => a.id === annotationId);
-                if (a && (a.kind === "text" || a.kind === "caption"))
+                if (
+                  a &&
+                  !a.canvasLocked &&
+                  (a.kind === "text" || a.kind === "caption")
+                )
                   annotationEdit("Position annotation", (p) => {
                     Object.assign(
                       p.annotations.find((a) => a.id === annotationId)!,

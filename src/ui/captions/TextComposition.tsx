@@ -99,13 +99,14 @@ export function TextComposition({
                 e.stopPropagation();
                 if (!a) {
                   report?.(
-                    "Text inherited from Source or an outgoing transition is read-only in this shot. Select its owning shot or edit it in Source. You can also disable inheritance and add a local text layer.",
+                    "Text inherited from Source or an outgoing transition is read-only in this shot. Select its owning shot or edit it in Source. Open Inherited source text in Shot settings and choose Make local copy.",
                   );
                   return;
                 }
                 prepare();
                 select(a.id);
                 e.currentTarget.focus();
+                if (a.canvasLocked) return;
                 edit.begin();
                 const rect =
                   e.currentTarget.parentElement!.getBoundingClientRect();
@@ -210,6 +211,7 @@ export function TextComposition({
                 e.stopPropagation();
                 prepare();
                 select(a.id);
+                if (a.canvasLocked) return;
                 const step = e.shiftKey ? 0.02 : e.altKey ? 0.001 : 0.005;
                 edit("Nudge text layer", (p) => {
                   const t = p.annotations.find((v) => v.id === a.id);
@@ -241,20 +243,22 @@ export function TextComposition({
                     {Math.round(((b.areaRight - b.areaLeft) / b.scale) * 100)}%
                     width
                   </span>
-                  <span
-                    className="text-width-box"
-                    style={{
-                      left: `${((b.areaLeft - b.left) / (b.right - b.left)) * 100}%`,
-                      width: `${((b.areaRight - b.areaLeft) / (b.right - b.left)) * 100}%`,
-                    }}
-                  >
+                  {!a?.canvasLocked && (
                     <span
-                      className={`text-resize ${side === "left" ? "text-resize-left" : ""}`}
-                      data-resize="true"
-                      title="Resize text width · keeps font size"
-                      aria-label="Resize text width"
-                    />
-                  </span>
+                      className="text-width-box"
+                      style={{
+                        left: `${((b.areaLeft - b.left) / (b.right - b.left)) * 100}%`,
+                        width: `${((b.areaRight - b.areaLeft) / (b.right - b.left)) * 100}%`,
+                      }}
+                    >
+                      <span
+                        className={`text-resize ${side === "left" ? "text-resize-left" : ""}`}
+                        data-resize="true"
+                        title="Resize text width · keeps font size"
+                        aria-label="Resize text width"
+                      />
+                    </span>
+                  )}
                 </>
               )}
             </div>

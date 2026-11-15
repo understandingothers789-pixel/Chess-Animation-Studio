@@ -47,6 +47,7 @@ export function productionChecks(
         ];
   for (const group of collections)
     for (const a of group.annotations) {
+      if (a.hidden) continue;
       if (a.kind !== "caption" && a.kind !== "text") continue;
       const warn = (message: string) =>
         issues.push({

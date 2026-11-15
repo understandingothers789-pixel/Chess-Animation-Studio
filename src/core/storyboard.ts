@@ -175,6 +175,12 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
           ...p.annotations
             .filter(
               (ann) =>
+                !shot.annotations.some(
+                  (local) => local.sourceAnnotationId === ann.id,
+                ),
+            )
+            .filter(
+              (ann) =>
                 ann.end > a + shot.trimStart && ann.start < b - shot.trimEnd,
             )
             .map((ann) => ({
@@ -216,6 +222,12 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
         const sourceTime = after ? (timeline.segments[i]?.finish ?? 0) : a;
         projection.annotations = [
           ...p.annotations
+            .filter(
+              (ann) =>
+                !shot.annotations.some(
+                  (local) => local.sourceAnnotationId === ann.id,
+                ),
+            )
             .filter((ann) => annotationOpacity(ann, sourceTime) > 0)
             .map((ann) => ({
               ...ann,
@@ -461,4 +473,30 @@ export function validateStoryboardExport(p: Project) {
   if (c.duration > 3600)
     throw Error("Storyboard export is limited to one hour.");
   return c;
+}
+
+/** Turn the already time-mapped inherited text into a local override. Deleting
+ * the override reveals the source again; source authoring data never changes. */
+export function localizeInheritedText(
+  p: Project,
+  shotId: string,
+  inheritedId: string,
+) {
+  const entry = compileStoryboard(p).shots.find((e) => e.shot.id === shotId);
+  const a = entry?.project.annotations.find((a) => a.id === inheritedId);
+  if (
+    !entry ||
+    !a ||
+    !inheritedId.startsWith("source-") ||
+    (a.kind !== "text" && a.kind !== "caption") ||
+    entry.shot.annotations.length >= 50
+  )
+    return null;
+  const copy = structuredClone(a);
+  copy.id = crypto.randomUUID();
+  copy.sourceAnnotationId = inheritedId.slice(7);
+  copy.canvasLocked = false;
+  entry.shot.annotations.push(copy);
+  cache.delete(p);
+  return copy.id;
 }

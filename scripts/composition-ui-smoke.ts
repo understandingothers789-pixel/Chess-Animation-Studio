@@ -161,6 +161,63 @@ try {
   console.log(
     "PASS: selection and inspector synchronization; source ownership is preserved",
   );
+  // Source localization must replace only the inherited rendering, never its owner.
+  await page.getByText("Inherited source text", { exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Make local copy: Source-owned caption",
+      exact: true,
+    })
+    .click();
+  const localCopy = (await state()).storyboard.shots[0].annotations.at(-1);
+  assert.equal(localCopy.sourceAnnotationId, "inherited");
+  await page.screenshot({ path: `${evidenceDir}/local-copy.png` });
+  await expect(
+    page.locator('[data-annotation-id="source-inherited"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(`[data-annotation-id="${localCopy.id}"]`),
+  ).toBeVisible();
+  assert.deepEqual((await state()).annotations, fixture.annotations);
+  await page.getByTitle("Undo", { exact: true }).click();
+  await expect(
+    page.locator('[data-annotation-id="source-inherited"]'),
+  ).toBeVisible();
+  await layer.click();
+  const visiblePixels = await page
+    .getByLabel("Chess composition preview", { exact: true })
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page.getByLabel("Show text layer", { exact: true }).uncheck();
+  await expect(layer).toHaveCount(0);
+  assert.notEqual(
+    await page
+      .getByLabel("Chess composition preview", { exact: true })
+      .evaluate((c: HTMLCanvasElement) => c.toDataURL()),
+    visiblePixels,
+  );
+  await page.getByLabel("Show text layer", { exact: true }).check();
+  await expect(layer).toBeVisible();
+  await page.getByLabel("Lock text on canvas", { exact: true }).check();
+  const locked = (await state()).storyboard.shots[0].annotations[2];
+  await page.screenshot({ path: `${evidenceDir}/locked-layer.png` });
+  await expect(
+    page.getByLabel("Resize text width", { exact: true }),
+  ).toHaveCount(0);
+  const lb = (await layer.boundingBox())!;
+  await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(lb.x + lb.width / 2 + 30, lb.y + lb.height / 2 + 20);
+  await page.mouse.up();
+  await layer.focus();
+  await page.keyboard.press("ArrowLeft");
+  assert.deepEqual((await state()).storyboard.shots[0].annotations[2], locked);
+  await page.getByLabel("Lock text on canvas", { exact: true }).uncheck();
+  await expect(
+    page.getByLabel("Resize text width", { exact: true }),
+  ).toBeVisible();
+  console.log(
+    "PASS: source localization and Undo, nondestructive visibility, canvas locks for drag/resize/keyboard",
+  );
   const box = (await layer.boundingBox())!;
   const before = (await state()).storyboard.shots[0].annotations[2];
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

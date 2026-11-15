@@ -75,7 +75,8 @@ export function AnnotationEditor({
               onClick={() => onSelect(a.id)}
             >
               {a.text || "Empty text"} · {a.start.toFixed(2)}–{a.end.toFixed(2)}
-              s
+              s{a.hidden ? " · hidden" : ""}
+              {a.canvasLocked ? " · canvas locked" : ""}
             </button>
           ))}
       </div>
@@ -94,6 +95,34 @@ export function AnnotationEditor({
       </select>
       {a && (
         <>
+          {(a.kind === "text" || a.kind === "caption") && (
+            <div className="layer-toggles">
+              <label>
+                <input
+                  type="checkbox"
+                  aria-label="Show text layer"
+                  checked={!a.hidden}
+                  onChange={(e) => patch({ hidden: !e.target.checked })}
+                />
+                Show in preview and export
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  aria-label="Lock text on canvas"
+                  checked={!!a.canvasLocked}
+                  onChange={(e) => patch({ canvasLocked: e.target.checked })}
+                />
+                Lock canvas movement and resizing
+              </label>
+              {a.canvasLocked && (
+                <p className="hint">
+                  Canvas gestures are locked. Inspector controls remain
+                  editable.
+                </p>
+              )}
+            </div>
+          )}
           <div className="button-row layer-actions">
             <button
               disabled={p.annotations.length >= 50}

@@ -218,6 +218,109 @@ try {
   console.log(
     "PASS: source localization and Undo, nondestructive visibility, canvas locks for drag/resize/keyboard",
   );
+  const groupBefore = (await state()).storyboard.shots[0].annotations;
+  await page
+    .locator(".text-layer-list button")
+    .filter({ hasText: "FIND THE WINNING MOVE" })
+    .click({ modifiers: ["Shift"] });
+  await page
+    .locator(".text-layer-list button")
+    .filter({ hasText: "White to move" })
+    .click({ modifiers: ["Shift"] });
+  await expect(page.locator(".text-selected")).toHaveCount(3);
+  await expect(
+    page.getByRole("toolbar", { name: "Text group layout" }),
+  ).toBeVisible();
+  await settleGeometry();
+  await page.getByRole("button", { name: "Align left", exact: true }).click();
+  await settleGeometry();
+  const aligned = await page
+    .locator(".text-selected")
+    .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().left));
+  assert(
+    Math.max(...aligned) - Math.min(...aligned) < 2,
+    "Measured left edges align",
+  );
+  await page.screenshot({ path: `${evidenceDir}/group-align.png` });
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.deepEqual(
+    (await state()).storyboard.shots[0].annotations,
+    groupBefore,
+  );
+  await settleGeometry();
+  await page
+    .getByRole("button", { name: "Distribute vertically", exact: true })
+    .click();
+  await settleGeometry();
+  const distributed = await page.locator(".text-selected").evaluateAll((els) =>
+    els
+      .map((e) => {
+        const r = e.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom };
+      })
+      .sort((a, b) => a.top - b.top),
+  );
+  assert(
+    Math.abs(
+      distributed[1].top -
+        distributed[0].bottom -
+        (distributed[2].top - distributed[1].bottom),
+    ) < 2,
+  );
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.deepEqual(
+    (await state()).storyboard.shots[0].annotations,
+    groupBefore,
+  );
+  await settleGeometry();
+  const gb = (await layer.boundingBox())!;
+  await page.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(gb.x + gb.width / 2 + 10, gb.y + gb.height / 2 - 10, {
+    steps: 6,
+  });
+  await page.mouse.up();
+  const movedGroup = (await state()).storyboard.shots[0].annotations;
+  for (let i = 1; i < 3; i++) {
+    assert(
+      Math.abs(
+        movedGroup[i].x -
+          groupBefore[i].x -
+          (movedGroup[0].x - groupBefore[0].x),
+      ) < 1e-6,
+    );
+    assert(
+      Math.abs(
+        movedGroup[i].y -
+          groupBefore[i].y -
+          (movedGroup[0].y - groupBefore[0].y),
+      ) < 1e-6,
+    );
+  }
+  assert.notEqual(movedGroup[0].x, groupBefore[0].x);
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.deepEqual(
+    (await state()).storyboard.shots[0].annotations,
+    groupBefore,
+  );
+  await layer.focus();
+  await page.keyboard.press("ArrowRight");
+  assert(
+    (await state()).storyboard.shots[0].annotations[0].x > groupBefore[0].x,
+  );
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.deepEqual(
+    (await state()).storyboard.shots[0].annotations,
+    groupBefore,
+  );
+  await layer.focus();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".text-selected")).toHaveCount(0);
+  await layer.click();
+  await settleGeometry();
+  console.log(
+    "PASS: group selection, measured alignment/distribution, common drag/nudge, one-step Undo and Escape",
+  );
   const box = (await layer.boundingBox())!;
   const before = (await state()).storyboard.shots[0].annotations[2];
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

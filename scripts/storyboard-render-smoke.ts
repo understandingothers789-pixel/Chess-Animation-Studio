@@ -198,6 +198,46 @@ try {
     Object.assign(window, { storyScene: s, storyProject: p });
   }, p);
   if (composition) {
+    const resources = await page.evaluate(() => {
+      const w = window as any,
+        s = w.storyScene,
+        p = w.storyProject;
+      s.render(p, 0.7, 320, 180, "landscape", "storyboard");
+      const shapes = s.annotations.shapes,
+        arrow = shapes.find((v: any) => v.a.kind === "arrow"),
+        circle = shapes.find((v: any) => v.a.kind === "circle");
+      let disposed = 0;
+      arrow.mesh.geometry.addEventListener("dispose", () => disposed++);
+      const edited = structuredClone(p);
+      edited.storyboard.shots[2].annotations[0].x = 0.6;
+      s.render(edited, 0.7, 320, 180, "landscape", "storyboard");
+      const retained = s.annotations.shapes.every((v: any) =>
+        shapes.some((old: any) => old.mesh === v.mesh),
+      );
+      const changed = structuredClone(edited);
+      changed.storyboard.shots[2].annotations.find(
+        (a: any) => a.kind === "arrow",
+      ).width += 0.01;
+      s.render(changed, 0.7, 320, 180, "landscape", "storyboard");
+      const replaced =
+        s.annotations.shapes.find((v: any) => v.a.kind === "arrow").mesh !==
+        arrow.mesh;
+      const circleRetained =
+        s.annotations.shapes.find((v: any) => v.a.kind === "circle").mesh ===
+        circle.mesh;
+      return { retained, replaced, circleRetained, disposed };
+    });
+    assert.deepEqual(resources, {
+      retained: true,
+      replaced: true,
+      circleRetained: true,
+      disposed: 1,
+    });
+    console.log(
+      "PASS: text edits retain shape resources; changed geometry disposes once and retains unrelated shapes",
+    );
+  }
+  if (composition) {
     const parity = await page.evaluate(() => {
       const w = window as any,
         s = w.storyScene,

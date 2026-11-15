@@ -1,8 +1,15 @@
+import { updateAnnotations } from "../core/annotationEdit";
+import type { Annotation } from "../core/annotations";
 import { preserveLockedTiming } from "../core/editing";
 import { useCallback, useRef, useState } from "react";
 import { sample } from "../core/chess";
 import { VERSION, type Project } from "../core/project";
 export type Edit = ((label: string, fn: (p: Project) => void) => void) & {
+  annotations?: (
+    label: string,
+    change: (layers: Annotation[]) => void,
+    shotId?: string,
+  ) => void;
   begin: () => void;
   end: () => void;
 };
@@ -27,6 +34,17 @@ export function useProject() {
     h.past = h.past.slice(-80);
     h.future = [];
   };
+  const accept = (label: string, next: Project) => {
+    const h = history.current,
+      now = Date.now();
+    if (h.drag ? !h.recorded : h.label !== label || now - h.at > 450) record();
+    h.recorded = true;
+    h.label = label;
+    h.at = now;
+    h.future = [];
+    next.appVersion = VERSION;
+    commit(next);
+  };
   const edit = useCallback(
     Object.assign(
       (label: string, fn: (p: Project) => void) => {
@@ -46,16 +64,18 @@ export function useProject() {
             delete m.autoPreset;
         }
         if (JSON.stringify(next) === JSON.stringify(old)) return;
-        if (h.drag ? !h.recorded : h.label !== label || now - h.at > 450)
-          record();
-        h.recorded = true;
-        h.label = label;
-        h.at = now;
-        h.future = [];
-        next.appVersion = VERSION;
-        commit(next);
+        accept(label, next);
       },
       {
+        annotations: (
+          label: string,
+          change: (layers: Annotation[]) => void,
+          shotId?: string,
+        ) => {
+          const old = current.current,
+            next = updateAnnotations(old, change, shotId);
+          if (next !== old) accept(label, next);
+        },
         begin: () => {
           history.current.drag = true;
           history.current.recorded = false;

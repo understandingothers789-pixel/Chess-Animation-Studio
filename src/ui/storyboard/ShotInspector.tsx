@@ -19,6 +19,7 @@ export function ShotInspector({
   openSource,
   preview,
   annotationId,
+  annotationIds,
   setAnnotationId,
   draw,
   previewTransition,
@@ -30,7 +31,8 @@ export function ShotInspector({
   openSource: (i: number) => void;
   preview: (id: string) => void;
   annotationId: string | null;
-  setAnnotationId: (id: string) => void;
+  annotationIds?: string[];
+  setAnnotationId: (id: string, additive?: boolean) => void;
   previewTransition: (id: string) => void;
   draw: (kind: "arrow" | "circle" | null) => void;
 }) {
@@ -180,6 +182,7 @@ export function ShotInspector({
                 )?.id ??
                 null)
           }
+          selectedIds={annotationIds}
           onSelect={setAnnotationId}
           onDraw={draw}
           textLabel="Shot caption"

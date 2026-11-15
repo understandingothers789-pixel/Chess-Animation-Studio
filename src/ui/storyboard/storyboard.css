@@ -631,3 +631,15 @@
     display: none;
   }
 }
+.text-group-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: #19271f;
+  font-size: 12px;
+}
+.text-group-tools button {
+  padding: 4px 7px;
+}

@@ -17,7 +17,7 @@ export class AnnotationSystem {
     scale: number;
     anchorX: number;
   }[] = [];
-  private shapes: { mesh: T.Mesh; a: Annotation }[] = [];
+  private shapes: { mesh: T.Mesh; a: Annotation; key: string }[] = [];
   private canvas = document.createElement("canvas");
   private layout = captionCache((text, size, font, weight) => {
     const ctx = this.canvas.getContext("2d")!;
@@ -53,10 +53,24 @@ export class AnnotationSystem {
   }
   update(c: RenderFrame) {
     if (this.project !== c.p) {
-      this.clear();
+      const oldShapes = this.shapes;
+      const retained = new Set<T.Mesh>();
+      const previous = new Map(oldShapes.map((s) => [s.a.id, s]));
+      this.shapes = [];
       this.project = c.p;
       for (const a of c.p.annotations ?? []) {
         if (a.kind === "text" || a.kind === "caption") continue;
+        const key = JSON.stringify([a.kind, a.from, a.to, a.width]);
+        const reused = previous.get(a.id);
+        if (reused && reused.key === key) {
+          previous.delete(a.id);
+          retained.add(reused.mesh);
+          reused.a = a;
+          (reused.mesh.material as T.MeshBasicMaterial).color.set(a.color);
+          reused.mesh.renderOrder = 45 + this.shapes.length / 100000;
+          this.shapes.push(reused);
+          continue;
+        }
         const [x, y] = xy(a.from),
           [tx, ty] = xy(a.to);
         let geometry: T.BufferGeometry;
@@ -88,9 +102,15 @@ export class AnnotationSystem {
         );
         mesh.position.set(x, y, 0.8);
         if (a.kind === "arrow") mesh.rotation.z = Math.atan2(ty - y, tx - x);
-        mesh.renderOrder = 45;
+        mesh.renderOrder = 45 + this.shapes.length / 100000;
         this.root.add(mesh);
-        this.shapes.push({ mesh, a });
+        this.shapes.push({ mesh, a, key });
+      }
+      for (const { mesh } of oldShapes) {
+        if (retained.has(mesh)) continue;
+        this.root.remove(mesh);
+        mesh.geometry.dispose();
+        (mesh.material as T.Material).dispose();
       }
     }
     for (const { mesh, a } of this.shapes) {

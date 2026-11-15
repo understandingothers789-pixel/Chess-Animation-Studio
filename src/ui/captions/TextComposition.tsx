@@ -1,3 +1,4 @@
+import { groupMembers, moveTextGroup } from "../../core/captions/groups";
 import {
   positionText,
   resizeTextWidth,
@@ -27,6 +28,7 @@ export function TextComposition({
   bounds,
   annotations,
   selected,
+  selectedIds = [],
   disabled,
   select,
   prepare,
@@ -37,8 +39,9 @@ export function TextComposition({
   bounds: TextBounds[];
   annotations: Annotation[];
   selected: string | null;
+  selectedIds?: string[];
   disabled: boolean;
-  select: (id: string) => void;
+  select: (id: string, additive?: boolean) => void;
   prepare: () => void;
   edit?: Edit;
   report?: (s: string) => void;
@@ -56,6 +59,9 @@ export function TextComposition({
     height: number;
     resize: boolean;
     side: "left" | "right";
+    ids: string[];
+    layers: Annotation[];
+    bounds: TextBounds[];
   } | null>(null);
   const end = () => {
     if (drag.current) {
@@ -64,12 +70,21 @@ export function TextComposition({
       edit?.end();
     }
   };
+  const change = (
+    label: string,
+    fn: (p: { annotations: Annotation[] }) => void,
+  ) => {
+    if (edit?.annotations)
+      edit.annotations(label, (annotations) => fn({ annotations }));
+    else edit?.(label, fn);
+  };
+  const ids = selectedIds.length ? selectedIds : selected ? [selected] : [];
   return (
     <div className="text-composition" aria-label="Visual text editor">
       {!disabled &&
         bounds.map((b) => {
           const a = annotations.find((a) => a.id === b.id),
-            active = selected === b.id,
+            active = ids.includes(b.id),
             side =
               resizing?.id === b.id
                 ? resizing.side
@@ -104,7 +119,22 @@ export function TextComposition({
                   return;
                 }
                 prepare();
-                select(a.id);
+                if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                  select(a.id, true);
+                  e.currentTarget.focus();
+                  return;
+                }
+                const members = ids.includes(a.id) ? ids : [a.id];
+                if (
+                  members.length > 1 &&
+                  !groupMembers(annotations, bounds, members)
+                ) {
+                  report?.(
+                    "Group movement needs visible, unlocked local layers.",
+                  );
+                  return;
+                }
+                if (members.length === 1) select(a.id);
                 e.currentTarget.focus();
                 if (a.canvasLocked) return;
                 edit.begin();
@@ -119,6 +149,9 @@ export function TextComposition({
                   height: rect.height,
                   resize: (e.target as HTMLElement).dataset.resize === "true",
                   side,
+                  ids: members,
+                  layers: structuredClone(annotations),
+                  bounds: structuredClone(bounds),
                 };
                 if (drag.current.resize) setResizing({ id: a.id, side });
                 e.currentTarget.setPointerCapture(e.pointerId);
@@ -128,70 +161,97 @@ export function TextComposition({
                 if (!d || !edit) return;
                 const dx = (e.clientX - d.x) / d.width,
                   dy = (e.clientY - d.y) / d.height;
-                edit(d.resize ? "Resize text area" : "Move text layer", (p) => {
-                  const t = p.annotations.find((a) => a.id === d.a.id);
-                  if (!t) return;
-                  if (d.resize) {
-                    const safe = safeRect(
-                      100,
-                      100,
-                      d.a.layout.customMargins
-                        ? d.a.layout
-                        : safeDefaults(format, d.a.layout.placement),
-                    );
-                    t.layout.maxWidth = resizeTextWidth(
-                      d.a,
-                      safe.width / 100,
-                      dx,
-                      d.b.scale,
-                      d.side,
-                    );
-                    if (t.layout.maxWidth !== d.a.layout.maxWidth) {
-                      const change =
-                        t.layout.maxWidth -
-                        Math.min(d.a.layout.maxWidth, safe.width / 100);
-                      // When the aligned edge lies outside the frame, resize
-                      // from the reachable opposite edge and move its anchor.
-                      t.x = clamp(
-                        d.b.anchorX +
-                          (d.a.align === "left" && d.side === "left"
-                            ? -change
-                            : d.a.align === "right" && d.side === "right"
-                              ? change
-                              : 0),
+                if (d.ids.length > 1) {
+                  const positions = moveTextGroup(
+                    d.layers,
+                    d.bounds,
+                    d.ids,
+                    dx,
+                    dy,
+                    format,
+                  );
+                  if (positions)
+                    change("Move text group", (p) => {
+                      for (const pos of positions) {
+                        const a = p.annotations.find((a) => a.id === pos.id);
+                        if (a) Object.assign(a, { x: pos.x, y: pos.y });
+                      }
+                    });
+                  return;
+                }
+                change(
+                  d.resize ? "Resize text area" : "Move text layer",
+                  (p) => {
+                    const t = p.annotations.find((a) => a.id === d.a.id);
+                    if (!t) return;
+                    if (d.resize) {
+                      const safe = safeRect(
+                        100,
+                        100,
+                        d.a.layout.customMargins
+                          ? d.a.layout
+                          : safeDefaults(format, d.a.layout.placement),
                       );
-                    } else t.x = d.a.x;
-                  } else {
-                    const safe = safeRect(
-                      100,
-                      100,
-                      d.a.layout.customMargins
-                        ? d.a.layout
-                        : safeDefaults(format, d.a.layout.placement),
-                    );
-                    Object.assign(
-                      t,
-                      positionText(
-                        d.b,
-                        {
-                          left: safe.x / 100,
-                          top: safe.y / 100,
-                          right: (safe.x + safe.width) / 100,
-                          bottom: (safe.y + safe.height) / 100,
-                        },
+                      t.layout.maxWidth = resizeTextWidth(
+                        d.a,
+                        safe.width / 100,
                         dx,
-                        dy,
-                        d.a.align,
-                        !e.altKey,
-                      ),
-                    );
-                  }
-                });
+                        d.b.scale,
+                        d.side,
+                      );
+                      if (t.layout.maxWidth !== d.a.layout.maxWidth) {
+                        const change =
+                          t.layout.maxWidth -
+                          Math.min(d.a.layout.maxWidth, safe.width / 100);
+                        // When the aligned edge lies outside the frame, resize
+                        // from the reachable opposite edge and move its anchor.
+                        t.x = clamp(
+                          d.b.anchorX +
+                            (d.a.align === "left" && d.side === "left"
+                              ? -change
+                              : d.a.align === "right" && d.side === "right"
+                                ? change
+                                : 0),
+                        );
+                      } else t.x = d.a.x;
+                    } else {
+                      const safe = safeRect(
+                        100,
+                        100,
+                        d.a.layout.customMargins
+                          ? d.a.layout
+                          : safeDefaults(format, d.a.layout.placement),
+                      );
+                      Object.assign(
+                        t,
+                        positionText(
+                          d.b,
+                          {
+                            left: safe.x / 100,
+                            top: safe.y / 100,
+                            right: (safe.x + safe.width) / 100,
+                            bottom: (safe.y + safe.height) / 100,
+                          },
+                          dx,
+                          dy,
+                          d.a.align,
+                          !e.altKey,
+                        ),
+                      );
+                    }
+                  },
+                );
               }}
               onPointerUp={end}
               onPointerCancel={end}
               onLostPointerCapture={end}
               onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  select("");
+                  return;
+                }
                 if (a && (e.key === "Enter" || e.key === " ")) {
                   e.preventDefault();
                   e.stopPropagation();
@@ -210,10 +270,36 @@ export function TextComposition({
                 e.preventDefault();
                 e.stopPropagation();
                 prepare();
-                select(a.id);
+                if (ids.length < 2) select(a.id);
                 if (a.canvasLocked) return;
                 const step = e.shiftKey ? 0.02 : e.altKey ? 0.001 : 0.005;
-                edit("Nudge text layer", (p) => {
+                if (ids.length > 1) {
+                  const positions = moveTextGroup(
+                    annotations,
+                    bounds,
+                    ids,
+                    e.key === "ArrowLeft"
+                      ? -step
+                      : e.key === "ArrowRight"
+                        ? step
+                        : 0,
+                    e.key === "ArrowUp"
+                      ? -step
+                      : e.key === "ArrowDown"
+                        ? step
+                        : 0,
+                    format,
+                  );
+                  if (positions)
+                    change("Nudge text group", (p) => {
+                      for (const pos of positions) {
+                        const a = p.annotations.find((a) => a.id === pos.id);
+                        if (a) Object.assign(a, { x: pos.x, y: pos.y });
+                      }
+                    });
+                  return;
+                }
+                change("Nudge text layer", (p) => {
                   const t = p.annotations.find((v) => v.id === a.id);
                   if (t) {
                     t.x = clamp(
@@ -243,7 +329,7 @@ export function TextComposition({
                     {Math.round(((b.areaRight - b.areaLeft) / b.scale) * 100)}%
                     width
                   </span>
-                  {!a?.canvasLocked && (
+                  {!a?.canvasLocked && ids.length < 2 && (
                     <span
                       className="text-width-box"
                       style={{

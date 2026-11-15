@@ -1,3 +1,4 @@
+import type { Annotation } from "../core/annotations";
 import "./storyboard/storyboard.css";
 import { StoryMusic } from "./storyboard/StoryMusic";
 import { StorySourcePanel } from "./storyboard/StorySourcePanel";
@@ -126,6 +127,8 @@ export function App() {
   } | null>(null);
   const [annotationFocus, setAnnotationFocus] = useState(0);
   const [annotationId, setAnnotationId] = useState<string | null>(null);
+  const [annotationIds, setAnnotationIds] = useState<string[]>([]);
+  useEffect(() => setAnnotationIds([]), [mode, shotId]);
   const [drawing, setDrawing] = useState<"arrow" | "circle" | null>(null);
   const annotationFrom = useRef<string | null>(null);
   const [presetDraft, setPresetDraft] = useState<Effect | null>(null);
@@ -813,9 +816,22 @@ export function App() {
       shotIdRef.current = id;
     }
   }
-  function selectVisualAnnotation(id: string) {
+  function selectVisualAnnotation(id: string, additive = false) {
     stop();
-    setAnnotationId(id);
+    const previous = annotationIds.length
+      ? annotationIds
+      : annotationId
+        ? [annotationId]
+        : [];
+    const next = !id
+      ? []
+      : additive
+        ? previous.includes(id)
+          ? previous.filter((v) => v !== id)
+          : [...previous, id]
+        : [id];
+    setAnnotationIds(next);
+    setAnnotationId(next.at(-1) ?? "");
     if (!id) return;
     workspace.patch({ hideRight: false });
     requestAnimationFrame(() => {
@@ -939,7 +955,19 @@ export function App() {
         shot.annotations = view.annotations;
       });
     },
-    { begin: edit.begin, end: edit.end },
+    {
+      begin: edit.begin,
+      end: edit.end,
+      annotations: (label: string, change: (layers: Annotation[]) => void) => {
+        stop();
+        const target =
+          modeRef.current === "storyboard"
+            ? resolveStoryboardFrame(p, timeRef.current)?.shot.id
+            : undefined;
+        if (modeRef.current === "storyboard" && !target) return;
+        edit.annotations?.(label, change, target);
+      },
+    },
   );
   const story = mode === "storyboard" ? compileStoryboard(p) : null;
   const currentStory =
@@ -1408,11 +1436,13 @@ export function App() {
               onPause={stop}
               edit={annotationEdit}
               selectedAnnotation={annotationId}
+              selectedAnnotations={annotationIds}
               onSelectAnnotation={selectVisualAnnotation}
               seek={seek}
               onEditAnnotation={(id) => {
                 stop();
                 setAnnotationId(id);
+                setAnnotationIds([id]);
                 workspace.patch({ hideRight: false });
                 setAnnotationFocus((n) => n + 1);
               }}
@@ -1454,6 +1484,7 @@ export function App() {
                 if (kind === "arrow") {
                   setDrawing("arrow");
                   setAnnotationId(null);
+                  setAnnotationIds([]);
                   annotationFrom.current = sq;
                   message(`Arrow from ${sq}: click destination; Esc cancels.`);
                 } else {
@@ -1473,6 +1504,7 @@ export function App() {
                     p.annotations.push(a);
                   });
                   setAnnotationId(a.id);
+                  setAnnotationIds([a.id]);
                 }
               }}
               onSquare={(sq) => {
@@ -1505,6 +1537,7 @@ export function App() {
                   else p.annotations.push(a);
                 });
                 setAnnotationId(a.id);
+                setAnnotationIds([a.id]);
                 annotationFrom.current = null;
                 setDrawing(null);
                 message("Annotation added.");
@@ -1606,7 +1639,10 @@ export function App() {
                 if (section === "intro") {
                   selectIntro();
                 } else if (section === "annotations") {
-                  if (annotation) setAnnotationId(annotation);
+                  if (annotation) {
+                    setAnnotationId(annotation);
+                    setAnnotationIds([annotation]);
+                  }
                   setAnnotationFocus((n) => n + 1);
                 } else {
                   contextSelect(index);
@@ -1663,6 +1699,7 @@ export function App() {
               }}
               preview={previewStoryShot}
               annotationId={annotationId}
+              annotationIds={annotationIds}
               setAnnotationId={selectVisualAnnotation}
               draw={(kind) => {
                 const entry = compileStoryboard(p).shots.find(
@@ -1685,7 +1722,8 @@ export function App() {
                   edit={edit}
                   time={time}
                   selected={annotationId}
-                  onSelect={setAnnotationId}
+                  selectedIds={annotationIds}
+                  onSelect={selectVisualAnnotation}
                   onDraw={(kind) => {
                     setDrawing(kind);
                     annotationFrom.current = null;

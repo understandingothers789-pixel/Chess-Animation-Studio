@@ -1,3 +1,8 @@
+import {
+  arrangeTextGroup,
+  groupMembers,
+  type GroupAction,
+} from "../core/captions/groups";
 import { TextComposition, type TextBounds } from "./captions/TextComposition";
 import { CaptionGuide } from "./captions/CaptionGuide";
 import { compileStoryboard, resolveStoryboardFrame } from "../core/storyboard";
@@ -35,6 +40,7 @@ export function Preview({
   edit,
   onEditAnnotation,
   selectedAnnotation,
+  selectedAnnotations = [],
   onSelectAnnotation,
   seek,
 }: {
@@ -52,7 +58,8 @@ export function Preview({
   edit?: Edit;
   onEditAnnotation?: (id: string) => void;
   selectedAnnotation?: string | null;
-  onSelectAnnotation?: (id: string) => void;
+  selectedAnnotations?: string[];
+  onSelectAnnotation?: (id: string, additive?: boolean) => void;
   seek?: (time: number) => void;
   onError: (message: string) => void;
   onContextAnnotation?: (
@@ -342,6 +349,45 @@ export function Preview({
         tail: storyFrame.shot.duration,
       }
     : project;
+  const groupIds = selectedAnnotations.length
+    ? selectedAnnotations
+    : selectedAnnotation
+      ? [selectedAnnotation]
+      : [];
+  const groupReady = !!groupMembers(
+    annotationProject.annotations,
+    textBounds,
+    groupIds,
+  );
+  const arrange = (action: GroupAction) => {
+    const positions = arrangeTextGroup(
+      annotationProject.annotations,
+      textBounds,
+      groupIds,
+      action,
+      project.format,
+    );
+    if (!positions || !edit) {
+      onReport?.(
+        "Group layout needs visible, unlocked local text with enough room inside its safe areas.",
+      );
+      return;
+    }
+    prepareAnnotation();
+    edit.begin();
+    const change = (layers: import("../core/annotations").Annotation[]) => {
+      for (const pos of positions) {
+        const a = layers.find((a) => a.id === pos.id);
+        if (a) Object.assign(a, { x: pos.x, y: pos.y });
+      }
+    };
+    try {
+      if (edit.annotations) edit.annotations("Arrange text group", change);
+      else edit("Arrange text group", (p) => change(p.annotations));
+    } finally {
+      edit.end();
+    }
+  };
   const boardActions: MenuAction[] =
     menu?.annotation && edit
       ? [
@@ -462,6 +508,45 @@ export function Preview({
         full={full}
         png={saveFrame}
       />
+      {groupIds.length > 1 && (
+        <div
+          className="text-group-tools"
+          role="toolbar"
+          aria-label="Text group layout"
+        >
+          <span>{groupIds.length} text layers selected</span>
+          {(
+            [
+              ["left", "Align left"],
+              ["center", "Align horizontal centers"],
+              ["right", "Align right"],
+              ["top", "Align top"],
+              ["middle", "Align vertical centers"],
+              ["bottom", "Align bottom"],
+              ["distribute-x", "Distribute horizontally"],
+              ["distribute-y", "Distribute vertically"],
+            ] as [GroupAction, string][]
+          ).map(([action, label]) => (
+            <button
+              key={action}
+              disabled={
+                !groupReady ||
+                !!playing ||
+                (action.startsWith("distribute") && groupIds.length < 3)
+              }
+              onClick={() => arrange(action)}
+            >
+              {label}
+            </button>
+          ))}
+          {!groupReady && (
+            <span>
+              Show and unlock selected layers at the current time to arrange
+              them.
+            </span>
+          )}
+        </div>
+      )}
       <div
         className="preview-host"
         ref={host}
@@ -553,10 +638,11 @@ export function Preview({
             bounds={textBounds}
             annotations={annotationProject.annotations}
             selected={selectedAnnotation ?? null}
+            selectedIds={groupIds}
             disabled={view.pan || !!playing}
-            select={(id) => {
+            select={(id, additive) => {
               prepareAnnotation();
-              onSelectAnnotation?.(id);
+              onSelectAnnotation?.(id, additive);
             }}
             prepare={prepareAnnotation}
             edit={edit}

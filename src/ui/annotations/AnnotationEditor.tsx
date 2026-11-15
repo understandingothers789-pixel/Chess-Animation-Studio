@@ -11,6 +11,7 @@ export function AnnotationEditor({
   edit,
   time,
   selected,
+  selectedIds = [],
   onSelect,
   onDraw,
   allowBoard = true,
@@ -22,7 +23,8 @@ export function AnnotationEditor({
   edit: Edit;
   time: number;
   selected: string | null;
-  onSelect: (id: string) => void;
+  selectedIds?: string[];
+  onSelect: (id: string, additive?: boolean) => void;
   onDraw: (kind: "arrow" | "circle" | null) => void;
 }) {
   const a = p.annotations.find((a) => a.id === selected);
@@ -65,14 +67,24 @@ export function AnnotationEditor({
             </button>
           ))}
       </div>
+      <p className="hint">
+        Shift-click text or layer names to select a group. Inspector settings
+        edit the primary layer; preview group actions affect the selection.
+      </p>
       <div className="text-layer-list" aria-label="Text layers">
         {p.annotations
           .filter((a) => a.kind === "text" || a.kind === "caption")
           .map((a) => (
             <button
               key={a.id}
-              aria-pressed={a.id === selected}
-              onClick={() => onSelect(a.id)}
+              aria-pressed={
+                selectedIds.length
+                  ? selectedIds.includes(a.id)
+                  : a.id === selected
+              }
+              onClick={(e) =>
+                onSelect(a.id, e.shiftKey || e.ctrlKey || e.metaKey)
+              }
             >
               {a.text || "Empty text"} · {a.start.toFixed(2)}–{a.end.toFixed(2)}
               s{a.hidden ? " · hidden" : ""}

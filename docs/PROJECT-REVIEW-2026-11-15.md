@@ -25,10 +25,10 @@ Chess Animation Studio is a local Electron application for turning legal chess g
 | 1 | Localize inherited text in a selected shot | Reuse a source explanation without changing the game or displaying two copies | Implemented |
 | 2 | Nondestructive layer visibility | Temporarily remove text from preview/export without deleting it or losing its opacity/style | Implemented |
 | 3 | Canvas movement and resize locks | Keep established captions in place while selecting and editing other layers | Implemented |
-| 4 | Group selection, alignment and distribution | Arrange several text layers consistently and move them with one history transaction | Recommended next; requires ownership-aware selection and group geometry |
-| 5 | Profile and reduce large-project edit work | Improve long-session responsiveness by measuring full-project cloning/serialization and annotation resource rebuilding | Recommended next; establish measurements before changing history or renderer invalidation |
+| 4 | Group selection, alignment and distribution | Arrange several text layers consistently and move them with one history transaction | Implemented in 0.2.34; ownership-aware selection and measured geometry |
+| 5 | Profile and reduce large-project edit work | Improve long-session responsiveness by measuring full-project cloning/serialization and annotation resource rebuilding | Implemented in 0.2.34; measured annotation snapshot optimization and shape-resource reuse |
 
-The first three provide useful, bounded improvements using existing storage, rendering and Undo/Redo. Group manipulation has broader coordinate and selection consequences. Performance work should start with measurements rather than a speculative rewrite.
+The first three were implemented in the initial review. The subsequent 0.2.34 work completes the remaining two, with measured geometry, ownership-aware selection and an isolated annotation update path. See its linked report for validation and measurement limits.
 
 ## Delivered behavior
 
@@ -46,7 +46,7 @@ The completion record below lists commands and observed outcomes. New unit tests
 
 ## Limits
 
-This work does not implement group transforms or performance optimizations. A canvas lock intentionally permits deliberate inspector edits. Localization currently targets inherited text/captions; board arrows and circles keep their existing ownership workflow. New source code does not imply that an earlier Windows artifact contains these changes. Windows CI is triggered by the source push and must be assessed separately before calling a new package validated.
+The subsequent [0.2.34 implementation](group-layout-034/REPORT.md) adds group transforms and measured editing/resource optimizations. A canvas lock intentionally permits deliberate inspector edits. Localization currently targets inherited text/captions; board arrows and circles keep their existing ownership workflow. New source code does not imply that an earlier Windows artifact contains these changes. Windows CI is triggered by the source push and must be assessed separately before calling a new package validated.
 
 ## Completion record
 
@@ -59,4 +59,4 @@ This work does not implement group transforms or performance optimizations. A ca
 
 The initial browser test tried a button inside a collapsed section and timed out. The test now opens the section as a user would; the complete rerun passed without weakening assertions.
 
-Implementation commit: `c480100` on `architecture/effect-compositor`, starting from `955994d`. Documentation and tooltips follow in a separate commit. Only that development branch is pushed; protected branch references are checked after the final push. No release or PR was created. New packaged Windows validation remains the responsibility of the automatically triggered CI run; this report does not claim it has completed.
+Implementation commit: `c480100` on `architecture/effect-compositor`, starting from `955994d`. Documentation and tooltips follow in a separate commit. Only that development branch is pushed; protected branch references are checked after the final push. No release or PR was created. Subsequent 0.2.34 packaged Windows validation passed; its verified download and measurements are in the [group layout and performance report](group-layout-034/REPORT.md).

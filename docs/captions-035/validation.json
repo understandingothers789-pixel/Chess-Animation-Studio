@@ -1,0 +1,66 @@
+{
+  "sourceCommit": "c6089fb1981b801388c903c0c8194f40a59c35d3",
+  "startingCommit": "08db55238f34c66a760d5f448fccae77c3a801cf",
+  "branch": "architecture/effect-compositor",
+  "local": {
+    "build": {
+      "command": "npm run build",
+      "result": "passed"
+    },
+    "unit": {
+      "command": "npm test -- --reporter=dot",
+      "filesPassed": 31,
+      "testsPassed": 172,
+      "testsSkipped": 1
+    },
+    "transcriptUi": {
+      "command": "npm run test:transcript",
+      "result": "passed"
+    },
+    "realSpeech": {
+      "platform": "linux",
+      "packaged": false,
+      "words": 22,
+      "captions": 5,
+      "text": "and so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+      "oneClickSetup": false
+    },
+    "captionExport": {
+      "cases": 4,
+      "maxMeanAbsolutePixelError": 3.9968518518518517,
+      "coldCompileMs": 0.19289599999990514,
+      "cached10000Ms": 0.985828999999967
+    },
+    "compositionRegression": {
+      "command": "npm run test:composition",
+      "result": "passed",
+      "exportCases": 6
+    }
+  },
+  "windows": {
+    "run": 43776756948,
+    "conclusion": "success",
+    "visualJob": 133004657272,
+    "portableJob": 133008507153,
+    "testsPassed": 171,
+    "testsSkipped": 2,
+    "oneClickSetup": "passed",
+    "setupCacheReuse": "passed",
+    "realSpeechWords": 22,
+    "generatedCaptions": 5,
+    "nativeProjectSave": "passed",
+    "packagedEditingAndExports": "passed",
+    "officialRuntimeSignature": "NotSigned",
+    "artifactId": 14187317185,
+    "download": "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/43776756948/artifacts/14187317185",
+    "artifactExpired": false,
+    "artifactMetadataDigest": "sha256:4a555a9ce643bcc1799a1c59ce8c0e545026d3749f7a86b4cdb025b8fdb1269d"
+  },
+  "protectedBranches": {
+    "fresh-start": "5030ba80ff8444b312d775257319b594bf9b3fba",
+    "main": "e4ce9a7c61c250c6e1f84707d643da5942ea4cf7",
+    "studio-main": "9e2eccc56e228fee5b526c9fc097316400c2ab08",
+    "windows-download": "6c185b473c2f4d855eb42517d1f8367d4edc8319"
+  },
+  "protectedBranchesUnchanged": true
+}

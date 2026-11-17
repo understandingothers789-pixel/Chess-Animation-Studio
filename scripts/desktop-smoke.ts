@@ -638,7 +638,7 @@ try {
     .click();
   assert.equal(
     await page.getByLabel("Beat zoom rhythm", { exact: true }).inputValue(),
-    "alternate",
+    "swell",
   );
   await page
     .getByLabel("Spotlight beat source", { exact: true })

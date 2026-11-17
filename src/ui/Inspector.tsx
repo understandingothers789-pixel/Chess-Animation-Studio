@@ -709,7 +709,11 @@ export function Inspector({
                   className="wide"
                   title="Hold on the moved piece and add beat-synced zoom, rocking, glow, colors and sparkles to every selected move."
                   onClick={() =>
-                    change("jam", { ...beatSpotlightDefaults, enabled: true })
+                    change("jam", {
+                      ...beatSpotlightDefaults,
+                      enabled: true,
+                      rhythm: "swell",
+                    })
                   }
                 >
                   Apply beat spotlight
@@ -741,6 +745,7 @@ export function Inspector({
                       options={[
                         ["alternate", "In / out on alternating beats"],
                         ["punch", "Punch in on each beat"],
+                        ["swell", "Ease in and out on each beat"],
                       ]}
                       onChange={(v) =>
                         edit("Spotlight rhythm", (p) =>

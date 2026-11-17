@@ -6,6 +6,7 @@ const descriptions: Record<string, string> = {
   slide: "Direct motion with a smooth arrival.",
   soft: "A gentle deceleration into the destination.",
   spin: "Rotate the piece during its journey.",
+  somersault: "Turn head over heels and land upright.",
   flip: "Flip the piece as it travels.",
   sway: "Rock through a full sway.",
   "sway-half": "A single gentle sway.",

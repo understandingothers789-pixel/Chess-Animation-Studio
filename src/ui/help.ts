@@ -75,7 +75,7 @@ const help: Record<string, string> = {
   "Spotlight beat offset":
     "Seconds from spotlight start to the first BPM hit. Negative values advance the grid. Music markers keep their own timing.",
   "Beat zoom rhythm":
-    "Alternate a close and wider view on successive beats, or punch in on every beat and relax between hits.",
+    "Alternate close and wide views, punch in on each beat, or ease in before each beat and back out afterward.",
   "Beat zoom amount":
     "Amount of camera magnification between the close and wider beat poses. Zero disables zoom pumping.",
   "Beat camera rock":

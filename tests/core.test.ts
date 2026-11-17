@@ -25,6 +25,48 @@ it("uses the package version for the application and saved projects", () => {
   expect(blank().appVersion).toBe(packageInfo.version);
 });
 import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
+it.each(["1. Nf3", "1. e4"])(
+  "somersaults and lands upright after %s",
+  (pgn) => {
+    const p = importPgn(blank(), pgn);
+    p.moves[0].effect = effect("somersault");
+    const game = buildGame(p);
+    const [s] = segments(p);
+    const pose = (time: number) =>
+      evaluate(p, time, game).pieces.find(
+        (v) => v.id === game.steps[0].pieceId,
+      )!;
+    const at =
+      s.depart + p.moves[0].effect.duration * p.moves[0].effect.landing;
+    const mid = pose((s.depart + at) / 2);
+    expect(mid.rz).toBeCloseTo(Math.PI);
+    expect(mid.z).toBeGreaterThan(0.4);
+    expect(pose(at).rz).toBeCloseTo(2 * Math.PI);
+    expect(pose(s.end)).toMatchObject({
+      square: game.steps[0].to,
+      z: 0,
+      rz: 0,
+    });
+  },
+);
+it("eases the spotlight zoom around even a single corrected music marker", () => {
+  const p = importPgn(blank(), "1. e4");
+  const e = p.moves[0].effect;
+  Object.assign(e.jam, { enabled: true, rhythm: "swell" });
+  const start = segments(p)[0].finish;
+  const beat = { id: "one", time: start + 0.53, enabled: true, accent: false };
+  p.beats = [beat];
+  const zoom = (t: number) => evaluateBeatSpotlight(p, e, t, start, [0, 0])!;
+  expect(zoom(beat.time).clock).toBe("markers");
+  expect(zoom(beat.time).zoomLevel).toBeCloseTo(1);
+  expect(zoom(beat.time - 0.04).zoomLevel).toBeGreaterThan(0.15);
+  expect(zoom(beat.time - 0.04).zoomLevel).toBeLessThan(1);
+  expect(zoom(beat.time + 0.14).zoomLevel).toBeGreaterThan(0.15);
+  expect(zoom(beat.time + 0.29).zoomLevel).toBeCloseTo(0.15);
+  beat.time += 0.31;
+  expect(zoom(beat.time).zoomLevel).toBeCloseTo(1);
+  expect(zoom(beat.time - 0.31).zoomLevel).toBeCloseTo(0.15);
+});
 describe("legal state and stable identities", () => {
   it("assigns capture flips and a final impact while retaining manual move effects", () => {
     const p = importPgn(blank(), "1. e4 d5 2. exd5 Qxd5");

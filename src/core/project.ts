@@ -20,6 +20,7 @@ export const presets = [
   "slide",
   "soft",
   "spin",
+  "somersault",
   "flip",
   "sway",
   "sway-half",
@@ -115,7 +116,7 @@ export const moveLightDefaults = {
 };
 export const beatSpotlightDefaults = {
   enabled: false,
-  rhythm: "alternate" as "alternate" | "punch",
+  rhythm: "alternate" as "alternate" | "punch" | "swell",
   duration: 2.4,
   clock: "auto" as "auto" | "bpm",
   bpm: 140,
@@ -164,7 +165,7 @@ export const effectSchema = z.object({
   jam: z
     .object({
       enabled: z.boolean(),
-      rhythm: z.enum(["alternate", "punch"]).default("alternate"),
+      rhythm: z.enum(["alternate", "punch", "swell"]).default("alternate"),
       duration: n(0.6, 8),
       clock: z.enum(["auto", "bpm"]),
       bpm: n(40, 300),
@@ -330,6 +331,16 @@ export function effect(preset: Preset = "slide"): Effect {
   if (preset === "soft") e.easing = "soft";
   if (preset === "spin")
     Object.assign(e, { rotation: 360, axis: "y", hop: 0.25, scale: 1.08 });
+  if (preset === "somersault")
+    Object.assign(e, {
+      duration: 1.55,
+      rotation: 360,
+      axis: "z",
+      hop: 0.52,
+      scale: 1.14,
+      landing: 0.8,
+      settle: 0.18,
+    });
   if (preset === "flip")
     Object.assign(e, {
       duration: 1.7,

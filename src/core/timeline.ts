@@ -708,11 +708,14 @@ export function evaluateBeatSpotlight(
   let beat = 0,
     phase = 0,
     since = Infinity,
+    until = Infinity,
     interval = 60 / j.bpm;
-  const clock = times.length >= 2 ? "markers" : "bpm";
+  const clock =
+    times.length >= (j.rhythm === "swell" ? 1 : 2) ? "markers" : "bpm";
   if (clock === "markers") {
     let last = -1;
     for (let i = 0; i < times.length && times[i] <= time + 1e-9; i++) last = i;
+    until = (times[last + 1] ?? Infinity) - time;
     if (last >= 0) {
       beat = last;
       since = Math.max(0, time - times[last]);
@@ -726,23 +729,31 @@ export function evaluateBeatSpotlight(
     phase = (age - j.offset) / interval;
     beat = Math.floor(phase + 1e-9);
     since = Math.max(0, (phase - beat) * interval);
+    until = interval - since;
+  } else {
+    until = j.offset - age;
   }
   const pulse = Math.exp((-since / Math.min(0.18, interval * 0.65)) * 3);
+  let zoomLevel = 0.1;
+  if (j.rhythm === "swell") {
+    const approach = ease(1 - until / Math.min(0.09, interval * 0.28));
+    const release = ease(1 - since / Math.min(0.28, interval * 0.58));
+    zoomLevel = 0.15 + 0.85 * Math.max(approach, release);
+  } else if (j.rhythm === "punch") {
+    zoomLevel = 0.15 + 0.85 * pulse;
+  } else if (Number.isFinite(since)) {
+    zoomLevel = mix(
+      beat % 2 ? 1 : 0.1,
+      beat % 2 ? 0.1 : 1,
+      ease(since / Math.min(0.08, interval * 0.3)),
+    );
+  }
   return {
     x: anchor[0],
     y: anchor[1],
     envelope,
     pulse,
-    zoomLevel:
-      j.rhythm === "punch"
-        ? 0.15 + 0.85 * pulse
-        : Number.isFinite(since)
-          ? mix(
-              beat % 2 ? 1 : 0.1,
-              beat % 2 ? 0.1 : 1,
-              ease(since / Math.min(0.08, interval * 0.3)),
-            )
-          : 0.1,
+    zoomLevel,
     phase,
     since,
     interval,

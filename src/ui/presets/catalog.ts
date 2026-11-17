@@ -3,6 +3,7 @@ export const presetLabels: Record<Preset, string> = {
   slide: "Clean slide",
   soft: "Soft landing",
   spin: "Thin-edge spin",
+  somersault: "Piece flip",
   flip: "Capture flip",
   sway: "Slow sway",
   "sway-half": "Half sway",

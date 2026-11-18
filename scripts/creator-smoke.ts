@@ -148,10 +148,10 @@ try {
   console.log("passed clip drag");
   await page.locator('.inspector [data-tab="keys"]').click();
   await page
-    .getByRole("button", { name: "+ Add keyframe", exact: true })
+    .getByRole("button", { name: "Key current value at playhead", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "+ Add keyframe", exact: true })
+    .getByRole("button", { name: "Key current value at playhead", exact: true })
     .click();
   await shot("curve-editor");
   const curve = page.locator(".curve-editor svg");

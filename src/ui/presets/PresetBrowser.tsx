@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { effect, presets, type Effect, type Project } from "../../core/project";
+import {
+  effect,
+  effectSchema,
+  presets,
+  presetId,
+  assignPresetIds,
+  uid,
+  type Effect,
+  type Project,
+} from "../../core/project";
+import { applyPresetEffect } from "../../core/editing";
 import { presetLabels } from "./catalog";
 import type { Edit } from "../state";
 const descriptions: Record<string, string> = {
@@ -32,12 +42,20 @@ export function PresetBrowser({
   edit,
   onPreview,
   onCancel,
+  previewActive,
+  before,
+  onBefore,
+  report,
 }: {
   project: Project;
   index: number;
   checked: Set<string>;
   edit: Edit;
-  onPreview: (e: Effect) => void;
+  onPreview: (e: Effect, replaceAll: boolean) => void;
+  previewActive: boolean;
+  before: boolean;
+  onBefore: (before: boolean) => void;
+  report: (message: string) => void;
   onCancel: () => void;
 }) {
   const [query, search] = useState(""),
@@ -49,7 +67,8 @@ export function PresetBrowser({
     [recent, setRecent] = useState<string[]>(() =>
       preference("studio.presetRecent"),
     ),
-    [filter, setFilter] = useState("all");
+    [filter, setFilter] = useState("all"),
+    [replaceAll, setReplaceAll] = useState(false);
   const items = [
     ...presets.map((id) => ({
       id,
@@ -59,7 +78,7 @@ export function PresetBrowser({
       custom: -1,
     })),
     ...p.presets.map((v, i) => ({
-      id: `custom-${i}`,
+      id: presetId(p, i),
       name: v.name,
       effect: v.effect,
       description: "Your saved animation.",
@@ -96,6 +115,91 @@ export function PresetBrowser({
           </button>
         ))}
       </div>
+      <div className="preset-actions">
+        <label>
+          Apply animation to{" "}
+          <select
+            aria-label="Preset target scope"
+            title="Choose the active move, the checked group, or every move before applying an animation."
+            aria-description="Choose the active move, the checked group, or every move before applying an animation."
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+          >
+            <option value="selected">Selected move</option>
+            <option value="group">Selected group</option>
+            <option value="all">All moves</option>
+          </select>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            aria-label="Replace all settings"
+            title="Also apply the preset's camera, effects and unlocked timing."
+            aria-description="Also apply the preset's camera, effects and unlocked timing."
+            checked={replaceAll}
+            onChange={(event) => {
+              setReplaceAll(event.target.checked);
+              if (selected && previewActive)
+                onPreview(selected.effect, event.target.checked);
+            }}
+          />{" "}
+          Replace all settings
+        </label>
+        <p className="hint">
+          {replaceAll
+            ? "Replace animation, camera, effects and unlocked timing."
+            : "Apply movement and keep timing, camera, effects and custom keys."}
+        </p>
+        {previewActive && selected && (
+          <>
+            <p role="status">
+              {before ? "Original" : "Previewing " + selected.name} on{" "}
+              {p.moves[index]?.san}
+            </p>
+            <button aria-pressed={before} onClick={() => onBefore(!before)}>
+              {before ? "Show preset" : "Show original"}
+            </button>
+          </>
+        )}
+        <div className="button-row">
+          <button
+            onClick={() => {
+              choose(null);
+              onCancel();
+            }}
+          >
+            Cancel preview
+          </button>
+          <button
+            disabled={!selected || !targets.length}
+            onClick={() => {
+              if (!selected) return;
+              const ids = new Set(targets.map((m) => m.id));
+              edit("Apply animation preset", (p) => {
+                for (const m of p.moves)
+                  if (ids.has(m.id))
+                    m.effect = applyPresetEffect(
+                      m.effect,
+                      selected.effect,
+                      p.format,
+                      replaceAll,
+                    );
+              });
+              const next = [
+                selected.id,
+                ...recent.filter((v) => v !== selected.id),
+              ].slice(0, 12);
+              setRecent(next);
+              localStorage.setItem("studio.presetRecent", JSON.stringify(next));
+              onCancel();
+            }}
+          >
+            {scope === "selected" && targets[0]
+              ? `Apply to ${targets[0].san}`
+              : `Apply to ${targets.length} moves`}
+          </button>
+        </div>
+      </div>
       <div className="animation-grid">
         {items
           .filter(
@@ -115,7 +219,7 @@ export function PresetBrowser({
                 aria-pressed={chosen === v.id}
                 onClick={() => {
                   choose(v.id);
-                  onPreview(v.effect);
+                  onPreview(v.effect, replaceAll);
                 }}
               >
                 <svg viewBox="0 0 140 65" aria-hidden="true">
@@ -168,6 +272,7 @@ export function PresetBrowser({
                   <button
                     onClick={() =>
                       edit("Delete preset", (p) => {
+                        assignPresetIds(p);
                         p.presets.splice(v.custom, 1);
                         choose(null);
                         onCancel();
@@ -181,61 +286,90 @@ export function PresetBrowser({
             </article>
           ))}
       </div>
-      <label>
-        Apply animation to{" "}
-        <select
-          aria-label="Preset target scope"
-          title="Choose the active move, the checked group, or every move before applying an animation."
-          aria-description="Choose the active move, the checked group, or every move before applying an animation."
-          value={scope}
-          onChange={(e) => setScope(e.target.value)}
-        >
-          <option value="selected">Selected move</option>
-          <option value="group">Selected group</option>
-          <option value="all">All moves</option>
-        </select>
-      </label>
-      <p className="hint">
-        Browse without changing your project. The composition preview shows the
-        selected animation.
-      </p>
-      <div className="button-row">
+      {selected && selected.custom >= 0 && p.moves[index] && (
         <button
-          onClick={() => {
-            choose(null);
-            onCancel();
-          }}
+          onClick={() =>
+            edit("Update preset from move", (draft) => {
+              assignPresetIds(draft);
+              draft.presets[selected.custom].effect = structuredClone(
+                draft.moves[index].effect,
+              );
+            })
+          }
         >
-          Cancel preview
+          Update from {p.moves[index].san}
         </button>
-        <button
-          disabled={!selected || !targets.length}
-          onClick={() => {
-            if (!selected) return;
-            const ids = new Set(targets.map((m) => m.id));
-            edit("Apply animation preset", (p) => {
-              for (const m of p.moves)
-                if (ids.has(m.id)) m.effect = structuredClone(selected.effect);
-            });
-            const next = [
-              selected.id,
-              ...recent.filter((v) => v !== selected.id),
-            ].slice(0, 12);
-            setRecent(next);
-            localStorage.setItem("studio.presetRecent", JSON.stringify(next));
-            onCancel();
-          }}
-        >
-          Apply to {targets.length} move{targets.length === 1 ? "" : "s"}
-        </button>
-      </div>
+      )}
       <button
         disabled={!selected}
+        onClick={() => {
+          if (!selected) return;
+          const url = URL.createObjectURL(
+            new Blob(
+              [
+                JSON.stringify(
+                  { name: selected.name, effect: selected.effect },
+                  null,
+                  2,
+                ),
+              ],
+              { type: "application/json" },
+            ),
+          );
+          const link = document.createElement("a");
+          link.href = url;
+          link.download =
+            selected.name.replace(/[^a-z0-9_-]+/gi, "-") + ".chess-preset.json";
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }}
+      >
+        Download preset
+      </button>
+      <label className="text-field">
+        Import preset
+        <input
+          type="file"
+          accept=".json"
+          aria-label="Import preset"
+          title="Import a Chess Animation Studio preset JSON file."
+          aria-description="Import a previously downloaded preset into this project."
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            try {
+              if (file.size > 1000000 || p.presets.length >= 100)
+                throw Error("Preset file or library exceeds its limit.");
+              const { name, effect: source } = JSON.parse(await file.text());
+              if (typeof name !== "string" || !name.trim())
+                throw Error("The preset name is missing.");
+              const imported = effectSchema.parse(source);
+              edit("Import preset", (draft) => {
+                if (draft.id === p.id && draft.presets.length < 100)
+                  draft.presets.push({
+                    id: uid(),
+                    name: name.trim().slice(0, 100),
+                    effect: imported,
+                  });
+              });
+              report("Preset imported.");
+            } catch {
+              report(
+                "Could not import this preset. Choose a Chess Animation Studio preset JSON file and check that the library has space.",
+              );
+            }
+          }}
+        />
+      </label>
+      <button
+        disabled={!selected || p.presets.length >= 100}
         onClick={() => {
           if (selected)
             edit("Duplicate preset", (p) => {
               p.presets.push({
-                name: selected.name + " copy",
+                id: uid(),
+                name: (selected.name + " copy").slice(0, 100),
                 effect: structuredClone(selected.effect),
               });
             });

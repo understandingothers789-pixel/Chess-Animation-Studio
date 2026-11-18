@@ -118,6 +118,9 @@ export const beatSpotlightDefaults = {
   enabled: false,
   rhythm: "alternate" as "alternate" | "punch" | "swell",
   duration: 2.4,
+  start: "finish" as "finish" | "landing",
+  attack: 0.09,
+  release: 0.28,
   clock: "auto" as "auto" | "bpm",
   bpm: 140,
   offset: 0,
@@ -155,6 +158,7 @@ export const effectSchema = z.object({
   settle: n(0.01, 0.5),
   axis: z.enum(["x", "y", "z"]),
   rotation: n(-1440, 1440),
+  turnSpan: n(0.2, 1).default(1),
   sway: n(0, 45),
   cycles: n(0.5, 6),
   hop: n(0, 3),
@@ -167,6 +171,9 @@ export const effectSchema = z.object({
       enabled: z.boolean(),
       rhythm: z.enum(["alternate", "punch", "swell"]).default("alternate"),
       duration: n(0.6, 8),
+      start: z.enum(["finish", "landing"]).default("finish"),
+      attack: n(0.01, 1).default(0.09),
+      release: n(0.01, 2).default(0.28),
       clock: z.enum(["auto", "bpm"]),
       bpm: n(40, 300),
       offset: n(-1, 1),
@@ -266,6 +273,7 @@ export function effect(preset: Preset = "slide"): Effect {
     settle: 0.18,
     axis: "z",
     rotation: 0,
+    turnSpan: 1,
     sway: 0,
     cycles: 1,
     hop: 0,
@@ -821,7 +829,13 @@ export const projectSchema = z.object({
     knightDuration: n(0.05, 3).default(1.8),
   }),
   presets: z
-    .array(z.object({ name: z.string().max(100), effect: effectSchema }))
+    .array(
+      z.object({
+        id: z.string().optional(),
+        name: z.string().max(100),
+        effect: effectSchema,
+      }),
+    )
     .max(100),
   lead: n(0, 30),
   tail: n(0, 60),
@@ -839,6 +853,13 @@ export const projectSchema = z.object({
 export type Project = z.infer<typeof projectSchema>;
 export type Move = Project["moves"][number];
 export const uid = () => crypto.randomUUID();
+export const presetId = (p: Project, index: number) =>
+  p.presets[index].id ?? `${p.id}-preset-${index}`;
+export function assignPresetIds(p: Project) {
+  p.presets.forEach((entry, i) => {
+    entry.id ??= presetId(p, i);
+  });
+}
 export function blank(): Project {
   return {
     storyboard: { shots: [], beats: [] },

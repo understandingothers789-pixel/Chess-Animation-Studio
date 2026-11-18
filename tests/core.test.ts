@@ -19,12 +19,21 @@ import {
   captureDustParticle,
   evaluateMoveLight,
   evaluateBeatSpotlight,
+  moveChannelSampler,
+  spotlightStart,
+  stepFrame,
 } from "../src/core/timeline";
 it("uses the package version for the application and saved projects", () => {
   expect(VERSION).toBe(packageInfo.version);
   expect(blank().appVersion).toBe(packageInfo.version);
 });
-import { align, analyze, syncMarkers, musicAt } from "../src/core/audio";
+import {
+  align,
+  analyze,
+  syncMarkers,
+  musicAt,
+  landingDuration,
+} from "../src/core/audio";
 it.each(["1. Nf3", "1. e4"])(
   "somersaults and lands upright after %s",
   (pgn) => {
@@ -471,4 +480,39 @@ it("alternates close and wider views on successive hits, with a punch option", (
   expect(
     evaluateBeatSpotlight(p, e, start + 0.5, start, [0, 0])!.zoomLevel,
   ).toBeCloseTo(1);
+});
+
+it("puts the flip landing and smooth spotlight on the same marker", () => {
+  const p = importPgn(blank(), "1. Nf3 Nf6");
+  const e = (p.moves[0].effect = effect("somersault"));
+  const at = segments(p)[0].depart + 1;
+  e.duration = landingDuration(e, segments(p)[0].depart, at)!;
+  Object.assign(e.jam, {
+    enabled: true,
+    start: "landing",
+    rhythm: "swell",
+    attack: 0.07,
+    release: 0.22,
+  });
+  p.beats = [{ id: "hit", time: at, enabled: true, accent: true }];
+  const [s, next] = segments(p);
+  const hit = evaluate(p, at);
+  expect(s.land).toBeCloseTo(at);
+  expect(hit.jam?.zoomLevel).toBeCloseTo(1);
+  expect(hit.jam?.envelope).toBeCloseTo(1);
+  expect(hit.camera.zoom).toBeGreaterThan(evaluate(p, at - 0.05).camera.zoom);
+  expect(next.start).toBeCloseTo(spotlightStart(e, s) + e.jam.duration);
+  expect(landingDuration(e, s.depart, s.depart - 0.1)).toBeNull();
+});
+
+it("samples the preset curve and steps onto the selected export frame grid", () => {
+  const p = importPgn(blank(), "1. Nf3");
+  const e = (p.moves[0].effect = effect("somersault"));
+  const base = moveChannelSampler(p, 0, "rz", true);
+  expect(base(e.landing / 2)).toBeCloseTo(180);
+  expect(base(1)).toBeCloseTo(360);
+  e.keys.rz = [{ at: 0, value: 112, ease: "linear" }];
+  expect(moveChannelSampler(p, 0, "rz", false)(0.4)).toBeCloseTo(112);
+  expect(stepFrame(10.01, 24, -1)).toBe(10);
+  expect(stepFrame(10.01, 24, 1)).toBe(241 / 24);
 });

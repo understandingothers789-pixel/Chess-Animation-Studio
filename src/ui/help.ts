@@ -74,6 +74,16 @@ const help: Record<string, string> = {
     "Tempo of the fallback or forced BPM grid. Marker mode follows corrected project beat times instead.",
   "Spotlight beat offset":
     "Seconds from spotlight start to the first BPM hit. Negative values advance the grid. Music markers keep their own timing.",
+  "Loop move preview":
+    "Repeat the selected move and its effects until you stop previewing.",
+  "Flip direction": "Choose which way the piece turns in the air.",
+  "Flip turn span":
+    "Percent of the approach to the landing used for the somersault. Shorter values turn faster.",
+  "Spotlight start":
+    "Begin after the move finishes, or start just before landing so a beat can peak at contact.",
+  "Zoom ease in":
+    "Maximum seconds the camera takes to approach an enabled beat.",
+  "Zoom ease out": "Maximum seconds the camera takes to return after the beat.",
   "Beat zoom rhythm":
     "Alternate close and wide views, punch in on each beat, or ease in before each beat and back out afterward.",
   "Beat zoom amount":

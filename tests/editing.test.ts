@@ -2,6 +2,7 @@ import { it, expect } from "vitest";
 import { effect, blank } from "../src/core/project";
 import { importPgn, importFen, appendMove } from "../src/core/chess";
 import {
+  applyPresetEffect,
   pasteSettings,
   preserveLockedTiming,
   moveGroups,
@@ -209,4 +210,36 @@ it("reports preserved spotlight timing when applying visual effects to locked ta
   expect(p.moves[1].effect.jam.enabled).toBe(before.jam.enabled);
   expect(p.moves[1].effect.jam.duration).toBe(before.jam.duration);
   expect(report).toContain("1 locked move kept its timing");
+});
+
+it("auditions and applies preset motion without disturbing authored settings", () => {
+  const target = effect("slide"),
+    source = effect("somersault");
+  target.locked = true;
+  target.landingBeat = "beat-a";
+  target.jam.enabled = true;
+  target.jam.start = "landing";
+  target.badge.manual = "brilliant";
+  target.keys.rz = [{ at: 0.4, value: 125, ease: "smooth" }];
+  const before = structuredClone(target);
+  const applied = applyPresetEffect(target, source, "vertical");
+  expect(applied).toMatchObject({
+    preset: "somersault",
+    hop: source.hop,
+    rotation: 360,
+    locked: true,
+    duration: target.duration,
+    landingBeat: "beat-a",
+    keys: target.keys,
+    jam: target.jam,
+    badge: target.badge,
+  });
+  const replaced = applyPresetEffect(target, source, "vertical", true);
+  expect(replaced).toMatchObject({
+    locked: true,
+    jam: { enabled: true, start: "landing" },
+    landingBeat: "beat-a",
+  });
+  expect(replaced.keys.rz).toBeUndefined();
+  expect(target).toEqual(before);
 });

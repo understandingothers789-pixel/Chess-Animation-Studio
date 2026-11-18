@@ -37,6 +37,7 @@ export function preserveLockedTiming(before: Effect, after: Effect) {
   if (!before.locked) return;
   after.jam.enabled = before.jam.enabled;
   after.jam.duration = before.jam.duration;
+  after.jam.start = before.jam.start;
   for (const key of timingKeys)
     (after as any)[key] = structuredClone(before[key]);
 }
@@ -84,6 +85,24 @@ export function pasteSettings(
   preserveLockedTiming(target, next);
   return effectSchema.parse(next);
 }
+/** Apply the same scoped change in the browser, inspector and preview. */
+export function applyPresetEffect(
+  target: Effect,
+  source: Effect,
+  format: Format,
+  replaceAll = false,
+) {
+  const next = pasteSettings(target, {
+    source,
+    format,
+    kind: replaceAll ? "everything" : "movement",
+  });
+  if (!replaceAll)
+    next.keys = { ...next.keys, ...structuredClone(target.keys) };
+  else if (!target.locked) next.landingBeat = null;
+  return next;
+}
+
 const groupCache = new WeakMap<Project, Record<string, string[]>>();
 export function moveGroups(p: Project): Record<string, string[]> {
   const cached = groupCache.get(p);

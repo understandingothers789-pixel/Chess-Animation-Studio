@@ -11,12 +11,19 @@ import { MoveClip } from "./timeline/MoveClip";
 import { AnnotationRegion } from "./timeline/AnnotationRegion";
 import { settingHelp } from "./help";
 import { useEffect, useRef, useState } from "react";
-import { segments, duration } from "../core/timeline";
+import {
+  segments,
+  duration,
+  spotlightStart,
+  spotlightPeaks,
+  stepFrame,
+} from "../core/timeline";
 import { type Project, type Effect } from "../core/project";
 import type { Edit } from "./state";
 import { clock } from "./controls";
 export function Timeline({
   project: p,
+  fps,
   time,
   selected,
   checked,
@@ -34,6 +41,7 @@ export function Timeline({
   addToStoryboard,
 }: {
   project: Project;
+  fps: number;
   addToStoryboard?: (ids: string[]) => void;
   time: number;
   selected: number;
@@ -113,7 +121,26 @@ export function Timeline({
     seq = segments(p),
     width = Math.max(1, length * 52 * zoom),
     x = (t: number) => (t / length) * width;
+  const active = introSelected ? undefined : seq[selected];
+  const activeEffect = active ? p.moves[active.i].effect : undefined;
+  const cues = active
+    ? [
+        { label: "Departure", time: active.depart, detail: "" },
+        { label: "Landing", time: active.land, detail: "" },
+      ]
+    : [];
+  if (active && activeEffect?.jam.enabled) {
+    const start = spotlightStart(activeEffect, active);
+    for (const peak of spotlightPeaks(p, activeEffect, start))
+      cues.push({ label: "Zoom beat", time: peak.time, detail: peak.clock });
+    cues.push({
+      label: "Spotlight end",
+      time: start + activeEffect.jam.duration,
+      detail: "",
+    });
+  }
   const events = [
+    ...cues.map((cue) => cue.time),
     ...seq.flatMap((s, i) => [
       s.land,
       ...Object.values(p.moves[i].effect.keys).flatMap((keys) =>
@@ -144,7 +171,9 @@ export function Timeline({
         0,
         p.lead,
         length,
-        ...seq.flatMap((segment) => [segment.start, segment.end]),
+        ...seq.flatMap((segment) => [segment.start, segment.end, segment.land]),
+        ...p.beats.filter((beat) => beat.enabled).map((beat) => beat.time),
+        ...cues.map((cue) => cue.time),
       ];
       const nearest = boundaries.reduce(
         (best, boundary) =>
@@ -314,14 +343,14 @@ export function Timeline({
           <button
             title="Previous frame"
             aria-label="Previous frame"
-            onClick={() => seek(Math.max(0, time - 1 / 60))}
+            onClick={() => seek(Math.max(0, stepFrame(time, fps, -1)))}
           >
             − Frame
           </button>
           <button
             title="Next frame"
             aria-label="Next frame"
-            onClick={() => seek(Math.min(length, time + 1 / 60))}
+            onClick={() => seek(Math.min(length, stepFrame(time, fps, 1)))}
           >
             + Frame
           </button>
@@ -409,12 +438,12 @@ export function Timeline({
             />{" "}
             Lock beats
           </label>
-          <label title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping">
+          <label title="Snap the playhead to beats and clip events; hold Alt to temporarily bypass snapping">
             <input
               type="checkbox"
               aria-label="Snap"
-              title="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
-              aria-description="Snap the playhead to clip boundaries; hold Alt to temporarily bypass snapping"
+              title="Snap the playhead to beats and clip events; hold Alt to temporarily bypass snapping"
+              aria-description="Snap the playhead to beats and clip events; hold Alt to temporarily bypass snapping"
               checked={snap}
               onChange={(e) => setSnap(e.target.checked)}
             />{" "}
@@ -540,6 +569,19 @@ export function Timeline({
             }}
           >
             <div className="ruler">
+              {cues.map((cue, index) => (
+                <button
+                  key={index}
+                  className="move-timing-marker"
+                  style={{ left: x(cue.time) }}
+                  title={`${cue.label} at ${cue.time.toFixed(3)} s${cue.detail ? " · " + cue.detail : ""}`}
+                  aria-label={`${cue.label} at ${cue.time.toFixed(3)} seconds`}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() => seek(cue.time)}
+                >
+                  ◆
+                </button>
+              ))}
               {Array.from(
                 {
                   length: Math.ceil(length / Math.max(1, Math.ceil(5 / zoom))),

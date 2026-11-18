@@ -152,6 +152,15 @@ export function align(
   }
   return { project: next, aligned, skipped };
 }
+export function landingDuration(
+  effect: Project["moves"][number]["effect"],
+  departure: number,
+  beatTime: number,
+) {
+  const requested = (beatTime - departure) / effect.landing;
+  return requested >= 0.2 && requested <= 30 ? requested : null;
+}
+
 export function detectedMarkers(
   p: Project,
   peaks: { time: number; accent: boolean }[],

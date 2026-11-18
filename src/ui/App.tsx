@@ -19,7 +19,11 @@ import {
 } from "../core/storyboard";
 import type { PlaybackMode } from "../core/project";
 import { focusSetting } from "./focusSetting";
-import { pasteSettings, type SettingsClipboard } from "../core/editing";
+import {
+  applyPresetEffect,
+  pasteSettings,
+  type SettingsClipboard,
+} from "../core/editing";
 import { Transport } from "./transport/Transport";
 import { ExportDialog } from "./export/ExportDialog";
 import { AnnotationEditor } from "./annotations/AnnotationEditor";
@@ -73,7 +77,7 @@ import {
   type Effect,
 } from "../core/project";
 import { sample, buildGame, appendMove, legalMoves } from "../core/chess";
-import { duration, segments } from "../core/timeline";
+import { duration, segments, stepFrame } from "../core/timeline";
 import { detectedMarkers } from "../core/audio";
 import { AudioPlayer } from "./audio";
 import { Preview } from "./Preview";
@@ -134,7 +138,18 @@ export function App() {
   useEffect(() => setAnnotationIds([]), [mode, shotId]);
   const [drawing, setDrawing] = useState<"arrow" | "circle" | null>(null);
   const annotationFrom = useRef<string | null>(null);
-  const [presetDraft, setPresetDraft] = useState<Effect | null>(null);
+  const [presetDraft, setPresetDraft] = useState<{
+    project: Project;
+    moveId: string;
+    effect: Effect;
+  } | null>(null);
+  const [beforePreset, setBeforePreset] = useState(false);
+  const [loopPreview, setLoopPreview] = useState(false);
+  const [fps, setFps] = useState(() => {
+    const saved = Number(localStorage.getItem("studio.exportFps"));
+    return [24, 30, 60].includes(saved) ? saved : 60;
+  });
+  useEffect(() => localStorage.setItem("studio.exportFps", String(fps)), [fps]);
 
   const [introSelected, setIntroSelected] = useState(false);
   const [selected, setSelected] = useState(0),
@@ -204,16 +219,27 @@ export function App() {
     }
   }, [annotationFocus, annotationId, layout.hideRight, mode, shotId]);
   useEffect(() => localStorage.setItem("studio.category", tab), [tab]);
+  const activePreset =
+    tab === "presets" &&
+    !layout.hideLeft &&
+    mode === "source" &&
+    presetDraft?.project === p &&
+    presetDraft.moveId === p.moves[selected]?.id
+      ? presetDraft
+      : null;
   const previewProject = useMemo(() => {
-    if (!presetDraft || !p.moves[selected]) return p;
+    if (!activePreset || beforePreset) return p;
     const next = structuredClone(p);
-    next.moves[selected].effect = structuredClone(presetDraft);
+    next.moves[selected].effect = activePreset.effect;
     return next;
-  }, [p, presetDraft, selected]);
+  }, [p, activePreset, beforePreset, selected]);
+  const previewProjectRef = useRef(previewProject);
+  previewProjectRef.current = previewProject;
   const [audition, setAudition] = useState<{
     time: number;
     playing: boolean;
     end: number;
+    loopStart?: number;
   } | null>(null);
   const latest = useRef(p),
     timeRef = useRef(time),
@@ -245,6 +271,13 @@ export function App() {
     setAudition(null);
     audio.current?.stop();
   }, []);
+  useEffect(() => {
+    if (presetDraft && !activePreset) {
+      setPresetDraft(null);
+      setBeforePreset(false);
+      stop();
+    }
+  }, [presetDraft, activePreset, stop]);
   const seek = useCallback(
     (t: number) => {
       stop();
@@ -469,7 +502,7 @@ export function App() {
     const start = timeRef.current;
     run(async () => {
       const origin = await audio.current!.play(
-        latest.current,
+        previewProjectRef.current,
         start,
         modeRef.current,
       );
@@ -481,14 +514,24 @@ export function App() {
         if (!alive) return;
         const t = start + Math.max(0, (performance.now() - origin) / 1000);
         if (audition && t >= audition.end) {
+          if (loopPreview && audition.loopStart !== undefined) {
+            timeRef.current = audition.loopStart;
+            setTime(audition.loopStart);
+            setAudition({ ...audition });
+            return;
+          }
           setTime(audition.time);
           timeRef.current = audition.time;
           setPlaying(audition.playing);
           setAudition(null);
           return;
         }
-        if (t >= presentationDuration(latest.current, modeRef.current)) {
-          setTime(presentationDuration(latest.current, modeRef.current));
+        if (
+          t >= presentationDuration(previewProjectRef.current, modeRef.current)
+        ) {
+          setTime(
+            presentationDuration(previewProjectRef.current, modeRef.current),
+          );
           stop();
           return;
         }
@@ -503,7 +546,7 @@ export function App() {
       cancelAnimationFrame(raf);
       audio.current?.stop();
     };
-  }, [playing, audition, mode]);
+  }, [playing, audition, mode, loopPreview, beforePreset]);
   useEffect(() => {
     audio.current?.updateMusic(p, timeRef.current);
   }, [p.music.volume, p.music.muted, p.music.volumePoints]);
@@ -569,7 +612,7 @@ export function App() {
         !buttonFocus
       ) {
         e.preventDefault();
-        seek(timeRef.current + (e.key === "ArrowRight" ? 1 / 60 : -1 / 60));
+        seek(stepFrame(timeRef.current, fps, e.key === "ArrowRight" ? 1 : -1));
         return;
       }
       if (
@@ -606,7 +649,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selected, loadingAudio, checked, p]);
+  }, [selected, loadingAudio, checked, p, fps]);
   function adopted(project: Project, file: string | null) {
     stop();
     replace(project);
@@ -1052,7 +1095,7 @@ export function App() {
     }
     const segment = movePreviewWindow(p, index);
     if (!segment) return;
-    setAudition({ time, playing, end: segment.end });
+    setAudition({ time, playing, end: segment.end, loopStart: segment.start });
     setTime(segment.start);
     timeRef.current = segment.start;
     setPlaying(true);
@@ -1384,13 +1427,46 @@ export function App() {
                       index={selected}
                       checked={checked}
                       edit={edit}
-                      onPreview={(fx) => {
-                        setPresetDraft(fx);
-                        seek(segments(p)[selected]?.start ?? 0);
+                      previewActive={!!activePreset}
+                      report={message}
+                      before={beforePreset}
+                      onBefore={setBeforePreset}
+                      onPreview={(source, replaceAll) => {
+                        const move = p.moves[selected];
+                        if (!move || mode !== "source") return;
+                        const fx = applyPresetEffect(
+                          move.effect,
+                          source,
+                          p.format,
+                          replaceAll,
+                        );
+                        const draft = {
+                          ...p,
+                          moves: p.moves.map((m) =>
+                            m.id === move.id ? { ...m, effect: fx } : m,
+                          ),
+                        };
+                        const segment = movePreviewWindow(draft, selected);
+                        if (!segment) return;
+                        setBeforePreset(false);
+                        setPresetDraft({
+                          project: p,
+                          moveId: move.id,
+                          effect: fx,
+                        });
+                        setAudition({
+                          time: segment.start,
+                          playing: false,
+                          end: segment.end,
+                          loopStart: segment.start,
+                        });
+                        timeRef.current = segment.start;
+                        setTime(segment.start);
                         setPlaying(true);
                       }}
                       onCancel={() => {
                         setPresetDraft(null);
+                        setBeforePreset(false);
                         stop();
                       }}
                     />
@@ -1581,7 +1657,9 @@ export function App() {
             />
             <div className="preview-caption">
               <span>● EXACT-TIME PREVIEW</span>
-              <span>{sizes[p.format].join(" × ")} · 60 FPS</span>
+              <span>
+                {sizes[p.format].join(" × ")} · {fps} FPS
+              </span>
             </div>
           </div>
           {mode === "storyboard" ? (
@@ -1648,6 +1726,7 @@ export function App() {
             />
           ) : (
             <Timeline
+              fps={fps}
               addToStoryboard={addToStoryboard}
               contextSelect={contextSelect}
               clipboard={clipboard}
@@ -1786,6 +1865,14 @@ export function App() {
                     index={selected}
                     edit={edit}
                     onPreview={() => previewMove()}
+                    loop={loopPreview}
+                    onLoop={setLoopPreview}
+                    onBrowsePresets={() => {
+                      workspace.patch({ hideLeft: false });
+                      setTab("presets");
+                    }}
+                    time={time}
+                    fps={fps}
                     seek={seek}
                     previewing={!!audition}
                     previewDisabled={loadingAudio > 0}
@@ -1866,6 +1953,8 @@ export function App() {
           settings={settings}
           missingIds={missing}
           progress={exportProgress}
+          fps={fps}
+          setFps={setFps}
           close={() => setExportOpen(false)}
           cancel={() => run(() => window.studio.cancelExport())}
           render={(options) =>

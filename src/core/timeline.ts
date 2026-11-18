@@ -4,9 +4,15 @@ import {
   type Effect,
   type Format,
   type Key,
+  type Channel,
 } from "./project";
 import { buildGame, xy, type Game, type Piece } from "./chess";
 export const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+export const stepFrame = (time: number, fps: number, direction: -1 | 1) =>
+  (direction === 1
+    ? Math.floor(time * fps + 1e-7) + 1
+    : Math.ceil(time * fps - 1e-7) - 1) / fps;
+
 export const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 export function ease(t: number, kind = "smooth") {
   t = clamp(t);
@@ -47,6 +53,14 @@ export function sway(u: number, cycles = 1) {
   if (t < 0.75) return mix(1, -1, ease((t - 0.25) * 2));
   return mix(-1, 0, ease((t - 0.75) * 4));
 }
+function movementTravel(e: Effect, u: number) {
+  const phase = clamp(u / e.landing);
+  return (
+    ease(phase, e.easing) +
+    e.overshoot * Math.sin(Math.PI * phase) * Math.sin(Math.PI * 2 * phase)
+  );
+}
+
 export function segments(p: Project) {
   let at = p.lead;
   return p.moves.map((m, i) => {
@@ -253,14 +267,7 @@ export function evaluate(
       dy = b[1] - a[1],
       len = Math.hypot(dx, dy) || 1;
     const travel = ease(u / e.landing, e.easing),
-      t = curve(
-        e.keys.travel,
-        u,
-        travel +
-          e.overshoot *
-            Math.sin(Math.PI * clamp(u / e.landing)) *
-            Math.sin(Math.PI * 2 * clamp(u / e.landing)),
-      );
+      t = curve(e.keys.travel, u, movementTravel(e, u));
     const bend = e.path * Math.sin(Math.PI * clamp(t));
     v.x = curve(e.keys.x, u, mix(a[0], b[0], t) - (dy / len) * bend);
     v.y = curve(e.keys.y, u, mix(a[1], b[1], t) + (dx / len) * bend);
@@ -273,7 +280,9 @@ export function evaluate(
     const spinEase =
       e.preset === "flip"
         ? spinTime + (0.72 * Math.sin(2 * Math.PI * spinTime)) / (2 * Math.PI)
-        : ease(spinTime);
+        : e.preset === "somersault"
+          ? ease((spinTime - (1 - e.turnSpan) / 2) / e.turnSpan)
+          : ease(spinTime);
     const degrees = mix(
       e.rotation * spinEase,
       Math.round(e.rotation / 360) * 360,
@@ -447,7 +456,7 @@ export function evaluate(
           p,
           step.move.effect,
           time,
-          seg.finish,
+          spotlightStart(e, seg),
           xy(step.to),
         )
       : null;
@@ -679,9 +688,108 @@ export function evaluateMoveLight(
   return chosen;
 }
 
-export function moveHold(e: Effect) {
-  return Math.max(e.hold, e.jam.enabled ? e.jam.duration : 0);
+export function spotlightStart(
+  e: Effect,
+  segment: { land: number; finish: number },
+) {
+  const lead = Math.min(0.12, e.duration * e.landing);
+  return e.jam.start === "landing" ? segment.land - lead : segment.finish;
 }
+
+/** Read the preset channel before keys, or the authored channel at the playhead. */
+export function moveChannelSampler(
+  p: Project,
+  index: number,
+  channel: Channel,
+  base: boolean,
+) {
+  const move = p.moves[index];
+  const keys = { ...move.effect.keys };
+  if (base) delete keys[channel];
+  const effect = {
+    ...move.effect,
+    keys,
+    jam: { ...move.effect.jam, enabled: false },
+  };
+  const project = {
+    ...p,
+    moves: p.moves.map((m, i) => (i === index ? { ...m, effect } : m)),
+  };
+  const game = buildGame(project),
+    timing = compileTimeline(project),
+    segment = timing.segments[index];
+  return (at: number) => {
+    const u = Math.min(clamp(at), 1 - 1e-7);
+    if (channel === "travel")
+      return curve(keys.travel, u, movementTravel(effect, u));
+    const frame = evaluate(
+      project,
+      segment.depart + effect.duration * u,
+      game,
+      p.format,
+      timing,
+    );
+    switch (channel) {
+      case "cameraX":
+        return frame.camera.x;
+      case "cameraY":
+        return frame.camera.y;
+      case "cameraZoom":
+        return frame.camera.zoom;
+      case "cameraRotation":
+        return frame.camera.rotation;
+      case "cameraTilt":
+        return frame.camera.tilt;
+      default: {
+        const piece = frame.pieces.find(
+          (v) => v.id === game.steps[index].pieceId,
+        )!;
+        const value = piece[channel];
+        return channel === "rx" || channel === "ry" || channel === "rz"
+          ? (value * 180) / Math.PI
+          : value;
+      }
+    }
+  };
+}
+
+export function moveHold(e: Effect) {
+  const overlap =
+    e.jam.start === "landing"
+      ? e.duration * (1 - e.landing) + Math.min(0.12, e.duration * e.landing)
+      : 0;
+  return Math.max(e.hold, e.jam.enabled ? e.jam.duration - overlap : 0);
+}
+export function spotlightPeaks(p: Project, e: Effect, start: number) {
+  const j = e.jam;
+  if (!j.enabled) return [];
+  const markers = spotlightMarkerTimes(p, e, start);
+  if (markers.length >= (j.rhythm === "swell" ? 1 : 2))
+    return markers.map((time) => ({ time, clock: "Music marker" }));
+  const interval = 60 / j.bpm;
+  const first =
+    j.offset + Math.max(0, Math.ceil(-j.offset / interval)) * interval;
+  return Array.from(
+    { length: Math.max(0, Math.ceil((j.duration - first) / interval)) },
+    (_, i) => ({ time: start + first + interval * i, clock: "BPM grid" }),
+  );
+}
+
+function spotlightMarkerTimes(p: Project, effect: Effect, start: number) {
+  return effect.jam.clock === "auto"
+    ? p.beats
+        .filter(
+          (b) =>
+            b.enabled &&
+            b.time >= start &&
+            b.time < start + effect.jam.duration,
+        )
+        .map((b) => b.time)
+        .sort((a, b) => a - b)
+        .filter((t, i, a) => !i || t - a[i - 1] > 0.001)
+    : [];
+}
+
 /** Reconstruct the hold-based spotlight directly from corrected marker times or a tempo grid. */
 export function evaluateBeatSpotlight(
   p: Project,
@@ -694,17 +802,14 @@ export function evaluateBeatSpotlight(
     age = time - start;
   if (!j.enabled || time < start || time >= start + j.duration) return null;
   const envelope =
-    ease(age / 0.12) * (1 - ease((age - j.duration + 0.2) / 0.2));
-  const times =
-    j.clock === "auto"
-      ? p.beats
-          .filter(
-            (b) => b.enabled && b.time >= start && b.time < start + j.duration,
-          )
-          .map((b) => b.time)
-          .sort((a, b) => a - b)
-          .filter((t, i, a) => !i || t - a[i - 1] > 0.001)
-      : [];
+    ease(
+      age /
+        (j.start === "landing"
+          ? Math.min(0.12, effect.duration * effect.landing)
+          : 0.12),
+    ) *
+    (1 - ease((age - j.duration + 0.2) / 0.2));
+  const times = spotlightMarkerTimes(p, effect, start);
   let beat = 0,
     phase = 0,
     since = Infinity,
@@ -736,8 +841,8 @@ export function evaluateBeatSpotlight(
   const pulse = Math.exp((-since / Math.min(0.18, interval * 0.65)) * 3);
   let zoomLevel = 0.1;
   if (j.rhythm === "swell") {
-    const approach = ease(1 - until / Math.min(0.09, interval * 0.28));
-    const release = ease(1 - since / Math.min(0.28, interval * 0.58));
+    const approach = ease(1 - until / Math.min(j.attack, interval * 0.28));
+    const release = ease(1 - since / Math.min(j.release, interval * 0.58));
     zoomLevel = 0.15 + 0.85 * Math.max(approach, release);
   } else if (j.rhythm === "punch") {
     zoomLevel = 0.15 + 0.85 * pulse;

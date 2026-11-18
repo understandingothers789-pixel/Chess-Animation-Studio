@@ -207,6 +207,7 @@ export function Range({
 }
 export function Select<T extends string>({
   label,
+  disabled = false,
   mixed = false,
   value,
   options,
@@ -215,6 +216,7 @@ export function Select<T extends string>({
   label: string;
   mixed?: boolean;
   value: T;
+  disabled?: boolean;
   options: readonly T[] | readonly (readonly [T, string])[];
   onChange: (v: T) => void;
 }) {
@@ -228,6 +230,7 @@ export function Select<T extends string>({
         aria-label={label}
         title={settingHelp(label)}
         aria-description={settingHelp(label)}
+        disabled={disabled}
         value={mixed ? "__mixed__" : value}
         onChange={(e) => onChange(e.target.value as T)}
       >

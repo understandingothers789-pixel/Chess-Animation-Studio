@@ -19,6 +19,8 @@ export function ExportDialog({
   settings,
   missingIds,
   progress,
+  fps,
+  setFps,
   close,
   render,
   cancel,
@@ -29,6 +31,8 @@ export function ExportDialog({
   settings: Settings;
   missingIds: Set<string>;
   progress: ExportProgress | null;
+  fps: number;
+  setFps: (fps: number) => void;
   close: () => void;
   render: (o: ExportOptions) => void;
   cancel: () => void;
@@ -36,7 +40,6 @@ export function ExportDialog({
   const sourceEnd = duration(p),
     story = compileStoryboard(p),
     [format, setFormat] = useState<Format>(p.format),
-    [fps, setFps] = useState(60),
     [range, setRange] = useState(mode === "storyboard" ? "storyboard" : "all"),
     [start, setStart] = useState(0),
     [finish, setFinish] = useState(sourceEnd),

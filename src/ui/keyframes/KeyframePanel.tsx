@@ -1,22 +1,76 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { clamp, moveChannelSampler, segments } from "../../core/timeline";
 import { channels, type Channel, type Project } from "../../core/project";
 import type { Edit } from "../state";
 import { Section, Select, ScrubNumber } from "../controls";
 import { settingHelp } from "../help";
 import { CurveEditor } from "./CurveEditor";
+const channelNames: Record<Channel, string> = {
+  travel: "Travel",
+  x: "Piece X",
+  y: "Piece Y",
+  z: "Piece height",
+  rx: "Piece rotation X",
+  ry: "Piece rotation Y",
+  rz: "Piece rotation Z",
+  scale: "Piece scale",
+  opacity: "Piece opacity",
+  cameraX: "Camera X",
+  cameraY: "Camera Y",
+  cameraZoom: "Camera zoom",
+  cameraRotation: "Camera roll",
+  cameraTilt: "Camera tilt",
+};
+
 export function KeyframePanel({
   project,
   index,
   edit,
   seek,
+  time,
+  fps,
 }: {
   project: Project;
   index: number;
   edit: Edit;
   seek?: (time: number) => void;
+  time: number;
+  fps: number;
 }) {
   const [channel, setChannel] = useState<Channel>("rz");
   const move = project.moves[index];
+  const segment = segments(project)[index];
+  const sampleBase = useMemo(
+    () => moveChannelSampler(project, index, channel, true),
+    [project, index, channel],
+  );
+  const base = useMemo(
+    () => Array.from({ length: 33 }, (_, i) => sampleBase(i / 32)),
+    [sampleBase],
+  );
+  const at = clamp((time - segment.depart) / move.effect.duration);
+  const keys = move.effect.keys[channel] ?? [];
+  function addKey() {
+    const sample = keys.length
+      ? moveChannelSampler(project, index, channel, false)
+      : sampleBase;
+    const value = sample(at);
+    edit("Key current value", (p) => {
+      const e = p.moves[index].effect;
+      const next =
+        e.keys[channel] ??
+        base.map((value, i) => ({
+          at: i / 32,
+          value,
+          ease: "linear" as const,
+        }));
+      const existing = next.find((key) => Math.abs(key.at - at) < 1e-6);
+      if (existing) existing.value = value;
+      else if (next.length < 64) next.push({ at, value, ease: "linear" });
+      next.sort((a, b) => a.at - b.at);
+      e.keys[channel] = next;
+    });
+  }
   return (
     <Section
       title="Normalized keyframes"
@@ -42,93 +96,112 @@ export function KeyframePanel({
       <Select
         label="Keyframe channel"
         value={channel}
-        options={channels}
+        options={channels.map((key) => [key, channelNames[key]] as const)}
         onChange={setChannel}
       />
+      {channel.startsWith("camera") && (
+        <p className="hint">
+          The dashed line uses {project.format} camera framing. Beat spotlight
+          can add zoom, pan, and roll after this curve.
+        </p>
+      )}
       <CurveEditor
         project={project}
         index={index}
         channel={channel}
         seek={seek}
         edit={edit}
+        base={base}
+        label={channelNames[channel]}
       />
-      {(move.effect.keys[channel] ?? []).map((k, i) => (
-        <div className="key-row" key={i}>
-          <ScrubNumber
-            title={settingHelp(`Key ${i + 1} time`)}
-            aria-description={settingHelp(`Key ${i + 1} time`)}
-            aria-label={`Key ${i + 1} time`}
-            min={0}
-            max={1}
-            step={0.01}
-            value={k.at}
-            onValueChange={(n) =>
-              edit("Key time", (p) => {
-                p.moves[index].effect.keys[channel]![i].at = n;
-              })
-            }
-          />
-          <ScrubNumber
-            title={settingHelp(`Key ${i + 1} value`)}
-            aria-description={settingHelp(`Key ${i + 1} value`)}
-            aria-label={`Key ${i + 1} value`}
-            min={-10000}
-            max={10000}
-            step={0.1}
-            value={k.value}
-            onValueChange={(n) =>
-              edit("Key value", (p) => {
-                p.moves[index].effect.keys[channel]![i].value = n;
-              })
-            }
-          />
-          <select
-            title={settingHelp(`Key ${i + 1} easing`)}
-            aria-description={settingHelp(`Key ${i + 1} easing`)}
-            aria-label={`Key ${i + 1} easing`}
-            value={k.ease}
-            onChange={(v) =>
-              edit("Key easing", (p) => {
-                p.moves[index].effect.keys[channel]![i].ease = v.target
-                  .value as "smooth";
-              })
-            }
-          >
-            {["smooth", "linear", "soft", "accelerate"].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-          <button
-            aria-label="Delete key"
-            onClick={() =>
-              edit("Delete key", (p) => {
-                p.moves[index].effect.keys[channel]!.splice(i, 1);
-              })
-            }
-          >
-            ×
-          </button>
-        </div>
-      ))}
+      {keys.length > 0 && (
+        <details>
+          <summary>Key list · {keys.length}</summary>
+          {keys.map((k, i) => (
+            <div className="key-row" key={i}>
+              <button
+                type="button"
+                title="Seek to keyframe"
+                onClick={() =>
+                  seek?.(segment.depart + k.at * move.effect.duration)
+                }
+              >
+                {(k.at * move.effect.duration).toFixed(3)} s · f
+                {Math.round(
+                  (segment.depart + k.at * move.effect.duration) * fps,
+                )}
+              </button>
+              <ScrubNumber
+                title={settingHelp(`Key ${i + 1} time`)}
+                aria-description={settingHelp(`Key ${i + 1} time`)}
+                aria-label={`Key ${i + 1} time`}
+                min={0}
+                max={1}
+                step={0.01}
+                value={k.at}
+                onValueChange={(n) =>
+                  edit("Key time", (p) => {
+                    p.moves[index].effect.keys[channel]![i].at = n;
+                  })
+                }
+              />
+              <ScrubNumber
+                title={settingHelp(`Key ${i + 1} value`)}
+                aria-description={settingHelp(`Key ${i + 1} value`)}
+                aria-label={`Key ${i + 1} value`}
+                min={-10000}
+                max={10000}
+                step={0.1}
+                value={k.value}
+                onValueChange={(n) =>
+                  edit("Key value", (p) => {
+                    p.moves[index].effect.keys[channel]![i].value = n;
+                  })
+                }
+              />
+              <select
+                title={settingHelp(`Key ${i + 1} easing`)}
+                aria-description={settingHelp(`Key ${i + 1} easing`)}
+                aria-label={`Key ${i + 1} easing`}
+                value={k.ease}
+                onChange={(v) =>
+                  edit("Key easing", (p) => {
+                    p.moves[index].effect.keys[channel]![i].ease = v.target
+                      .value as "smooth";
+                  })
+                }
+              >
+                {["smooth", "linear", "soft", "accelerate"].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </select>
+              <button
+                aria-label="Delete key"
+                onClick={() =>
+                  edit("Delete key", (p) => {
+                    p.moves[index].effect.keys[channel]!.splice(i, 1);
+                  })
+                }
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </details>
+      )}
+      <p className="hint">
+        {keys.length
+          ? "The keyed curve overrides this channel. Reset this curve to restore preset motion."
+          : "The dashed curve shows the preset. Your first key keeps the existing motion as editable samples."}
+      </p>
       <button
         className="wide"
-        onClick={() =>
-          edit("Add key", (p) => {
-            const keys = (p.moves[index].effect.keys[channel] ??= []);
-            keys.push({
-              at: keys.length ? Math.min(1, keys.at(-1)!.at + 0.25) : 0,
-              value:
-                channel === "scale" ||
-                channel === "opacity" ||
-                channel === "cameraZoom"
-                  ? 1
-                  : 0,
-              ease: "smooth",
-            });
-          })
+        disabled={
+          keys.length >= 64 && !keys.some((key) => Math.abs(key.at - at) < 1e-6)
         }
+        onClick={addKey}
       >
-        + Add keyframe
+        Key current value at playhead
       </button>
       <button
         className="wide secondary"

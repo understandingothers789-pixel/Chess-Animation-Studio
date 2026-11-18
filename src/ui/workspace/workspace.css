@@ -536,3 +536,31 @@
   min-height: 140px;
   overflow-y: auto;
 }
+
+.preset-actions {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: #19261e;
+  border-bottom: 1px solid #4f694a;
+}
+.preset-actions .hint,
+.preset-actions p {
+  margin: 0;
+}
+.move-timing-marker {
+  position: absolute;
+  top: 1px;
+  z-index: 2;
+  min-width: 0;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: #ffe094;
+  font-size: 10px;
+  line-height: 14px;
+  transform: translateX(-50%);
+}

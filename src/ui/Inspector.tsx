@@ -1,3 +1,6 @@
+import { applyPresetEffect } from "../core/editing";
+import { landingDuration } from "../core/audio";
+import { segments, moveHold, spotlightStart } from "../core/timeline";
 import { focusSetting } from "./focusSetting";
 import { KeyframePanel } from "./keyframes/KeyframePanel";
 import { CurveEditor } from "./keyframes/CurveEditor";
@@ -5,6 +8,7 @@ import { settingHelp } from "./help";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
   effect,
+  uid,
   moveLightDefaults,
   beatSpotlightDefaults,
   camera,
@@ -28,6 +32,11 @@ export function Inspector({
   onCopy,
   onPaste,
   onPreview,
+  loop,
+  onLoop,
+  onBrowsePresets,
+  time,
+  fps,
   previewing,
   previewDisabled,
   onGlobalEffects,
@@ -41,6 +50,11 @@ export function Inspector({
   onCopy: () => void;
   onPaste: () => void;
   onPreview: () => void;
+  loop: boolean;
+  onLoop: (loop: boolean) => void;
+  onBrowsePresets: () => void;
+  time: number;
+  fps: number;
   previewing: boolean;
   previewDisabled: boolean;
   onGlobalEffects: () => void;
@@ -49,6 +63,10 @@ export function Inspector({
   const [tab, setTab] = useState("move"),
     [channel, setChannel] = useState<Channel>("rz"),
     [presetName, setPresetName] = useState("");
+  const [timingNotice, setTimingNotice] = useState<{
+    id: string;
+    text: string;
+  }>();
   const contextualTarget = () => {
     const targets: Record<string, [string, string, string]> = {
       move: ["move", "Movement", "Move preset"],
@@ -205,6 +223,17 @@ export function Inspector({
         >
           {previewing ? "Restore timeline" : "Preview this move"}
         </button>
+        <label>
+          <input
+            type="checkbox"
+            aria-label="Loop move preview"
+            title={settingHelp("Loop move preview")}
+            aria-description={settingHelp("Loop move preview")}
+            checked={loop}
+            onChange={(event) => onLoop(event.target.checked)}
+          />{" "}
+          Loop move preview
+        </label>
         {move.san.includes("x") && (
           <button className="wide" onClick={() => setTab("effects")}>
             Capture selected · Edit capture effects
@@ -273,6 +302,7 @@ export function Inspector({
                     "easing",
                     "axis",
                     "rotation",
+                    "turnSpan",
                     "sway",
                     "cycles",
                     "hop",
@@ -290,18 +320,57 @@ export function Inspector({
                   onChange={(v) =>
                     edit("Apply preset", (p) => {
                       for (const m of targets(p)) {
-                        m.effect = {
-                          ...effect(v),
-                          badge: m.effect.badge,
-                          light: m.effect.light,
-                          jam: m.effect.jam,
-                          cameras: m.effect.cameras,
-                        };
+                        m.effect = applyPresetEffect(
+                          m.effect,
+                          effect(v),
+                          p.format,
+                        );
                       }
                     })
                   }
                 />
-                {range("duration", "Duration", 0.2, 8, 0.05, "s")}
+                <button className="wide" onClick={onBrowsePresets}>
+                  Browse and preview presets
+                </button>
+                {range("duration", "Duration", 0.2, 30, 0.05, "s")}
+                {e.preset === "somersault" && (
+                  <>
+                    <Select
+                      label="Flip direction"
+                      value={e.rotation < 0 ? "reverse" : "forward"}
+                      options={[
+                        ["forward", "Clockwise"],
+                        ["reverse", "Counterclockwise"],
+                      ]}
+                      onChange={(v) =>
+                        edit("Flip direction", (p) =>
+                          each(p, (fx) => {
+                            fx.rotation =
+                              (v === "reverse" ? -1 : 1) *
+                              (Math.abs(fx.rotation) || 360);
+                          }),
+                        )
+                      }
+                    />
+                    {range("hop", "Hop height", 0, 3)}
+                    <Range
+                      label="Flip turn span"
+                      value={e.turnSpan * 100}
+                      min={20}
+                      max={100}
+                      step={1}
+                      unit="%"
+                      mixed={mixed((fx) => fx.turnSpan)}
+                      resetValue={100}
+                      onChange={(v) => change("turnSpan", v / 100)}
+                    />
+                    <p className="hint">
+                      A shorter turn span spins faster without changing the
+                      landing time.
+                    </p>
+                    {range("landing", "Landing phase", 0.25, 0.98)}
+                  </>
+                )}
                 {range("intensity", "Intensity", 0, 2)}
                 <Select
                   label="Easing"
@@ -328,7 +397,8 @@ export function Inspector({
                   {range("rotation", "Rotation", -720, 720, 5, "°")}
                   {range("sway", "Sway angle", 0, 45, 1, "°")}
                   {range("cycles", "Sway cycles", 0.5, 6, 0.5)}
-                  {range("hop", "Hop height", 0, 3)}
+                  {e.preset !== "somersault" &&
+                    range("hop", "Hop height", 0, 3)}
                   {range("scale", "Maximum size", 1, 3)}
                   {range("path", "Curved path", -3, 3)}
                   {range("overshoot", "Overshoot", 0, 0.3)}
@@ -350,7 +420,8 @@ export function Inspector({
               >
                 {range("delay", "Departure delay", 0, 10, 0.05, "s")}
                 {range("hold", "Hold after move", 0, 10, 0.05, "s")}
-                {range("landing", "Landing phase", 0.25, 0.98)}
+                {e.preset !== "somersault" &&
+                  range("landing", "Landing phase", 0.25, 0.98)}
                 {range("settle", "Settle window", 0.01, 0.5)}
                 {range("peak", "Size peak phase", 0.1, 0.95)}
                 <Toggle
@@ -361,8 +432,7 @@ export function Inspector({
                 />
                 <Select
                   label="Landing beat"
-                  value={e.landingBeat ?? ""}
-                  mixed={mixed((v) => v.landingBeat)}
+                  value={move.effect.landingBeat ?? ""}
                   options={[
                     ["", "Automatic / none"],
                     ...project.beats
@@ -375,8 +445,53 @@ export function Inspector({
                           ] as [string, string],
                       ),
                   ]}
-                  onChange={(v) => change("landingBeat", v || null)}
+                  disabled={move.effect.locked}
+                  onChange={(v) => {
+                    const segment = segments(project)[index];
+                    const marker = project.beats.find(
+                      (b) => b.id === v && b.enabled,
+                    );
+                    const duration = marker
+                      ? landingDuration(
+                          move.effect,
+                          segment.depart,
+                          marker.time,
+                        )
+                      : null;
+                    if (v && duration === null) {
+                      setTimingNotice({
+                        id: move.id,
+                        text: "This beat is outside the reachable timing for this move.",
+                      });
+                      return;
+                    }
+                    edit("Set landing beat", (draft) => {
+                      const fx = draft.moves[index].effect;
+                      fx.landingBeat = v || null;
+                      if (duration !== null) fx.duration = duration;
+                    });
+                    const delta =
+                      duration === null
+                        ? 0
+                        : duration +
+                          moveHold({ ...move.effect, duration }) -
+                          move.effect.duration -
+                          moveHold(move.effect);
+                    setTimingNotice({
+                      id: move.id,
+                      text: marker
+                        ? `Lands at ${marker.time.toFixed(3)} s. Later moves shift by ${delta >= 0 ? "+" : ""}${delta.toFixed(3)} s.`
+                        : "Landing beat cleared.",
+                    });
+                  }}
                 />
+                <p className="hint">
+                  Landing beat applies to {move.san} at{" "}
+                  {segments(project)[index].land.toFixed(3)} s.
+                </p>
+                {timingNotice?.id === move.id && (
+                  <p role="status">{timingNotice.text}</p>
+                )}
               </Section>
               <label className="text-field">
                 Preset name
@@ -391,10 +506,11 @@ export function Inspector({
               </label>
               <button
                 className="wide"
-                disabled={!presetName.trim()}
+                disabled={!presetName.trim() || project.presets.length >= 100}
                 onClick={() => {
                   edit("Save preset", (p) => {
                     p.presets.push({
+                      id: uid(),
                       name: presetName.trim(),
                       effect: structuredClone(e),
                     });
@@ -709,11 +825,12 @@ export function Inspector({
                   className="wide"
                   title="Hold on the moved piece and add beat-synced zoom, rocking, glow, colors and sparkles to every selected move."
                   onClick={() =>
-                    change("jam", {
-                      ...beatSpotlightDefaults,
-                      enabled: true,
-                      rhythm: "swell",
-                    })
+                    edit("Apply beat spotlight", (p) =>
+                      each(p, (fx) => {
+                        fx.jam.enabled = true;
+                        fx.jam.rhythm = "swell";
+                      }),
+                    )
                   }
                 >
                   Apply beat spotlight
@@ -732,12 +849,29 @@ export function Inspector({
                   }
                 />
                 <p className="hint">
-                  Runs after the move finishes. Reserves{" "}
-                  {e.jam.duration.toFixed(1)} seconds before the next move when
-                  enabled; disabling it restores the ordinary hold.
+                  {e.jam.enabled
+                    ? `Starts at ${spotlightStart(move.effect, segments(project)[index]).toFixed(3)} s. Hold after motion: ${moveHold(move.effect).toFixed(2)} s.`
+                    : "Add beat-synced framing and optional lighting."}
                 </p>
                 {e.jam.enabled && (
                   <>
+                    <Select
+                      label="Spotlight start"
+                      value={e.jam.start}
+                      options={[
+                        ["finish", "After the move"],
+                        ["landing", "Lead into landing"],
+                      ]}
+                      disabled={selectedEffects.every((fx) => fx.locked)}
+                      mixed={mixed((fx) => fx.jam.start)}
+                      onChange={(v) =>
+                        edit("Spotlight start", (p) =>
+                          each(p, (fx) => {
+                            fx.jam.start = v;
+                          }),
+                        )
+                      }
+                    />
                     <Select
                       label="Beat zoom rhythm"
                       value={e.jam.rhythm}
@@ -771,94 +905,138 @@ export function Inspector({
                         )
                       }
                     />
-                    <Color
-                      label="Spotlight primary color"
-                      value={e.jam.primary}
-                      mixed={mixed((v) => v.jam.primary)}
+                    <Range
+                      label="Beat zoom amount"
+                      value={e.jam.zoom}
+                      min={0}
+                      max={2}
+                      resetValue={beatSpotlightDefaults.zoom}
+                      mixed={mixed((fx) => fx.jam.zoom)}
                       onChange={(v) =>
-                        edit("Spotlight color", (p) =>
-                          each(p, (e) => {
-                            e.jam.primary = v;
+                        edit("Spotlight zoom", (p) =>
+                          each(p, (fx) => {
+                            fx.jam.zoom = v;
                           }),
                         )
                       }
                     />
-                    <Color
-                      label="Spotlight secondary color"
-                      value={e.jam.secondary}
-                      mixed={mixed((v) => v.jam.secondary)}
+                    {e.jam.rhythm === "swell" &&
+                      (["attack", "release"] as const).map((k) => (
+                        <Range
+                          key={k}
+                          label={
+                            k === "attack" ? "Zoom ease in" : "Zoom ease out"
+                          }
+                          value={e.jam[k]}
+                          min={0.01}
+                          max={k === "attack" ? 1 : 2}
+                          unit="s"
+                          resetValue={beatSpotlightDefaults[k]}
+                          mixed={mixed((fx) => fx.jam[k])}
+                          onChange={(v) =>
+                            edit("Spotlight " + k, (p) =>
+                              each(p, (fx) => {
+                                fx.jam[k] = v;
+                              }),
+                            )
+                          }
+                        />
+                      ))}
+                    <Range
+                      label="Spotlight duration"
+                      value={e.jam.duration}
+                      min={0.6}
+                      max={8}
+                      unit="s"
+                      disabled={selectedEffects.every((fx) => fx.locked)}
+                      resetValue={beatSpotlightDefaults.duration}
+                      mixed={mixed((fx) => fx.jam.duration)}
                       onChange={(v) =>
-                        edit("Spotlight color 2", (p) =>
-                          each(p, (e) => {
-                            e.jam.secondary = v;
+                        edit("Spotlight duration", (p) =>
+                          each(p, (fx) => {
+                            fx.jam.duration = v;
                           }),
                         )
                       }
                     />
-                    {(
-                      [
-                        "duration",
-                        "bpm",
-                        "offset",
-                        "zoom",
-                        "roll",
-                        "focus",
-                        "colorEvery",
-                        "colorStrength",
-                        "glow",
-                        "particles",
-                        "shake",
-                        "blur",
-                        "flash",
-                        "desaturate",
-                        "vignette",
-                      ] as const
-                    ).map((k) => (
-                      <Range
-                        key={k}
-                        label={
-                          {
-                            duration: "Spotlight duration",
-                            bpm: "Spotlight BPM",
-                            offset: "Spotlight beat offset",
-                            zoom: "Beat zoom amount",
-                            roll: "Beat camera rock",
-                            focus: "Spotlight focus",
-                            colorEvery: "Beats per color",
-                            colorStrength: "Beat color strength",
-                            glow: "Spotlight glow",
-                            particles: "Spotlight sparkles",
-                            shake: "Beat shake",
-                            blur: "Beat zoom blur",
-                            flash: "Beat light flash",
-                            desaturate: "Spotlight desaturation",
-                            vignette: "Spotlight vignette",
-                          }[k]
+                    <details>
+                      <summary>Advanced spotlight settings</summary>
+                      <Color
+                        label="Spotlight primary color"
+                        value={e.jam.primary}
+                        mixed={mixed((v) => v.jam.primary)}
+                        onChange={(v) =>
+                          edit("Spotlight color", (p) =>
+                            each(p, (e) => {
+                              e.jam.primary = v;
+                            }),
+                          )
                         }
-                        disabled={
-                          k === "duration" &&
-                          selectedEffects.every((v) => v.locked)
+                      />
+                      <Color
+                        label="Spotlight secondary color"
+                        value={e.jam.secondary}
+                        mixed={mixed((v) => v.jam.secondary)}
+                        onChange={(v) =>
+                          edit("Spotlight color 2", (p) =>
+                            each(p, (e) => {
+                              e.jam.secondary = v;
+                            }),
+                          )
                         }
-                        value={e.jam[k]}
-                        mixed={mixed((v) => v.jam[k])}
-                        min={
-                          k === "duration"
-                            ? 0.6
-                            : k === "bpm"
+                      />
+                      {(
+                        [
+                          "bpm",
+                          "offset",
+                          "roll",
+                          "focus",
+                          "colorEvery",
+                          "colorStrength",
+                          "glow",
+                          "particles",
+                          "shake",
+                          "blur",
+                          "flash",
+                          "desaturate",
+                          "vignette",
+                        ] as const
+                      ).map((k) => (
+                        <Range
+                          key={k}
+                          label={
+                            {
+                              bpm: "Spotlight BPM",
+                              offset: "Spotlight beat offset",
+                              roll: "Beat camera rock",
+                              focus: "Spotlight focus",
+                              colorEvery: "Beats per color",
+                              colorStrength: "Beat color strength",
+                              glow: "Spotlight glow",
+                              particles: "Spotlight sparkles",
+                              shake: "Beat shake",
+                              blur: "Beat zoom blur",
+                              flash: "Beat light flash",
+                              desaturate: "Spotlight desaturation",
+                              vignette: "Spotlight vignette",
+                            }[k]
+                          }
+                          value={e.jam[k]}
+                          mixed={mixed((v) => v.jam[k])}
+                          min={
+                            k === "bpm"
                               ? 40
                               : k === "offset"
                                 ? -1
                                 : k === "colorEvery"
                                   ? 1
                                   : 0
-                        }
-                        max={
-                          k === "duration" || k === "colorEvery"
-                            ? 8
-                            : k === "bpm"
-                              ? 300
-                              : k === "zoom"
-                                ? 2
+                          }
+                          max={
+                            k === "colorEvery"
+                              ? 8
+                              : k === "bpm"
+                                ? 300
                                 : k === "roll"
                                   ? 30
                                   : k === "particles"
@@ -874,31 +1052,32 @@ export function Inspector({
                                             : k === "vignette"
                                               ? 0.8
                                               : 1
-                        }
-                        step={
-                          ["bpm", "colorEvery", "particles"].includes(k)
-                            ? 1
-                            : 0.01
-                        }
-                        resetValue={beatSpotlightDefaults[k]}
-                        unit={
-                          k === "duration" || k === "offset"
-                            ? "s"
-                            : k === "roll"
-                              ? "°"
-                              : k === "bpm"
-                                ? "BPM"
-                                : ""
-                        }
-                        onChange={(v) =>
-                          edit("Spotlight " + k, (p) =>
-                            each(p, (e) => {
-                              e.jam[k] = v;
-                            }),
-                          )
-                        }
-                      />
-                    ))}
+                          }
+                          step={
+                            ["bpm", "colorEvery", "particles"].includes(k)
+                              ? 1
+                              : 0.01
+                          }
+                          resetValue={beatSpotlightDefaults[k]}
+                          unit={
+                            k === "offset"
+                              ? "s"
+                              : k === "roll"
+                                ? "°"
+                                : k === "bpm"
+                                  ? "BPM"
+                                  : ""
+                          }
+                          onChange={(v) =>
+                            edit("Spotlight " + k, (p) =>
+                              each(p, (e) => {
+                                e.jam[k] = v;
+                              }),
+                            )
+                          }
+                        />
+                      ))}
+                    </details>
                   </>
                 )}
               </Section>
@@ -1289,16 +1468,18 @@ export function Inspector({
             </>
           </div>
         }
-        {
-          <div data-inspector-tab="keys" hidden={tab !== "keys"}>
+        {tab === "keys" && (
+          <div data-inspector-tab="keys">
             <KeyframePanel
               project={project}
               index={index}
               edit={edit}
               seek={seek}
+              time={time}
+              fps={fps}
             />
           </div>
-        }
+        )}
       </div>
     </aside>
   );

@@ -28,8 +28,9 @@ const modes: Record<string, Partial<Layout>> = {
     hideLeft: false,
     hideRight: false,
     hideTimeline: false,
-    right: 430,
-    timeline: 190,
+    left: 245,
+    right: 340,
+    timeline: 130,
   },
   Storyboard: {
     hideLeft: false,

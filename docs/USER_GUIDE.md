@@ -12,6 +12,16 @@ Use Camera for per-format framing. Route includes the endpoints, Follow tracks t
 
 Give a refined effect a preset name in Move, then save it. Copy/Paste transfers the settings category you choose between moves. Undo/redo covers project edits. Changing overall move duration preserves normalized key times and shifts subsequent moves. Music offsets remain fixed unless edited.
 
+## Tune a move
+
+Select a move and open **Browse and preview presets**. Click a card to audition the move. **Show original** compares the same timeline position. Turn on **Loop move preview** in the inspector to repeat the move. Apply to the active move, checked moves, or all moves. The default applies movement while keeping timing, camera, effects, and existing keys. **Replace all settings** also applies the preset's timing and look. Timing locks still protect locked moves.
+
+For **Piece flip**, use **Hop height**, **Flip direction**, and **Flip turn span** to adjust the somersault. Choose an enabled marker in **Landing beat** to retime the active move. The inspector reports the landing time and the shift to subsequent moves. Under **Effects → Beat spotlight**, choose **Lead into landing** to bring the zoom in around the same cue. The smooth rhythm exposes zoom amount and ease times. Open **Advanced spotlight settings** for lighting, color, shake, and particles.
+
+The selected move's departure, landing, and spotlight cues appear on the timeline. The playhead snaps to frame-independent cue times, including enabled beats. Frame stepping follows the rate in the export dialog. Under **Keys**, the dashed curve shows the preset. **Key current value at playhead** creates an editable curve sampled from the preset on first use. The key list shows move-relative seconds and the output frame number.
+
+Save a tuned move under **Preset name**. In Presets, select a saved preset to update it from the active move, or download it as JSON and import it in another project. Use the **Effects** workspace if you need more room for the preview.
+
 ## Contextual editing and hover menus
 
 Right-click a move, camera clip, effect clip, annotation, or music/beat lane for commands that apply to that object. Hover a submenu arrow for a side-opening flyout; the parent stays highlighted. Click also opens it. Arrow keys navigate, Right opens a child, Left returns, Enter chooses, and Escape closes. Shift+F10 opens the focused clip's menu. On constrained layouts, Back returns to the previous level.

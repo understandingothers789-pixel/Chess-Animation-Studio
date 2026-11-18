@@ -8,20 +8,24 @@ export function CurveEditor({
   channel,
   edit,
   seek,
+  base,
+  label,
 }: {
   project: Project;
   index: number;
   channel: Channel;
   edit: Edit;
   seek?: (time: number) => void;
+  base: number[];
+  label: string;
 }) {
   const keys = project.moves[index].effect.keys[channel] ?? [],
     [selected, select] = useState(0),
     drag = useRef<number | null>(null),
     clipboard = useRef<Key[] | null>(null);
   const fallback = ["scale", "opacity", "cameraZoom"].includes(channel) ? 1 : 0;
-  const low = Math.min(0, ...keys.map((k) => k.value)) - 0.25,
-    high = Math.max(1, ...keys.map((k) => k.value)) + 0.25;
+  const low = Math.min(0, ...base, ...keys.map((k) => k.value)) - 0.25,
+    high = Math.max(1, ...base, ...keys.map((k) => k.value)) + 0.25;
   const bounds = useRef({ low, high });
   if (drag.current === null) bounds.current = { low, high };
   const y = (value: number) =>
@@ -50,7 +54,7 @@ export function CurveEditor({
   return (
     <div className="curve-editor">
       <p className="hint">
-        {channel} · 0–{project.moves[index].effect.duration.toFixed(2)}s ·
+        {label} · 0–{project.moves[index].effect.duration.toFixed(2)}s ·
         double-click to add · select a point, then Delete
       </p>
       <svg
@@ -60,10 +64,16 @@ export function CurveEditor({
         onDoubleClick={(e) => {
           const k = point(e);
           edit("Add curve point", (p) => {
-            (p.moves[index].effect.keys[channel] ??= []).push({
-              ...k,
-              ease: "smooth",
-            });
+            const keys = (p.moves[index].effect.keys[channel] ??= base.map(
+              (value, i) => ({
+                at: i / (base.length - 1),
+                value,
+                ease: "linear" as const,
+              }),
+            ));
+            const existing = keys.find((key) => Math.abs(key.at - k.at) < 1e-6);
+            if (existing) existing.value = k.value;
+            else if (keys.length < 64) keys.push({ ...k, ease: "smooth" });
           });
           select(keys.length);
         }}
@@ -94,7 +104,19 @@ export function CurveEditor({
             </text>
           </g>
         ))}
-        <path d={path} fill="none" stroke="#b5da8c" strokeWidth="2" />
+        <polyline
+          points={base
+            .map(
+              (value, i) => `${30 + (i / (base.length - 1)) * 350},${y(value)}`,
+            )
+            .join(" ")}
+          fill="none"
+          stroke="#b0c3ab"
+          strokeDasharray="4 4"
+        />
+        {keys.length > 0 && (
+          <path d={path} fill="none" stroke="#b5da8c" strokeWidth="2" />
+        )}
         {keys.map((k, i) => (
           <circle
             key={i}

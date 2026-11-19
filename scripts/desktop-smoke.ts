@@ -643,6 +643,7 @@ try {
   await page
     .getByLabel("Spotlight beat source", { exact: true })
     .selectOption("bpm");
+  await page.getByText("Advanced spotlight settings", { exact: true }).click();
   await page.getByLabel("Spotlight BPM value", { exact: true }).fill("120");
   assert.ok(
     +(await page

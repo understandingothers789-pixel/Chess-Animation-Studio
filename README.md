@@ -1,6 +1,8 @@
-# Chess Animation Studio · 0.2.35
+# Chess Animation Studio · 0.2.37
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
+
+Version **0.2.37** lets you loop and compare presets on the selected move, apply movement on its own, and fine-tune the piece flip and beat zoom. Align a move's landing to a beat, inspect the preset curve, and add keyframes at the playhead. Save edited presets and share them as JSON. See the [0.2.37 release notes](docs/releases/0.2.37.md).
 
 Version **0.2.35** adds one-click captions, a clickable timed transcript and short phrase generation (five words by default). Import SRT/VTT/word JSON, or use **Captions & transcript → Automatic transcription → Set up local transcription** on Windows x64. Setup downloads verified open-source Whisper tools and a small English model from GitHub once; recognition stays local. Click words to seek, correct timings, then generate editable captions for Full Game or Storyboard and MP4 export. See the [caption guide and validation](docs/captions-035/REPORT.md).
 
@@ -27,6 +29,8 @@ Right-click a timeline clip, or click the **⋯** on its track header, to open i
 Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.37 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/44589754460/artifacts/14564298816).** Sign in to GitHub to download `Chess-Animation-Studio-0.2.37-Windows-Portable.zip`, then extract all files and open `Chess Animation Studio.exe`. The visual comparison, Windows launch, packaged editing, save and reopen, MP4 export, and local transcription checks passed for `8ba0585`. The executable is unsigned, so Windows Smart App Control may still block it. The artifact expires February 17, 2027.
 
 **[Download 0.2.35 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/actions/runs/43776756948/artifacts/14187317185).** Adds one-click captions, clickable timed transcripts, short phrase generation and optional local Whisper transcription with verified GitHub setup. The full visual gate, Windows build, unit tests, packaged editing/save/open/export/cancellation, one-click Whisper setup and real speech recognition passed for source `c6089fb`. GitHub sign-in is required; the artifact is retained for 90 days. See the [caption guide](docs/captions-035/REPORT.md).
 

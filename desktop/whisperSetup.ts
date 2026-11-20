@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { spawn } from "node:child_process";
+import extract from "extract-zip";
 const engineUrl =
   "https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.2/whisper-bin-x64.zip";
 const engineHash =
@@ -76,41 +76,8 @@ export async function installWhisper(root: string, signal?: AbortSignal) {
       signal,
     );
     if (signal?.aborted) throw Error("Whisper setup cancelled.");
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn(
-        "powershell.exe",
-        [
-          "-NoProfile",
-          "-NonInteractive",
-          "-Command",
-          "Expand-Archive -LiteralPath $env:STUDIO_WHISPER_ZIP -DestinationPath $env:STUDIO_WHISPER_DIR -Force",
-        ],
-        {
-          windowsHide: true,
-          stdio: "ignore",
-          env: {
-            ...process.env,
-            STUDIO_WHISPER_ZIP: zip,
-            STUDIO_WHISPER_DIR: unpacked,
-          },
-        },
-      );
-      const abort = () => child.kill();
-      signal?.addEventListener("abort", abort, { once: true });
-      child.on("error", reject);
-      child.on("close", (code) => {
-        signal?.removeEventListener("abort", abort);
-        signal?.aborted
-          ? reject(Error("Whisper setup cancelled."))
-          : code === 0
-            ? resolve()
-            : reject(
-                Error(
-                  "Unable to extract Whisper. Choose an installed executable and model instead.",
-                ),
-              );
-      });
-    });
+    await extract(zip, { dir: unpacked });
+    if (signal?.aborted) throw Error("Whisper setup cancelled.");
     if (!(await find(unpacked)))
       throw Error("Downloaded archive does not contain whisper-cli.exe.");
     if (signal?.aborted) throw Error("Whisper setup cancelled.");

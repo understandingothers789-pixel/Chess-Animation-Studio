@@ -31,12 +31,13 @@
   },
   "dependencies": {
     "chess.js": "1.4.0",
+    "d3-contour": "4.0.2",
+    "extract-zip": "2.0.1",
+    "lucide-react": "0.468.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "three": "0.180.0",
-    "zod": "4.1.12",
-    "d3-contour": "4.0.2",
-    "lucide-react": "0.468.0"
+    "zod": "4.1.12"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

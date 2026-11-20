@@ -1,12 +1,14 @@
-# Chess Animation Studio · 0.2.38
+# Chess Animation Studio · 0.2.39
 
 A local desktop editor for chess videos. Import a PGN/FEN, play an animated first draft, refine individual moves, align landings to music, and render an MP4. Built with Electron, React, TypeScript, Three.js, chess.js, and FFmpeg.
 
-Current editor source and the editing guide are on [architecture/effect-compositor](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/tree/architecture/effect-compositor). Version 0.2.38 adds a wider preset library, a selected-move effect picker, beat alignment proposals and preset categories. The earlier 0.1 source and [validation record](docs/VALIDATION.md) are available on this branch.
+Current editor source and the editing guide are on [architecture/effect-compositor](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/tree/architecture/effect-compositor). Version 0.2.39 keeps new spins and flips at normal piece size and lets you tune how smoothly larger pieces return to normal. Open Move frames to inspect departure, mid-move, landing, and settled frames directly beneath the board. The earlier 0.1 source and [validation record](docs/VALIDATION.md) are available on this branch.
 
 ![Earlier version 0.1 editor](docs/images/editor.png)
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.39 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.39/Chess-Animation-Studio-0.2.39-Windows-x64.zip?download=1).** Extract all files and open `Chess Animation Studio.exe`. The executable is unsigned.
 
 **[Download Chess Animation Studio 0.2.38 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.38/Chess-Animation-Studio-0.2.38-Windows-x64.zip?download=1).** Extract all files and open `Chess Animation Studio.exe`. Includes the wider animation library, effect picker, editable flip-and-zoom recipe, preview speed, landing proposals and reusable preset categories. The executable is unsigned.
 

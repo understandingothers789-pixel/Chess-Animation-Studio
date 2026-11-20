@@ -1,0 +1,39 @@
+name: Publish validated Windows downloads
+on:
+  push:
+    branches: [publish/windows-downloads]
+    paths: [.github/workflows/publish-validated-downloads.yml]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '0.2.37'
+            artifact: '14564298816'
+            digest: eee5d11f2577f37f47beb3f90b3e25e12f703df895d3d953a374e0c021a31252
+            commit: 8ba05859be49b96a1d88d8e68f588e47feaa448c
+          - version: '0.2.34'
+            artifact: '14176469371'
+            digest: e11e44c5219473d2410f037b32dd2d1e340199e1fd8e6d402896fb177e4e9cda
+            commit: 7a42263f10a616c50086b6a585775ecc6cab692f
+    steps:
+      - name: Verify and publish the existing Windows ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ matrix.version }}
+          ARTIFACT: ${{ matrix.artifact }}
+          DIGEST: ${{ matrix.digest }}
+          SOURCE: ${{ matrix.commit }}
+        run: |
+          zip="Chess-Animation-Studio-$VERSION-Windows-x64.zip"
+          gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT/zip" > "$zip"
+          echo "$DIGEST  $zip" | sha256sum --check
+          unzip -p "$zip" BUILD.json | jq -e --arg version "$VERSION" --arg source "$SOURCE" '.appVersion == $version and .sourceCommit == $source and .buildArch == "x64"'
+          sha256sum "$zip" > "$zip.sha256"
+          gh release create "studio-v$VERSION" "$zip" "$zip.sha256" --target "$SOURCE" --title "Chess Animation Studio $VERSION for Windows (x64)" --notes "Previously validated Windows x64 portable build. Extract the ZIP and open Chess Animation Studio.exe. The executable is unsigned."

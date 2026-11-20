@@ -9,7 +9,12 @@ import {
   type Effect,
   type Project,
 } from "../../core/project";
-import { applyPresetEffect } from "../../core/editing";
+import { personalPresets, storePersonalPreset } from "./personalLibrary";
+import {
+  applyPresetEffect,
+  type SettingsKind,
+  settingsKinds,
+} from "../../core/editing";
 import { presetLabels } from "./catalog";
 import type { Edit } from "../state";
 const descriptions: Record<string, string> = {
@@ -51,7 +56,12 @@ export function PresetBrowser({
   index: number;
   checked: Set<string>;
   edit: Edit;
-  onPreview: (e: Effect, replaceAll: boolean) => void;
+  onPreview: (
+    e: Effect,
+    replaceAll: boolean,
+    kind?: SettingsKind,
+    preserveKeys?: boolean,
+  ) => void;
   previewActive: boolean;
   before: boolean;
   onBefore: (before: boolean) => void;
@@ -68,7 +78,9 @@ export function PresetBrowser({
       preference("studio.presetRecent"),
     ),
     [filter, setFilter] = useState("all"),
-    [replaceAll, setReplaceAll] = useState(false);
+    [replaceAll, setReplaceAll] = useState(false),
+    [kind, setKind] = useState<SettingsKind>("movement"),
+    [preserveKeys, setPreserveKeys] = useState(true);
   const items = [
     ...presets.map((id) => ({
       id,
@@ -76,6 +88,7 @@ export function PresetBrowser({
       effect: effect(id),
       description: descriptions[id],
       custom: -1,
+      kind: "movement" as SettingsKind,
     })),
     ...p.presets.map((v, i) => ({
       id: presetId(p, i),
@@ -83,6 +96,7 @@ export function PresetBrowser({
       effect: v.effect,
       description: "Your saved animation.",
       custom: i,
+      kind: v.kind ?? "movement",
     })),
   ];
   const targets =
@@ -131,6 +145,45 @@ export function PresetBrowser({
           </select>
         </label>
         <label>
+          Apply category{" "}
+          <select
+            aria-label="Preset settings category"
+            title="Choose the settings category to preview and apply to the target moves."
+            aria-description="Choose the settings category to preview and apply to the target moves."
+            value={kind}
+            onChange={(event) => {
+              const next = event.target.value as SettingsKind;
+              setKind(next);
+              if (selected && previewActive)
+                onPreview(selected.effect, replaceAll, next, preserveKeys);
+            }}
+          >
+            {settingsKinds.map((k) => (
+              <option key={k}>{k}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={!replaceAll && preserveKeys}
+            title="Keep custom keyframes that may override the chosen preset channels."
+            aria-description="Keep custom keyframes that may override the chosen preset channels."
+            disabled={replaceAll}
+            onChange={(event) => {
+              setPreserveKeys(event.target.checked);
+              if (selected && previewActive)
+                onPreview(
+                  selected.effect,
+                  replaceAll,
+                  kind,
+                  event.target.checked,
+                );
+            }}
+          />{" "}
+          Keep existing custom curves
+        </label>
+        <label>
           <input
             type="checkbox"
             aria-label="Replace all settings"
@@ -140,15 +193,20 @@ export function PresetBrowser({
             onChange={(event) => {
               setReplaceAll(event.target.checked);
               if (selected && previewActive)
-                onPreview(selected.effect, event.target.checked);
+                onPreview(
+                  selected.effect,
+                  event.target.checked,
+                  kind,
+                  preserveKeys,
+                );
             }}
           />{" "}
           Replace all settings
         </label>
         <p className="hint">
           {replaceAll
-            ? "Replace animation, camera, effects and unlocked timing."
-            : "Apply movement and keep timing, camera, effects and custom keys."}
+            ? "Replace animation, camera, effects, custom curves and unlocked timing."
+            : `Apply ${kind}. ${preserveKeys ? "Existing custom curves are kept and may override the preset." : "Replace curves in this category."} Timing locks are respected.`}
         </p>
         {previewActive && selected && (
           <>
@@ -183,6 +241,8 @@ export function PresetBrowser({
                       selected.effect,
                       p.format,
                       replaceAll,
+                      kind,
+                      preserveKeys,
                     );
               });
               const next = [
@@ -219,26 +279,34 @@ export function PresetBrowser({
                 aria-pressed={chosen === v.id}
                 onClick={() => {
                   choose(v.id);
-                  onPreview(v.effect, replaceAll);
+                  setKind(v.kind);
+                  onPreview(v.effect, replaceAll, v.kind, preserveKeys);
                 }}
               >
-                <svg viewBox="0 0 140 65" aria-hidden="true">
-                  <path d="M12 50H128" stroke="#56735a" strokeWidth="2" />
-                  <g className={`preset-motion motion-${v.effect.preset}`}>
-                    <circle cx="25" cy="38" r="11" fill="#d5e8bd" />
-                    <path d="M19 38H31M25 32V44" stroke="#233c2b" />
-                  </g>
-                  <circle
-                    cx="115"
-                    cy="38"
-                    r="13"
-                    fill="none"
-                    stroke="#94b47b"
-                    strokeDasharray="3 3"
-                  />
-                </svg>
+                {v.custom < 0 && (
+                  <svg viewBox="0 0 140 65" aria-hidden="true">
+                    <path d="M12 50H128" stroke="#56735a" strokeWidth="2" />
+                    <g className={`preset-motion motion-${v.effect.preset}`}>
+                      <text x="12" y="48" fontSize="32" fill="#d5e8bd">
+                        ♞
+                      </text>
+                    </g>
+                    <circle
+                      cx="115"
+                      cy="38"
+                      r="13"
+                      fill="none"
+                      stroke="#94b47b"
+                      strokeDasharray="3 3"
+                    />
+                  </svg>
+                )}
                 <strong>{v.name}</strong>
-                <small>{v.description}</small>
+                <small>
+                  {v.custom >= 0
+                    ? `Saved ${v.kind} · select to preview actual settings on the board`
+                    : v.description}
+                </small>
               </button>
               <button
                 aria-label={`Favorite ${v.name}`}
@@ -291,6 +359,7 @@ export function PresetBrowser({
           onClick={() =>
             edit("Update preset from move", (draft) => {
               assignPresetIds(draft);
+              draft.presets[selected.custom].kind = kind;
               draft.presets[selected.custom].effect = structuredClone(
                 draft.moves[index].effect,
               );
@@ -308,7 +377,11 @@ export function PresetBrowser({
             new Blob(
               [
                 JSON.stringify(
-                  { name: selected.name, effect: selected.effect },
+                  {
+                    name: selected.name,
+                    effect: selected.effect,
+                    kind,
+                  },
                   null,
                   2,
                 ),
@@ -341,7 +414,16 @@ export function PresetBrowser({
             try {
               if (file.size > 1000000 || p.presets.length >= 100)
                 throw Error("Preset file or library exceeds its limit.");
-              const { name, effect: source } = JSON.parse(await file.text());
+              const {
+                name,
+                effect: source,
+                kind: importedKind,
+              } = JSON.parse(await file.text());
+              if (
+                importedKind !== undefined &&
+                !settingsKinds.includes(importedKind)
+              )
+                throw Error("Invalid settings category");
               if (typeof name !== "string" || !name.trim())
                 throw Error("The preset name is missing.");
               const imported = effectSchema.parse(source);
@@ -351,6 +433,7 @@ export function PresetBrowser({
                     id: uid(),
                     name: name.trim().slice(0, 100),
                     effect: imported,
+                    kind: importedKind,
                   });
               });
               report("Preset imported.");
@@ -362,6 +445,47 @@ export function PresetBrowser({
           }}
         />
       </label>
+      <details>
+        <summary>Personal preset library · this computer</summary>
+        <button
+          disabled={!selected}
+          onClick={() => {
+            if (selected) {
+              try {
+                storePersonalPreset({
+                  id: uid(),
+                  name: selected.name,
+                  effect: selected.effect,
+                  kind,
+                });
+                report("Saved to personal library.");
+              } catch {
+                report(
+                  "Could not save personal library. Download the preset to keep a copy.",
+                );
+              }
+            }
+          }}
+        >
+          Save selected to personal library
+        </button>
+        <button
+          onClick={() => {
+            const saved = personalPresets();
+            edit("Import personal presets", (draft) => {
+              for (const v of saved)
+                if (
+                  draft.presets.length < 100 &&
+                  !draft.presets.some((p) => p.id === v.id)
+                )
+                  draft.presets.push(structuredClone(v));
+            });
+            report("Personal presets copied into this project.");
+          }}
+        >
+          Load personal presets into project
+        </button>
+      </details>
       <button
         disabled={!selected || p.presets.length >= 100}
         onClick={() => {
@@ -371,6 +495,7 @@ export function PresetBrowser({
                 id: uid(),
                 name: (selected.name + " copy").slice(0, 100),
                 effect: structuredClone(selected.effect),
+                kind,
               });
             });
         }}

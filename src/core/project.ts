@@ -834,6 +834,9 @@ export const projectSchema = z.object({
         id: z.string().optional(),
         name: z.string().max(100),
         effect: effectSchema,
+        kind: z
+          .enum(["movement", "camera", "effects", "timing", "everything"])
+          .optional(),
       }),
     )
     .max(100),

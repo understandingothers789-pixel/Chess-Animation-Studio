@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { editableSamples } from "../../core/curveSamples";
 import { curve, clamp, segments } from "../../core/timeline";
 import type { Key, Project, Channel } from "../../core/project";
 import type { Edit } from "../state";
@@ -10,6 +11,7 @@ export function CurveEditor({
   seek,
   base,
   label,
+  playhead = 0,
 }: {
   project: Project;
   index: number;
@@ -18,11 +20,16 @@ export function CurveEditor({
   seek?: (time: number) => void;
   base: number[];
   label: string;
+  playhead?: number;
 }) {
   const keys = project.moves[index].effect.keys[channel] ?? [],
     [selected, select] = useState(0),
     drag = useRef<number | null>(null),
     clipboard = useRef<Key[] | null>(null);
+  useEffect(() => {
+    select(0);
+    drag.current = null;
+  }, [project.moves[index].id, channel]);
   const fallback = ["scale", "opacity", "cameraZoom"].includes(channel) ? 1 : 0;
   const low = Math.min(0, ...base, ...keys.map((k) => k.value)) - 0.25,
     high = Math.max(1, ...base, ...keys.map((k) => k.value)) + 0.25;
@@ -63,19 +70,26 @@ export function CurveEditor({
         aria-label={`${channel} animation curve`}
         onDoubleClick={(e) => {
           const k = point(e);
+          let chosenIndex = 0;
           edit("Add curve point", (p) => {
-            const keys = (p.moves[index].effect.keys[channel] ??= base.map(
-              (value, i) => ({
-                at: i / (base.length - 1),
-                value,
-                ease: "linear" as const,
-              }),
-            ));
+            const keys = (p.moves[index].effect.keys[channel] ??=
+              editableSamples(
+                base,
+                channel.startsWith("r") ||
+                  channel === "cameraRotation" ||
+                  channel === "cameraTilt"
+                  ? 0.25
+                  : 0.002,
+              ));
             const existing = keys.find((key) => Math.abs(key.at - k.at) < 1e-6);
             if (existing) existing.value = k.value;
             else if (keys.length < 64) keys.push({ ...k, ease: "smooth" });
+            chosenIndex = Math.max(
+              0,
+              keys.findIndex((key) => Math.abs(key.at - k.at) < 1e-6),
+            );
           });
-          select(keys.length);
+          select(chosenIndex);
         }}
         onPointerMove={(e) => {
           if (drag.current === null) return;
@@ -100,10 +114,15 @@ export function CurveEditor({
           <g key={t}>
             <path d={`M${30 + t * 350},15V150`} stroke="#344c3c" />
             <text x={30 + t * 350} y={171} fill="#b0c3ab" fontSize="10">
-              {t}
+              {(t * project.moves[index].effect.duration).toFixed(2)}s
             </text>
           </g>
         ))}
+        <path
+          d={`M${30 + playhead * 350},15V150`}
+          stroke="#f6d38b"
+          aria-label="Curve playhead"
+        />
         <polyline
           points={base
             .map(
@@ -191,7 +210,10 @@ export function CurveEditor({
           disabled={!keys.length}
           onClick={() =>
             edit("Delete curve point", (p) => {
-              p.moves[index].effect.keys[channel]?.splice(selected, 1);
+              p.moves[index].effect.keys[channel]?.splice(
+                Math.min(selected, keys.length - 1),
+                1,
+              );
             })
           }
         >

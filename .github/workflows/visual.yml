@@ -33,6 +33,8 @@ jobs:
           export CHROMIUM_PATH=$(node --input-type=module -e "import {chromium} from '@playwright/test'; console.log(chromium.executablePath())")
           git worktree add --detach "$RUNNER_TEMP/visual-reference" 9fcf3f54913ac1a27560a61e0db8e80abb998dd5
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
+          node --import tsx scripts/customization-ui-smoke.ts
+          node --import tsx scripts/customization-render-smoke.ts
           npm run test:timeline
           npm run test:storyboard
           npm run test:finishing
@@ -52,6 +54,8 @@ jobs:
         with:
           name: Chromium-visual-evidence
           path: |
+            test-results/customization/
+            test-results/customization-render/
             test-results/storyboard-render/
             test-results/finishing-render/
             test-results/composition-render/

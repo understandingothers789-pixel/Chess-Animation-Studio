@@ -468,6 +468,18 @@ export function ShotInspector({
       )}
       {s.kind !== "title-card" && (
         <Section title="Shot presentation">
+          <p>
+            Animation ·{" "}
+            {s.preset === "inherit"
+              ? "Inherited from source moves"
+              : "Local to this shot"}
+            . Camera ·{" "}
+            {s.camera ? "Local to this shot" : "Inherited from source moves"}.
+          </p>
+          <p>
+            Use Open source move for detailed effects. Source edits affect every
+            shot that inherits those settings.
+          </p>
           {s.kind === "move-range" && (
             <Select
               label="Shot animation"

@@ -1,3 +1,4 @@
+import { editableSamples } from "../../core/curveSamples";
 import { useMemo, useState } from "react";
 import { clamp, moveChannelSampler, segments } from "../../core/timeline";
 import { channels, type Channel, type Project } from "../../core/project";
@@ -5,7 +6,7 @@ import type { Edit } from "../state";
 import { Section, Select, ScrubNumber } from "../controls";
 import { settingHelp } from "../help";
 import { CurveEditor } from "./CurveEditor";
-const channelNames: Record<Channel, string> = {
+export const channelNames: Record<Channel, string> = {
   travel: "Travel",
   x: "Piece X",
   y: "Piece Y",
@@ -59,11 +60,14 @@ export function KeyframePanel({
       const e = p.moves[index].effect;
       const next =
         e.keys[channel] ??
-        base.map((value, i) => ({
-          at: i / 32,
-          value,
-          ease: "linear" as const,
-        }));
+        editableSamples(
+          base,
+          channel.startsWith("r") ||
+            channel === "cameraRotation" ||
+            channel === "cameraTilt"
+            ? 0.25
+            : 0.002,
+        );
       const existing = next.find((key) => Math.abs(key.at - at) < 1e-6);
       if (existing) existing.value = value;
       else if (next.length < 64) next.push({ at, value, ease: "linear" });
@@ -73,7 +77,7 @@ export function KeyframePanel({
   }
   return (
     <Section
-      title="Normalized keyframes"
+      title="Keyframes · active move"
       onReset={() =>
         edit("Reset curve channels", (p) => {
           p.moves[index].effect.keys = {};
@@ -81,8 +85,9 @@ export function KeyframePanel({
       }
     >
       <p className="hint">
-        Key times run from 0 to 1 within this move. Duration edits preserve the
-        curve. Rotation values use degrees; positions use board squares.
+        Key times run from 0 to 1 within this move. The graph labels show
+        seconds. Duration edits preserve the curve. Rotation values use degrees;
+        positions use board squares.
       </p>
       <button
         onClick={() =>
@@ -105,6 +110,20 @@ export function KeyframePanel({
           can add zoom, pan, and roll after this curve.
         </p>
       )}
+      <p>
+        Playhead {(at * move.effect.duration).toFixed(3)} s · frame{" "}
+        {Math.round(time * fps)} ·{" "}
+        {channel.includes("Rotation") ||
+        channel.startsWith("r") ||
+        channel === "cameraTilt"
+          ? "degrees"
+          : channel === "scale" ||
+              channel === "cameraZoom" ||
+              channel === "opacity" ||
+              channel === "travel"
+            ? "ratio"
+            : "board squares"}
+      </p>
       <CurveEditor
         project={project}
         index={index}
@@ -113,6 +132,7 @@ export function KeyframePanel({
         edit={edit}
         base={base}
         label={channelNames[channel]}
+        playhead={at}
       />
       {keys.length > 0 && (
         <details>
@@ -136,12 +156,13 @@ export function KeyframePanel({
                 aria-description={settingHelp(`Key ${i + 1} time`)}
                 aria-label={`Key ${i + 1} time`}
                 min={0}
-                max={1}
-                step={0.01}
-                value={k.at}
+                max={move.effect.duration}
+                step={1 / fps}
+                value={k.at * move.effect.duration}
                 onValueChange={(n) =>
                   edit("Key time", (p) => {
-                    p.moves[index].effect.keys[channel]![i].at = n;
+                    p.moves[index].effect.keys[channel]![i].at =
+                      n / p.moves[index].effect.duration;
                   })
                 }
               />
@@ -192,7 +213,7 @@ export function KeyframePanel({
       <p className="hint">
         {keys.length
           ? "The keyed curve overrides this channel. Reset this curve to restore preset motion."
-          : "The dashed curve shows the preset. Your first key keeps the existing motion as editable samples."}
+          : "The dashed curve shows the preset. Your first key creates a reduced editable curve within 0.25° or 0.002 board units at sampled times."}
       </p>
       <button
         className="wide"

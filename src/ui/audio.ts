@@ -27,7 +27,12 @@ export class AudioPlayer {
     // the selected music is playing.
     this.buffers.delete(id);
   }
-  async play(p: Project, time: number, mode: PlaybackMode = "source") {
+  async play(
+    p: Project,
+    time: number,
+    mode: PlaybackMode = "source",
+    rate = 1,
+  ) {
     const outputEnd = presentationDuration(p, mode);
     this.stop();
     await this.context.resume();
@@ -45,6 +50,7 @@ export class AudioPlayer {
       const source = this.context.createBufferSource(),
         gain = this.context.createGain();
       source.buffer = b;
+      if (source.playbackRate) source.playbackRate.value = rate;
       const master = this.context.createGain(),
         fadeOutGain = this.context.createGain();
       const duck = this.context.createGain();
@@ -59,7 +65,7 @@ export class AudioPlayer {
         .connect(duck)
         .connect(this.context.destination);
       const offset = musicAt(p, time),
-        start = origin + Math.max(0, -(time - m.offset)),
+        start = origin + Math.max(0, -(time - m.offset)) / rate,
         trimEnd = musicEnd(p, b.duration, outputEnd),
         sourceStart = Math.max(m.trimStart, offset),
         length = Math.min(trimEnd, b.duration) - sourceStart;
@@ -74,13 +80,13 @@ export class AudioPlayer {
             if (point.time > outputStart && point.time <= outputEnd)
               duck.gain.linearRampToValueAtTime(
                 point.value,
-                start + point.time - outputStart,
+                start + (point.time - outputStart) / rate,
               );
         // If output ends in a ramp, schedule its interpolated endpoint too.
         if (mode === "storyboard")
           duck.gain.linearRampToValueAtTime(
             storyboardDuckGain(p, outputEnd),
-            start + outputEnd - outputStart,
+            start + (outputEnd - outputStart) / rate,
           );
 
         const elapsed = Math.max(0, time - m.offset);
@@ -89,15 +95,21 @@ export class AudioPlayer {
           start,
         );
         if (m.fadeIn > elapsed)
-          gain.gain.linearRampToValueAtTime(1, start + m.fadeIn - elapsed);
+          gain.gain.linearRampToValueAtTime(
+            1,
+            start + (m.fadeIn - elapsed) / rate,
+          );
         fadeOutGain.gain.setValueAtTime(
           m.fadeOut ? Math.min(1, length / m.fadeOut) : 1,
           start,
         );
         if (m.fadeOut && length > m.fadeOut)
-          fadeOutGain.gain.setValueAtTime(1, start + length - m.fadeOut);
+          fadeOutGain.gain.setValueAtTime(
+            1,
+            start + (length - m.fadeOut) / rate,
+          );
         if (m.fadeOut)
-          fadeOutGain.gain.linearRampToValueAtTime(0, start + length);
+          fadeOutGain.gain.linearRampToValueAtTime(0, start + length / rate);
         source.start(start, sourceStart, length);
         this.sources.push(source);
       }
@@ -110,13 +122,14 @@ export class AudioPlayer {
       );
       const offset = cue.offset + Math.max(0, time - cue.at);
       if (cue.end <= time || offset >= duration) continue;
-      const at = origin + Math.max(0, cue.at - time),
+      const at = origin + Math.max(0, cue.at - time) / rate,
         volume = cue.volume * p.audio[cue.bus],
         buffer = this.buffers.get(cue.asset ?? "");
       if (buffer) {
         const s = this.context.createBufferSource(),
           g = this.context.createGain();
         s.buffer = buffer;
+        if (s.playbackRate) s.playbackRate.value = rate;
         g.gain.value = volume;
         s.connect(g).connect(this.context.destination);
         const length = Math.min(
@@ -137,14 +150,14 @@ export class AudioPlayer {
           Math.max(
             at + 0.001,
             Math.min(
-              at + (cue.kind === "capture" ? 0.16 : 0.075),
-              origin + cue.end - time,
+              at + (cue.kind === "capture" ? 0.16 : 0.075) / rate,
+              origin + (cue.end - time) / rate,
             ),
           ),
         );
         osc.connect(g).connect(this.context.destination);
         osc.start(at);
-        osc.stop(Math.min(at + 0.2, origin + cue.end - time));
+        osc.stop(Math.min(at + 0.2 / rate, origin + (cue.end - time) / rate));
         this.sources.push(osc);
       }
     }

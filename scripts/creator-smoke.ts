@@ -133,6 +133,9 @@ try {
   await page.getByTitle("Undo", { exact: true }).click();
   assert.equal(await state(), initial);
   console.log("passed presets");
+  await page
+    .getByRole("button", { name: "Close animation library", exact: true })
+    .click();
   const clip = page
     .getByRole("slider", { name: "Duration of e4", exact: true })
     .first();
@@ -155,12 +158,14 @@ try {
     .click();
   await shot("curve-editor");
   const curve = page.locator(".curve-editor svg");
-  const cr = await curve.boundingBox();
+  let cr = await curve.boundingBox();
   const beforeCurve = await state();
   const point = page.getByRole("button", {
     name: "Curve point 2",
     exact: true,
   });
+  await point.scrollIntoViewIfNeeded();
+  cr = await curve.boundingBox();
   const pb = await point.boundingBox();
   await page.mouse.move(pb!.x + pb!.width / 2, pb!.y + pb!.height / 2);
   await page.mouse.down();

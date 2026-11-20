@@ -174,3 +174,15 @@ The enabled transition automatically reserves at least **Spotlight duration** se
 Adjust duration, zoom punch, camera rock/focus/shake, primary/secondary colors, beats per color, color strength, glow, sparkle amount, zoom blur, light flash, desaturation and vignette. Zero disables an individual visual component. All controls have tooltips and numeric resets; the group Reset turns the transition off. These edits work across selected moves and support Undo. Normal playback, presentation, backward seeks and export evaluate the same project time. Shorts framing focuses on the selected piece during this effect and keeps its surrounding bars unchanged.
 
 The zoom blur uses five samples of the freshly rendered frame rather than previous-frame history, so seeking does not leave stale trails. Included in version 0.2.9.
+
+## Version 0.2.38 editing workflow
+
+Select a move, then choose **Add animation or effect**. **Flip + smooth beat zoom** applies editable movement and spotlight settings. The scope count describes the selected moves. Timing locks protect timing changes. Expand **Active effects** for editing, removal, resets and beat-zoom/light switches. Custom-curve notices identify channels that override presets and offer a channel-specific restore action.
+
+The wider animation library docks beside the canvas. Select a card to preview its settings on the board. Choose the settings category and whether to keep custom curves before Apply. **Replace all settings** replaces curves too. Built-in cards show illustrative movement icons; the main board previews the actual settings. Loop, playback speed and Original/Edited comparison are beside playback. Speed changes audio pitch along with playback rate and affects preview only.
+
+Under Move, expand **Align landing** to propose a nearest, previous or next reachable music beat. Adjust the offset in seconds, review the proposed landing and downstream shift, then Apply. A nonzero offset stores the resulting duration without claiming an exact beat assignment. Existing beat assignments that drift after earlier edits appear beside playback for review.
+
+Save a preset with its settings category, or choose an existing preset to update from the active move. In the library, save a selected preset to **Personal preset library** and load those copies into other projects on this computer. Download JSON for transfer or backup. Project-contained presets keep their settings when shared.
+
+New curves use a reduced sample set within a tolerance at the sampled times. Existing curves stay intact. Key times show seconds, with frame numbers and channel units. Clearing keys edits the active move. Storyboard labels show inherited versus local animation and camera settings. **Open source move** opens detailed effects; **Return to storyboard shot** returns to the selected shot. Source changes affect shots inheriting that move.

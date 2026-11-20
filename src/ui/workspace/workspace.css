@@ -564,3 +564,155 @@
   line-height: 14px;
   transform: translateX(-50%);
 }
+
+/* Dock the library beside the canvas while reserving space for the apply controls. */
+.workspace.flexible:has(.preset-drawer) {
+  grid-template-columns: minmax(360px, 480px) 6px minmax(260px, 1fr) 0 0;
+}
+.workspace:has(.preset-drawer) > .inspector-host,
+.workspace:has(.preset-drawer) > .splitter:nth-child(4) {
+  visibility: hidden;
+  overflow: hidden;
+}
+.preset-drawer {
+  overflow: auto;
+  background: #18291e;
+  padding: 8px;
+}
+.preset-drawer .panel-context,
+.library:has(.preset-drawer) .settings-search {
+  display: none;
+}
+.preset-close {
+  display: block;
+  margin-bottom: 8px;
+}
+.preset-browser {
+  display: flex;
+  flex-direction: column;
+}
+.preset-browser > * {
+  order: 4;
+}
+.preset-browser > input {
+  order: 0;
+}
+.preset-browser > .button-row {
+  order: 1;
+}
+.preset-drawer .animation-grid {
+  order: 2;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  max-height: min(300px, 35vh);
+  overflow: auto;
+  flex-shrink: 0;
+}
+.preset-drawer .animation-card {
+  min-height: 110px;
+}
+.preset-drawer .preset-actions {
+  order: 3;
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 8px;
+  max-height: 230px;
+  overflow: auto;
+  flex-shrink: 0;
+  background: #18291e;
+}
+.preset-drawer .preset-actions > label {
+  flex: 1 1 180px;
+}
+.preset-drawer .preset-actions > .button-row {
+  order: -1;
+  flex: 1 0 100%;
+  position: sticky;
+  top: 0;
+  background: #18291e;
+  padding: 4px 0;
+}
+.preset-drawer .preset-actions .hint {
+  margin: 2px 0;
+}
+.library:has(.preset-drawer) .library-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 4px;
+  gap: 2px;
+}
+.library:has(.preset-drawer) .library-tabs button {
+  width: auto;
+  min-width: 32px;
+  padding: 6px;
+}
+.library:has(.preset-drawer) .library-tabs button span {
+  display: none;
+}
+.workspace:has(.preset-drawer) .studio > .timeline {
+  height: 130px !important;
+  flex: 0 1 130px;
+  min-height: 90px;
+}
+.workspace:has(.preset-drawer) .studio .preview-area {
+  min-height: 240px;
+}
+.inspector-title {
+  padding: 8px 16px;
+}
+.inspector-title h2 {
+  margin: 4px 0;
+}
+.inspector-title .hint {
+  margin: 4px 0;
+}
+.effect-picker {
+  padding: 8px 16px;
+  border-bottom: 1px solid #344c3c;
+  flex-shrink: 0;
+}
+.effect-picker [role="region"] {
+  display: grid;
+  gap: 5px;
+  max-height: 260px;
+  overflow: auto;
+}
+.effect-picker summary {
+  cursor: pointer;
+  padding: 7px 0;
+}
+.key-override {
+  color: #f6d38b;
+}
+.key-override[open] {
+  max-height: 160px;
+  overflow: auto;
+}
+.preview-edit-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 10px;
+}
+@media (max-width: 1000px) {
+  .workspace.flexible:has(.preset-drawer) {
+    grid-template-columns: minmax(300px, 40%) 6px minmax(260px, 1fr) 0 0;
+  }
+}
+@media (max-height: 800px) {
+  .composition-bar {
+    padding-block: 3px;
+  }
+  .workspace-bar {
+    padding-block: 4px;
+  }
+  .viewport-tools {
+    gap: 4px;
+    padding-block: 4px;
+  }
+  .viewport-status {
+    display: none;
+  }
+}

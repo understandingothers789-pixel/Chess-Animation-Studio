@@ -1,4 +1,10 @@
-import { applyPresetEffect } from "../core/editing";
+import { BeatAlignment } from "./BeatAlignment";
+import { EffectPicker } from "./EffectPicker";
+import {
+  applyPresetEffect,
+  type SettingsKind,
+  settingsKinds,
+} from "../core/editing";
 import { landingDuration } from "../core/audio";
 import { segments, moveHold, spotlightStart } from "../core/timeline";
 import { focusSetting } from "./focusSetting";
@@ -31,14 +37,9 @@ export function Inspector({
   edit,
   onCopy,
   onPaste,
-  onPreview,
-  loop,
-  onLoop,
   onBrowsePresets,
   time,
   fps,
-  previewing,
-  previewDisabled,
   onGlobalEffects,
   seek,
 }: {
@@ -49,20 +50,17 @@ export function Inspector({
   edit: Edit;
   onCopy: () => void;
   onPaste: () => void;
-  onPreview: () => void;
-  loop: boolean;
-  onLoop: (loop: boolean) => void;
   onBrowsePresets: () => void;
   time: number;
   fps: number;
-  previewing: boolean;
-  previewDisabled: boolean;
   onGlobalEffects: () => void;
   seek?: (time: number) => void;
 }) {
   const [tab, setTab] = useState("move"),
     [channel, setChannel] = useState<Channel>("rz"),
-    [presetName, setPresetName] = useState("");
+    [presetName, setPresetName] = useState(""),
+    [presetKind, setPresetKind] = useState<SettingsKind>("movement"),
+    [updatePreset, setUpdatePreset] = useState("");
   const [timingNotice, setTimingNotice] = useState<{
     id: string;
     text: string;
@@ -135,7 +133,7 @@ export function Inspector({
     mixed(get)
       ? "Mixed"
       : JSON.stringify(get(e)) === JSON.stringify(get(effect(e.preset)))
-        ? "Enabled"
+        ? "Default"
         : "Customized";
   const range = (
     key:
@@ -212,28 +210,9 @@ export function Inspector({
           <small>{presetLabels[move.effect.preset]}</small>
         </h2>
         <p className="hint">
-          {selectionCount} move{selectionCount > 1 ? "s" : ""} selected ·
-          Animation, effects and camera use this selection. Keys use the active
-          move.
+          {selectionCount} move{selectionCount > 1 ? "s" : ""} selected · keys
+          edit the active move.
         </p>
-        <button
-          className="wide primary"
-          disabled={previewDisabled}
-          onClick={onPreview}
-        >
-          {previewing ? "Restore timeline" : "Preview this move"}
-        </button>
-        <label>
-          <input
-            type="checkbox"
-            aria-label="Loop move preview"
-            title={settingHelp("Loop move preview")}
-            aria-description={settingHelp("Loop move preview")}
-            checked={loop}
-            onChange={(event) => onLoop(event.target.checked)}
-          />{" "}
-          Loop move preview
-        </label>
         {move.san.includes("x") && (
           <button className="wide" onClick={() => setTab("effects")}>
             Capture selected · Edit capture effects
@@ -257,6 +236,15 @@ export function Inspector({
           </div>
         </details>
       </div>
+      <EffectPicker
+        project={project}
+        index={index}
+        checked={checked}
+        edit={edit}
+        browse={onBrowsePresets}
+        inspect={setTab}
+        global={onGlobalEffects}
+      />
       <nav className="tabs">
         {["move", "effects", "camera", "keys"].map((t) => (
           <button
@@ -404,6 +392,7 @@ export function Inspector({
                   {range("overshoot", "Overshoot", 0, 0.3)}
                 </Section>
               </Section>
+              <BeatAlignment project={project} index={index} edit={edit} />
               <Section
                 title="Timing & landing"
                 onReset={() =>
@@ -493,6 +482,22 @@ export function Inspector({
                   <p role="status">{timingNotice.text}</p>
                 )}
               </Section>
+              <label>
+                Save settings{" "}
+                <select
+                  aria-label="Save preset category"
+                  title="Choose which settings this reusable preset applies."
+                  aria-description="Choose which settings this reusable preset applies."
+                  value={presetKind}
+                  onChange={(e) =>
+                    setPresetKind(e.target.value as SettingsKind)
+                  }
+                >
+                  {settingsKinds.map((k) => (
+                    <option key={k}>{k}</option>
+                  ))}
+                </select>
+              </label>
               <label className="text-field">
                 Preset name
                 <input
@@ -513,12 +518,46 @@ export function Inspector({
                       id: uid(),
                       name: presetName.trim(),
                       effect: structuredClone(e),
+                      kind: presetKind,
                     });
                   });
                   setPresetName("");
                 }}
               >
                 Save as reusable preset
+              </button>
+              <label>
+                Update saved preset
+                <select
+                  aria-label="Saved preset to update"
+                  title="Choose a project preset to replace with the active move settings."
+                  aria-description="Choose a project preset to replace with the active move settings."
+                  value={updatePreset}
+                  onChange={(event) => setUpdatePreset(event.target.value)}
+                >
+                  <option value="">Choose saved preset</option>
+                  {project.presets.map((v, i) => (
+                    <option key={v.id ?? i} value={String(i)}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                disabled={
+                  updatePreset === "" || !project.presets[+updatePreset]
+                }
+                onClick={() =>
+                  edit("Update saved preset", (draft) => {
+                    const saved = draft.presets[+updatePreset];
+                    if (saved) {
+                      saved.effect = structuredClone(e);
+                      saved.kind = presetKind;
+                    }
+                  })
+                }
+              >
+                Update saved preset from active move
               </button>
             </>
           </div>
@@ -848,6 +887,12 @@ export function Inspector({
                     )
                   }
                 />
+                <p className="hint">
+                  Beat source ·{" "}
+                  {e.jam.clock !== "bpm" && project.beats.some((b) => b.enabled)
+                    ? "Music markers"
+                    : `BPM grid (${e.jam.bpm} BPM)`}
+                </p>
                 <p className="hint">
                   {e.jam.enabled
                     ? `Starts at ${spotlightStart(move.effect, segments(project)[index]).toFixed(3)} s. Hold after motion: ${moveHold(move.effect).toFixed(2)} s.`

@@ -145,6 +145,7 @@ export function App() {
   } | null>(null);
   const [beforePreset, setBeforePreset] = useState(false);
   const [loopPreview, setLoopPreview] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [fps, setFps] = useState(() => {
     const saved = Number(localStorage.getItem("studio.exportFps"));
     return [24, 30, 60].includes(saved) ? saved : 60;
@@ -505,6 +506,7 @@ export function App() {
         previewProjectRef.current,
         start,
         modeRef.current,
+        playbackSpeed,
       );
       if (!alive) {
         audio.current!.stop();
@@ -512,7 +514,9 @@ export function App() {
       }
       const tick = () => {
         if (!alive) return;
-        const t = start + Math.max(0, (performance.now() - origin) / 1000);
+        const t =
+          start +
+          Math.max(0, ((performance.now() - origin) / 1000) * playbackSpeed);
         if (audition && t >= audition.end) {
           if (loopPreview && audition.loopStart !== undefined) {
             timeRef.current = audition.loopStart;
@@ -546,7 +550,7 @@ export function App() {
       cancelAnimationFrame(raf);
       audio.current?.stop();
     };
-  }, [playing, audition, mode, loopPreview, beforePreset]);
+  }, [playing, audition, mode, loopPreview, beforePreset, playbackSpeed]);
   useEffect(() => {
     audio.current?.updateMusic(p, timeRef.current);
   }, [p.music.volume, p.music.muted, p.music.volumePoints]);
@@ -1111,6 +1115,19 @@ export function App() {
     analysis: AnalysisPanel,
     files: FilesPanel,
   };
+  const misalignedMoves = useMemo(() => {
+    const seq = segments(p);
+    const beats = new Map(
+      p.beats.filter((b) => b.enabled).map((b) => [b.id, b.time]),
+    );
+    return p.moves.flatMap((m, i) =>
+      m.effect.landingBeat &&
+      (!beats.has(m.effect.landingBeat) ||
+        Math.abs(beats.get(m.effect.landingBeat)! - seq[i].land) > 0.02)
+        ? [i]
+        : [],
+    );
+  }, [p]);
   const end = presentationDuration(p, mode),
     progressBusy =
       !!exportProgress &&
@@ -1339,7 +1356,12 @@ export function App() {
           {mode !== "storyboard" && (
             <SettingsSearch navigate={setTab} selectIntro={selectIntro} />
           )}
-          <div className="library-content" hidden={mode === "storyboard"}>
+          <div
+            className={
+              "library-content" + (tab === "presets" ? " preset-drawer" : "")
+            }
+            hidden={mode === "storyboard"}
+          >
             {Object.entries(panels).map(([category, Panel]) => (
               <div
                 key={category}
@@ -1422,54 +1444,64 @@ export function App() {
                     </>
                   )}
                   {category === "presets" ? (
-                    <PresetBrowser
-                      project={p}
-                      index={selected}
-                      checked={checked}
-                      edit={edit}
-                      previewActive={!!activePreset}
-                      report={message}
-                      before={beforePreset}
-                      onBefore={setBeforePreset}
-                      onPreview={(source, replaceAll) => {
-                        const move = p.moves[selected];
-                        if (!move || mode !== "source") return;
-                        const fx = applyPresetEffect(
-                          move.effect,
-                          source,
-                          p.format,
-                          replaceAll,
-                        );
-                        const draft = {
-                          ...p,
-                          moves: p.moves.map((m) =>
-                            m.id === move.id ? { ...m, effect: fx } : m,
-                          ),
-                        };
-                        const segment = movePreviewWindow(draft, selected);
-                        if (!segment) return;
-                        setBeforePreset(false);
-                        setPresetDraft({
-                          project: p,
-                          moveId: move.id,
-                          effect: fx,
-                        });
-                        setAudition({
-                          time: segment.start,
-                          playing: false,
-                          end: segment.end,
-                          loopStart: segment.start,
-                        });
-                        timeRef.current = segment.start;
-                        setTime(segment.start);
-                        setPlaying(true);
-                      }}
-                      onCancel={() => {
-                        setPresetDraft(null);
-                        setBeforePreset(false);
-                        stop();
-                      }}
-                    />
+                    <>
+                      <button
+                        className="preset-close"
+                        onClick={() => setTab("game")}
+                      >
+                        Close animation library
+                      </button>
+                      <PresetBrowser
+                        project={p}
+                        index={selected}
+                        checked={checked}
+                        edit={edit}
+                        previewActive={!!activePreset}
+                        report={message}
+                        before={beforePreset}
+                        onBefore={setBeforePreset}
+                        onPreview={(source, replaceAll, kind, preserveKeys) => {
+                          const move = p.moves[selected];
+                          if (!move || mode !== "source") return;
+                          const fx = applyPresetEffect(
+                            move.effect,
+                            source,
+                            p.format,
+                            replaceAll,
+                            kind,
+                            preserveKeys,
+                          );
+                          const draft = {
+                            ...p,
+                            moves: p.moves.map((m) =>
+                              m.id === move.id ? { ...m, effect: fx } : m,
+                            ),
+                          };
+                          const segment = movePreviewWindow(draft, selected);
+                          if (!segment) return;
+                          setBeforePreset(false);
+                          setPresetDraft({
+                            project: p,
+                            moveId: move.id,
+                            effect: fx,
+                          });
+                          setAudition({
+                            time: segment.start,
+                            playing: false,
+                            end: segment.end,
+                            loopStart: segment.start,
+                          });
+                          timeRef.current = segment.start;
+                          setTime(segment.start);
+                          setPlaying(true);
+                        }}
+                        onCancel={() => {
+                          setPresetDraft(null);
+                          setBeforePreset(false);
+                          stop();
+                        }}
+                      />
+                    </>
                   ) : (
                     Panel && <Panel {...props} />
                   )}
@@ -1676,20 +1708,84 @@ export function App() {
               loading={loadingAudio}
             />
           ) : (
-            <Transport
-              p={p}
-              selected={selected}
-              time={time}
-              end={end}
-              playing={playing}
-              loadingAudio={loadingAudio}
-              select={select}
-              seek={seek}
-              toggle={() => {
-                if (time >= end) setTime(0);
-                setPlaying((v) => !v);
-              }}
-            />
+            <>
+              {shotId && (
+                <button onClick={() => switchMode("storyboard")}>
+                  Return to storyboard shot
+                </button>
+              )}
+              <div className="preview-edit-controls">
+                {misalignedMoves.length > 0 && (
+                  <button
+                    onClick={() => {
+                      select(misalignedMoves[0]);
+                      setInspectorRequest({
+                        section: "move",
+                        version: Date.now(),
+                      });
+                    }}
+                  >
+                    Review {misalignedMoves.length} shifted beat alignment
+                    {misalignedMoves.length === 1 ? "" : "s"}
+                  </button>
+                )}
+                <button
+                  disabled={loadingAudio > 0}
+                  onClick={() => previewMove()}
+                >
+                  {audition ? "Restore timeline" : "Preview this move"}
+                </button>
+                <label>
+                  <input
+                    type="checkbox"
+                    aria-label="Loop selected move"
+                    title="Repeat the selected move preview without changing project timing."
+                    aria-description="Repeat the selected move preview without changing project timing."
+                    checked={loopPreview}
+                    onChange={(e) => setLoopPreview(e.target.checked)}
+                  />{" "}
+                  Loop
+                </label>
+                <label>
+                  Playback speed{" "}
+                  <select
+                    aria-label="Playback speed"
+                    title="Change preview video and audio speed together. Export uses project timing."
+                    aria-description="Change preview video and audio speed together. Export uses project timing."
+                    value={playbackSpeed}
+                    onChange={(e) => setPlaybackSpeed(+e.target.value)}
+                  >
+                    {[0.25, 0.5, 1, 1.5, 2].map((v) => (
+                      <option key={v} value={v}>
+                        {v}×
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {activePreset && (
+                  <button
+                    aria-pressed={beforePreset}
+                    onClick={() => setBeforePreset(!beforePreset)}
+                  >
+                    {beforePreset ? "Show edited" : "Show original"}
+                  </button>
+                )}
+              </div>
+              <Transport
+                p={p}
+                selected={selected}
+                time={time}
+                end={end}
+                playing={playing}
+                loadingAudio={loadingAudio}
+                select={select}
+                seek={seek}
+                toggle={() => {
+                  if (time >= end) setTime(0);
+                  setPlaying((v) => !v);
+                }}
+              />
+            </>
           )}
           <Splitter
             label="Timeline height"
@@ -1864,9 +1960,6 @@ export function App() {
                     checked={checked}
                     index={selected}
                     edit={edit}
-                    onPreview={() => previewMove()}
-                    loop={loopPreview}
-                    onLoop={setLoopPreview}
                     onBrowsePresets={() => {
                       workspace.patch({ hideLeft: false });
                       setTab("presets");
@@ -1874,9 +1967,10 @@ export function App() {
                     time={time}
                     fps={fps}
                     seek={seek}
-                    previewing={!!audition}
-                    previewDisabled={loadingAudio > 0}
-                    onGlobalEffects={() => setTab("effects")}
+                    onGlobalEffects={() => {
+                      workspace.patch({ hideLeft: false });
+                      setTab("effects");
+                    }}
                     onCopy={() => {
                       if (p.moves[selected])
                         clipboard.current = {

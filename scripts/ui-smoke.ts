@@ -91,7 +91,9 @@ try {
       await page.locator(`[data-category="${category}"]`).isVisible(),
       true,
     );
-    await page.screenshot({ path: `docs/ui-refinement/regression/${category}.png` });
+    await page.screenshot({
+      path: `docs/ui-refinement/regression/${category}.png`,
+    });
   }
   assert.equal(
     await page.evaluate(() => JSON.stringify((window as any).__state.project)),
@@ -173,7 +175,7 @@ try {
   await light.locator("summary").click();
   assert.ok((await light.locator("summary").innerText()).includes("Enabled"));
   await page.getByLabel("Seek composition", { exact: true }).fill("0.5");
-  await inspector
+  await page
     .getByRole("button", { name: "Preview this move", exact: true })
     .click();
   await page.waitForFunction(
@@ -186,7 +188,7 @@ try {
         ).value,
       ) > 0.5,
   );
-  await inspector
+  await page
     .getByRole("button", { name: "Preview this move", exact: true })
     .waitFor({ timeout: 20000 });
   assert.equal(
@@ -195,10 +197,10 @@ try {
   );
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.waitForTimeout(100);
-  await inspector
+  await page
     .getByRole("button", { name: "Preview this move", exact: true })
     .click();
-  await inspector
+  await page
     .getByRole("button", { name: "Preview this move", exact: true })
     .waitFor({ timeout: 20000 });
   assert.ok(
@@ -230,7 +232,9 @@ try {
     .evaluate((el) => {
       el.scrollTop = 0;
     });
-  await page.screenshot({ path: "docs/ui-refinement/regression/inspector.png" });
+  await page.screenshot({
+    path: "docs/ui-refinement/regression/inspector.png",
+  });
   await page.setViewportSize({ width: 1100, height: 768 });
   await page.screenshot({ path: "docs/ui-refinement/regression/narrow.png" });
   const timelineHeader = page.locator(".timeline > header");

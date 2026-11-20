@@ -91,15 +91,17 @@ export function applyPresetEffect(
   source: Effect,
   format: Format,
   replaceAll = false,
+  kind: SettingsKind = "movement",
+  preserveKeys = true,
 ) {
   const next = pasteSettings(target, {
     source,
     format,
-    kind: replaceAll ? "everything" : "movement",
+    kind: replaceAll ? "everything" : kind,
   });
-  if (!replaceAll)
+  if (!replaceAll && preserveKeys)
     next.keys = { ...next.keys, ...structuredClone(target.keys) };
-  else if (!target.locked) next.landingBeat = null;
+  if (replaceAll && !target.locked) next.landingBeat = null;
   return next;
 }
 

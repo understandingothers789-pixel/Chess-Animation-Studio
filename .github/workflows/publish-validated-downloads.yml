@@ -36,4 +36,4 @@ jobs:
           grep -Eq "PE32\+.*x86-64" architecture.txt
           unzip -p "$zip" BUILD.json | jq -e --arg version "$VERSION" --arg source "$SOURCE" '.appVersion == $version and .sourceCommit == $source '
           sha256sum "$zip" > "$zip.sha256"
-          gh release create "studio-v$VERSION" "$zip" "$zip.sha256" --target "$SOURCE" --title "Chess Animation Studio $VERSION for Windows (x64)" --notes "Previously validated Windows x64 portable build. Extract the ZIP and open Chess Animation Studio.exe. The executable is unsigned."
+          gh release create "studio-v$VERSION" "$zip" "$zip.sha256" --verify-tag --latest=false --title "Chess Animation Studio $VERSION for Windows (x64)" --notes "Previously validated Windows x64 portable build. Extract the ZIP and open Chess Animation Studio.exe. The executable is unsigned."

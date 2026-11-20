@@ -255,6 +255,14 @@ export function Inspector({
                 `.inspector [data-inspector-tab="${nextTab}"]`,
               ),
               section,
+              (
+                {
+                  Movement: "Move preset",
+                  "Beat spotlight transition": "Beat zoom rhythm",
+                  "Capture impact": "Captured piece exit",
+                  "Move light & flicker": "Move light wash",
+                } as Record<string, string>
+              )[section ?? ""] ?? "Camera framing",
             ),
           );
         }}

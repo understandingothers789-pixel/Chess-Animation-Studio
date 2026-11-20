@@ -18,3 +18,15 @@ export function movePreviewWindow(project: Project, index: number) {
   }
   return { start: segment.start, end: Math.min(duration(project), end) };
 }
+
+/** Each stop is on the authored timeline. The midpoint uses travel time, not the hold. */
+export function moveFrameStops(project: Project, index: number) {
+  const segment = segments(project)[index];
+  if (!segment) return [];
+  return [
+    { label: "Departure", time: segment.depart },
+    { label: "Mid-move", time: (segment.depart + segment.land) / 2 },
+    { label: "Landing", time: segment.land },
+    { label: "Settled", time: segment.finish },
+  ];
+}

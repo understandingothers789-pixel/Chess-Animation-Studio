@@ -11,6 +11,7 @@ import {
   moveHold,
   spotlightStart,
   spotlightPeaks,
+  pieceSizeProfile,
 } from "../core/timeline";
 import { focusSetting } from "./focusSetting";
 import { KeyframePanel } from "./keyframes/KeyframePanel";
@@ -66,6 +67,7 @@ export function Inspector({
     [presetName, setPresetName] = useState(""),
     [presetKind, setPresetKind] = useState<SettingsKind>("movement"),
     [updatePreset, setUpdatePreset] = useState("");
+  const [keyChannel, setKeyChannel] = useState<{ channel: Channel }>();
   const [timingNotice, setTimingNotice] = useState<{
     id: string;
     text: string;
@@ -130,6 +132,9 @@ export function Inspector({
         });
       });
   const selectedEffects = targets(project).map((m) => m.effect);
+  const hasSizeKeys = selectedEffects.some((fx) => fx.keys.scale?.length);
+  const usesImpactSize = (fx: Effect) =>
+    fx.preset === "capture" || fx.preset === "finale";
   const mixed = (get: (v: Effect) => unknown) =>
     selectedEffects.some(
       (v) => JSON.stringify(get(v)) !== JSON.stringify(get(e)),
@@ -318,6 +323,8 @@ export function Inspector({
                     "cycles",
                     "hop",
                     "scale",
+                    "sizeProfile",
+                    "sizeReturn",
                     "path",
                     "overshoot",
                   ])
@@ -410,10 +417,109 @@ export function Inspector({
                   {range("cycles", "Sway cycles", 0.5, 6, 0.5)}
                   {e.preset !== "somersault" &&
                     range("hop", "Hop height", 0, 3)}
-                  {range("scale", "Maximum size", 1, 3)}
                   {range("path", "Curved path", -3, 3)}
                   {range("overshoot", "Overshoot", 0, 0.3)}
                 </Section>
+              </Section>
+              <Section
+                title="Piece size"
+                onReset={() => {
+                  edit("Reset piece size", (p) =>
+                    each(p, (fx) => {
+                      const defaults = effect(fx.preset);
+                      fx.scale = defaults.scale;
+                      fx.peak = defaults.peak;
+                      fx.sizeProfile = defaults.sizeProfile;
+                      fx.sizeReturn = defaults.sizeReturn;
+                      if (usesImpactSize(fx))
+                        fx.capture.grow = defaults.capture.grow;
+                    }),
+                  );
+                }}
+              >
+                <Select
+                  label="Size during move"
+                  value={e.sizeProfile ?? "auto"}
+                  mixed={mixed((fx) => fx.sizeProfile ?? "auto")}
+                  options={[
+                    ["auto", "Automatic"],
+                    ["constant", "Keep normal size"],
+                    ["smooth", "Grow and return smoothly"],
+                    ["original", "Original size curve"],
+                  ]}
+                  onChange={(v) => change("sizeProfile", v)}
+                />
+                {e.sizeProfile === "auto" && (
+                  <p className="hint">
+                    {pieceSizeProfile(e) === "smooth"
+                      ? "This turn returns to normal size by landing."
+                      : "This move follows its original size curve."}
+                  </p>
+                )}
+                {hasSizeKeys && (
+                  <div className="button-row">
+                    <p className="hint">
+                      Custom scale keys control size on this selection.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setKeyChannel({ channel: "scale" });
+                        setTab("keys");
+                      }}
+                    >
+                      Edit scale keys
+                    </button>
+                    <button
+                      onClick={() =>
+                        edit("Restore size profile", (p) =>
+                          each(p, (fx) => {
+                            delete fx.keys.scale;
+                          }),
+                        )
+                      }
+                    >
+                      Use size profile
+                    </button>
+                  </div>
+                )}
+                {(pieceSizeProfile(e) !== "constant" ||
+                  mixed(pieceSizeProfile)) && (
+                  <Range
+                    label="Peak piece size"
+                    value={(usesImpactSize(e) ? e.capture.grow : e.scale) * 100}
+                    mixed={mixed((fx) =>
+                      usesImpactSize(fx) ? fx.capture.grow : fx.scale,
+                    )}
+                    min={100}
+                    max={300}
+                    step={1}
+                    unit="%"
+                    onChange={(value) =>
+                      edit("Peak piece size", (p) =>
+                        each(p, (fx) => {
+                          if (usesImpactSize(fx)) fx.capture.grow = value / 100;
+                          else fx.scale = value / 100;
+                        }),
+                      )
+                    }
+                  />
+                )}
+                {(pieceSizeProfile(e) === "smooth" ||
+                  selectedEffects.some(
+                    (fx) => pieceSizeProfile(fx) === "smooth",
+                  )) && (
+                  <Range
+                    label="Size return span"
+                    value={(e.sizeReturn ?? 0.5) * 100}
+                    mixed={mixed((fx) => fx.sizeReturn ?? 0.5)}
+                    min={10}
+                    max={80}
+                    step={1}
+                    unit="%"
+                    resetValue={50}
+                    onChange={(v) => change("sizeReturn", v / 100)}
+                  />
+                )}
               </Section>
               <BeatAlignment project={project} index={index} edit={edit} />
               <Section
@@ -1543,6 +1649,7 @@ export function Inspector({
         {tab === "keys" && (
           <div data-inspector-tab="keys">
             <KeyframePanel
+              requestedChannel={keyChannel}
               project={project}
               index={index}
               edit={edit}

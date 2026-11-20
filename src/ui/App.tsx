@@ -1,3 +1,4 @@
+import { MoveFrames } from "./preview/MoveFrames";
 import { TranscriptPanel } from "./captions/TranscriptPanel";
 import { quickCaption } from "../core/transcripts";
 import type { Annotation } from "../core/annotations";
@@ -1097,7 +1098,7 @@ export function App() {
       setAudition(null);
       return;
     }
-    const segment = movePreviewWindow(p, index);
+    const segment = movePreviewWindow(previewProject, index);
     if (!segment) return;
     setAudition({ time, playing, end: segment.end, loopStart: segment.start });
     setTime(segment.start);
@@ -1771,6 +1772,18 @@ export function App() {
                   </button>
                 )}
               </div>
+              {!introSelected && (
+                <MoveFrames
+                  project={previewProject}
+                  index={selected}
+                  time={time}
+                  playing={playing}
+                  fps={fps}
+                  port={thumbnailPort}
+                  seek={seek}
+                  revision={assetRevision}
+                />
+              )}
               <Transport
                 p={p}
                 selected={selected}

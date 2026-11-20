@@ -123,6 +123,33 @@ try {
   await page.getByTitle("Undo", { exact: true }).click();
   await page.getByLabel("Playback speed", { exact: true }).selectOption("0.5");
   await page.getByLabel("Playback speed", { exact: true }).selectOption("1");
+  await page
+    .locator(".inspector")
+    .getByRole("button", { name: "move", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Size during move", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Size during move", { exact: true })
+    .selectOption("smooth");
+  await expect(
+    page.getByLabel("Size return span value", { exact: true }),
+  ).toBeVisible();
+  const moveFrames = page.locator(".move-frames");
+  await moveFrames.locator("summary").click();
+  await expect(moveFrames.locator("img")).toHaveCount(4, { timeout: 15000 });
+  await page
+    .getByRole("button", { name: "View landing frame", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "View landing frame", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await moveFrames.locator("summary").click();
+  await page.getByTitle("Undo", { exact: true }).click();
+  console.log(
+    "PASS: packaged size controls and rendered move-frame navigation.",
+  );
   console.log(
     "PASS: packaged effect picker, flip-and-zoom recipe, Undo and preview speed controls.",
   );

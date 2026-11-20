@@ -716,3 +716,66 @@
     display: none;
   }
 }
+
+.move-frames {
+  flex: 0 0 auto;
+  padding: 0 10px;
+  border-top: 1px solid var(--line);
+}
+.move-frames summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+.move-frame-stops {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  max-width: 630px;
+}
+.move-frame-stop {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  text-align: left;
+  gap: 3px;
+  padding: 3px 5px;
+}
+.move-frame-stop img,
+.move-frame-placeholder {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: clamp(36px, 8vh, 72px);
+  object-fit: contain;
+  background: #101913;
+}
+.move-frame-stop span,
+.move-frame-scrub output {
+  font-size: var(--text-meta);
+}
+.move-frame-stop[aria-pressed="true"] {
+  border-color: #f6d38b;
+}
+.move-frame-scrub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 0;
+}
+.move-frame-scrub input {
+  flex: 1;
+  min-width: 25px;
+}
+.move-frames-content p {
+  margin: 4px 0;
+}
+@media (max-width: 1100px) {
+  .move-frame-stop {
+    grid-template-columns: 1fr;
+  }
+  .move-frame-stop span:not(.move-frame-placeholder) {
+    display: none;
+  }
+}
+.workspace .studio:has(.move-frames[open]) > .timeline {
+  flex-basis: 130px;
+}

@@ -96,6 +96,38 @@ try {
   assert.equal(p.moves[0].effect.jam.rhythm, "swell");
   assert.equal(p.moves[0].effect.jam.enabled, true);
   await page.locator('.inspector [data-tab="move"]').click();
+  await expect(
+    page.getByLabel("Size during move", { exact: true }),
+  ).toHaveValue("constant");
+  await page
+    .getByLabel("Size during move", { exact: true })
+    .selectOption("smooth");
+  await page.getByLabel("Peak piece size value", { exact: true }).fill("140");
+  await page.getByLabel("Size return span value", { exact: true }).fill("65");
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const frameStrip = page.locator(".move-frames");
+  await frameStrip.locator("summary").click();
+  await expect(frameStrip.locator("img")).toHaveCount(4, { timeout: 15000 });
+  await page
+    .getByRole("button", { name: "View mid-move frame", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "View mid-move frame", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("button", { name: "Next frame of move", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "View mid-move frame", exact: true }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    page.getByRole("button", { name: "Next frame of move", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: "test-results/customization/move-frames-laptop.png",
+  });
+  await frameStrip.locator("summary").click();
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page
     .getByText("Align landing · active move e4", { exact: true })
     .click();
@@ -146,6 +178,8 @@ try {
     JSON.parse(localStorage.getItem("studio.personalPresets")!),
   );
   assert.equal(saved[0].name, "My flip and zoom");
+  assert.equal(saved[0].effect.sizeProfile, "smooth");
+  assert.equal(saved[0].effect.sizeReturn, 0.65);
   const download = page.waitForEvent("download");
   await page
     .getByRole("button", { name: "Download preset", exact: true })

@@ -165,6 +165,10 @@ export const effectSchema = z.object({
   path: n(-3, 3),
   overshoot: n(0, 0.3),
   scale: n(1, 3),
+  sizeProfile: z
+    .enum(["auto", "constant", "smooth", "original"])
+    .default("auto"),
+  sizeReturn: n(0.1, 0.8).default(0.5),
   peak: n(0.1, 0.95),
   jam: z
     .object({
@@ -280,6 +284,8 @@ export function effect(preset: Preset = "slide"): Effect {
     path: 0,
     overshoot: 0,
     scale: 1,
+    sizeProfile: "auto",
+    sizeReturn: 0.5,
     peak: 0.6,
     jam: { ...beatSpotlightDefaults },
     light: { ...moveLightDefaults },
@@ -338,7 +344,13 @@ export function effect(preset: Preset = "slide"): Effect {
   };
   if (preset === "soft") e.easing = "soft";
   if (preset === "spin")
-    Object.assign(e, { rotation: 360, axis: "y", hop: 0.25, scale: 1.08 });
+    Object.assign(e, {
+      rotation: 360,
+      axis: "y",
+      hop: 0.25,
+      scale: 1.08,
+      sizeProfile: "constant",
+    });
   if (preset === "somersault")
     Object.assign(e, {
       duration: 1.55,
@@ -346,6 +358,7 @@ export function effect(preset: Preset = "slide"): Effect {
       axis: "z",
       hop: 0.52,
       scale: 1.14,
+      sizeProfile: "constant",
       landing: 0.8,
       settle: 0.18,
     });
@@ -356,6 +369,7 @@ export function effect(preset: Preset = "slide"): Effect {
       axis: "y",
       hop: 0.4,
       scale: 1.12,
+      sizeProfile: "constant",
       landing: 0.88,
       settle: 0.12,
     });

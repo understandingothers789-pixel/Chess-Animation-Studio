@@ -97,6 +97,8 @@ export async function phase4Frames() {
   renderer.forceContextLoss();
 
   const p = parseProject(await (await fetch("/samples/Opera.castudio")).json());
+  // Compare cinematic compositing against the original movement profiles.
+  for (const move of p.moves) move.effect.sizeProfile = "original";
   const index = p.moves.findIndex((m) => m.san.includes("x"));
   const impact =
     segments(p)[index].depart +

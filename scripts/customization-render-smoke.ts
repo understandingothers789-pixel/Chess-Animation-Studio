@@ -19,6 +19,9 @@ const e = p.moves[0].effect;
 e.duration = 1;
 e.landing = 0.8;
 e.hold = 0;
+e.sizeProfile = "smooth";
+e.scale = 1.5;
+e.sizeReturn = 0.55;
 e.jam.enabled = true;
 e.jam.rhythm = "swell";
 e.jam.start = "landing";
@@ -65,6 +68,14 @@ const game = buildGame(p),
   mid = evaluate(p, 0.6, game, "landscape"),
   land = evaluate(p, 1, game, "landscape");
 const moved = game.steps[0].pieceId;
+const sizeAt = (time: number) =>
+  evaluate(p, time, game, "landscape").pieces.find(
+    (piece) => piece.id === moved,
+  )!.scale;
+assert.ok(sizeAt(0.56) > 1.45);
+assert.ok(Math.abs(sizeAt(29 / 30) - 1) < 0.01);
+assert.equal(sizeAt(1), 1);
+assert.equal(sizeAt(1.2), 1);
 assert.ok(Math.abs(mid.pieces.find((v) => v.id === moved)!.rz) > 0.2);
 assert.ok(
   Math.abs(Math.sin(land.pieces.find((v) => v.id === moved)!.rz)) < 0.001,
@@ -210,6 +221,8 @@ try {
         fps: 30,
         landing: 1,
         landingFrame: 30,
+        pieceSizeAtLanding: sizeAt(1),
+        pieceSizeBeforeLanding: sizeAt(29 / 30),
         audioDuration: +sound.duration,
         decodedMeanError: error / count,
       },
@@ -222,7 +235,7 @@ try {
     JSON.stringify(p, null, 2),
   );
   console.log(
-    `PASS: ${job.frames} decoded H.264 frames, continuous AAC, upright landing at frame 30 and beat-driven zoom.`,
+    `PASS: ${job.frames} decoded H.264 frames, continuous AAC, smooth size return, upright landing at frame 30 and beat-driven zoom.`,
   );
 } finally {
   await browser?.close();

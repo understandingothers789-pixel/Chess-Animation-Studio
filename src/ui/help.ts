@@ -180,6 +180,12 @@ const help: Record<string, string> = {
   "Sway cycles":
     "Number of rocking cycles. 0.5 makes a single lean and return; 1 rocks both ways.",
   "Hop height": "How far the moving piece lifts above the board.",
+  "Size during move":
+    "Keep the piece at its normal size, add smooth growth before landing, or use the original curve. Custom scale keys take priority.",
+  "Peak piece size":
+    "Normal size is 100%. This sets how large the moving piece can grow at intensity 1.",
+  "Size return span":
+    "Percentage of travel used to ease back to normal size. A longer span starts the return earlier, while the piece reaches normal size at landing.",
   "Maximum size":
     "Largest piece scale during the move. 1 keeps its normal size.",
   "Curved path":

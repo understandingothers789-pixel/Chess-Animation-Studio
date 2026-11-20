@@ -1,5 +1,5 @@
 import { editableSamples } from "../../core/curveSamples";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { clamp, moveChannelSampler, segments } from "../../core/timeline";
 import { channels, type Channel, type Project } from "../../core/project";
 import type { Edit } from "../state";
@@ -30,6 +30,7 @@ export function KeyframePanel({
   seek,
   time,
   fps,
+  requestedChannel,
 }: {
   project: Project;
   index: number;
@@ -37,8 +38,12 @@ export function KeyframePanel({
   seek?: (time: number) => void;
   time: number;
   fps: number;
+  requestedChannel?: { channel: Channel };
 }) {
   const [channel, setChannel] = useState<Channel>("rz");
+  useEffect(() => {
+    if (requestedChannel) setChannel(requestedChannel.channel);
+  }, [requestedChannel]);
   const move = project.moves[index];
   const segment = segments(project)[index];
   const sampleBase = useMemo(

@@ -1,10 +1,11 @@
-import type { Project } from "../../core/project";
+import type { PlaybackMode, Project } from "../../core/project";
 import { compileStoryboard } from "../../core/storyboard";
 export type ThumbnailRenderer = (
   p: Project,
   time: number,
   w: number,
   h: number,
+  mode?: PlaybackMode,
 ) => string | null;
 export type ThumbnailPort = { current: ThumbnailRenderer | null };
 /** One idle queue borrows the existing preview renderer; no per-card WebGL contexts. */

@@ -61,6 +61,32 @@ function movementTravel(e: Effect, u: number) {
   );
 }
 
+export function pieceSizeProfile(e: Effect) {
+  if (e.sizeProfile !== "auto" && e.sizeProfile !== undefined)
+    return e.sizeProfile;
+  return e.rotation !== 0 && e.preset !== "capture" && e.preset !== "finale"
+    ? "smooth"
+    : "original";
+}
+
+function pieceSize(e: Effect, u: number, originalGrowth: number) {
+  const profile = pieceSizeProfile(e);
+  if (profile === "constant") return 1;
+  const maximum =
+    e.preset === "capture" || e.preset === "finale" ? e.capture.grow : e.scale;
+  if (profile === "original")
+    return 1 + Math.max(0, originalGrowth) * (maximum - 1) * e.intensity;
+
+  const travel = clamp(u / e.landing);
+  const returnStart = 1 - (e.sizeReturn ?? 0.5);
+  const peak = Math.min(e.peak, returnStart);
+  const growth =
+    travel <= peak
+      ? ease(travel / peak)
+      : 1 - ease((travel - returnStart) / (1 - returnStart));
+  return 1 + growth * (maximum - 1) * e.intensity;
+}
+
 export function segments(p: Project) {
   let at = p.lead;
   return p.moves.map((m, i) => {
@@ -312,21 +338,8 @@ export function evaluate(
       glow = Math.max(0, growth) * e.capture.glow * e.intensity;
       impact = Math.max(0, 1 - Math.abs(u - e.capture.impact) / 0.13);
     }
-    v.scale = clamp(
-      curve(
-        e.keys.scale,
-        u,
-        1 +
-          Math.max(0, growth) *
-            ((e.preset === "capture" || e.preset === "finale"
-              ? e.capture.grow
-              : e.scale) -
-              1) *
-            e.intensity,
-      ),
-      0.05,
-      4,
-    );
+    const baseSize = e.keys.scale?.length ? 1 : pieceSize(e, u, growth);
+    v.scale = clamp(curve(e.keys.scale, u, baseSize), 0.05, 4);
     v.opacity = clamp(curve(e.keys.opacity, u, 1));
     v.moving = u > 0 && u < 1;
     if (step.promotion && u >= e.landing) v.type = step.promotion;

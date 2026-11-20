@@ -214,7 +214,7 @@ export function Preview({
   }, [generation]);
   useEffect(() => {
     if (!thumbnailPort || !ready) return;
-    thumbnailPort.current = (p, time, w, h) => {
+    thumbnailPort.current = (p, time, w, h, mode = "storyboard") => {
       const current = latest.current,
         s = scene.current,
         c = canvas.current;
@@ -222,7 +222,7 @@ export function Preview({
       const width = c.width,
         height = c.height;
       try {
-        s.render(p, time, w, h, p.format, "storyboard");
+        s.render(p, time, w, h, p.format, mode);
         return c.toDataURL("image/png");
       } finally {
         s.render(

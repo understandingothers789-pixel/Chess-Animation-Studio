@@ -1,6 +1,8 @@
-# Chess Animation Studio · 0.2.38
+# Chess Animation Studio · 0.2.39
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
+
+Version **0.2.39** keeps new spins and flips at normal piece size and lets you tune how smoothly larger pieces return to normal. Open **Move frames** to inspect departure, mid-move, landing, and settled frames directly beneath the board. See the [0.2.39 release notes](docs/releases/0.2.39.md).
 
 Version **0.2.38** adds a wider docked animation library and **Add animation or effect** for selected moves. Choose **Flip + smooth beat zoom**, customize it, loop the result, and save settings by category. Landing proposals show timing changes before Apply. Custom-curve notices, reduced new keyframes and a personal preset library make precise edits easier. See the [0.2.38 release notes](docs/releases/0.2.38.md) and [editing guide](docs/USER_GUIDE.md#version-0238-editing-workflow).
 
@@ -31,6 +33,8 @@ Right-click a timeline clip, or click the **⋯** on its track header, to open i
 Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.39 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.39/Chess-Animation-Studio-0.2.39-Windows-x64.zip?download=1).** Extract all files and open `Chess Animation Studio.exe`. The executable is unsigned.
 
 **[Download Chess Animation Studio 0.2.38 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.38/Chess-Animation-Studio-0.2.38-Windows-x64.zip?download=1).** Extract all files and open `Chess Animation Studio.exe`. Includes the wider animation library, effect picker, editable flip-and-zoom recipe, preview speed, landing proposals and reusable preset categories. The executable is unsigned.
 

@@ -1,0 +1,30 @@
+name: Diagnose Whisper setup on Windows
+on:
+  push:
+    branches: [diagnose/whisper-038]
+    paths: [.github/workflows/diagnose-whisper.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6a39e5ce81c7de3257a5ab3feae7d151d149473d
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - run: npm ci
+      - run: choco install ffmpeg -y --no-progress
+      - run: npm run build
+      - name: Capture setup result and visible errors
+        shell: pwsh
+        run: |
+          $file = 'scripts/transcript-desktop-smoke.ts'
+          $text = [IO.File]::ReadAllText($file)
+          $text = $text.Replace('} finally {', '} finally { const diagnosticPage = await app.firstWindow(); console.log("TRANSCRIPT SETUP DIAGNOSTIC", await diagnosticPage.locator(".transcript-dialog").innerText().catch(() => "Dialog closed"));')
+          [IO.File]::WriteAllText($file, $text)
+          node --import tsx scripts/transcript-desktop-smoke.ts

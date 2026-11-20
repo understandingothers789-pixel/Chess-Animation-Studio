@@ -1,0 +1,35 @@
+name: Publish validated Studio 0.2.39
+on:
+  push:
+    branches: [release/publish-039]
+    paths: [.github/workflows/publish-039.yml]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify validated source and artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE: abf7817153c015632dccd0b10f49c9b538e4f84b
+          RUN: '44807457958'
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$RUN" > run.json
+          jq -e --arg source "$SOURCE" '.head_sha == $source and .status == "completed" and .conclusion == "success"' run.json
+          gh api "repos/$GH_REPO/actions/runs/$RUN/artifacts" > artifacts.json
+          id=$(jq -er '.artifacts[] | select(.name == "Chess-Animation-Studio-0.2.39-Windows-Portable" and .expired == false) | .id' artifacts.json)
+          digest=$(jq -er --argjson id "$id" '.artifacts[] | select(.id == $id) | .digest' artifacts.json)
+          zip=Chess-Animation-Studio-0.2.39-Windows-x64.zip
+          gh api "repos/$GH_REPO/actions/artifacts/$id/zip" > "$zip"
+          echo "${digest#sha256:}  $zip" | sha256sum --check
+          unzip -p "$zip" BUILD.json | jq -e --arg source "$SOURCE" '.appVersion == "0.2.39" and .sourceCommit == $source and .buildArch == "x64" and .sourceDirty == false'
+          sha256sum "$zip" > "$zip.sha256"
+          evidence=$(jq -er '.artifacts[] | select(.name == "Chromium-visual-evidence") | .id' artifacts.json)
+          gh api "repos/$GH_REPO/actions/artifacts/$evidence/zip" > evidence.zip
+          unzip -p evidence.zip test-results/customization-render/piece-flip-beat-zoom.mp4 > piece-flip-beat-zoom.mp4
+          gh release create studio-v0.2.39 "$zip" "$zip.sha256" piece-flip-beat-zoom.mp4 --verify-tag --latest --title "Chess Animation Studio 0.2.39 for Windows (x64)" --notes-file docs/releases/0.2.39.md

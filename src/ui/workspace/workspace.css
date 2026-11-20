@@ -566,11 +566,11 @@
 }
 
 /* Dock the library beside the canvas while reserving space for the apply controls. */
-.workspace.flexible:has(.preset-drawer) {
+.workspace.flexible:not(.left-hidden):has(.preset-drawer) {
   grid-template-columns: minmax(360px, 480px) 6px minmax(260px, 1fr) 0 0;
 }
-.workspace:has(.preset-drawer) > .inspector-host,
-.workspace:has(.preset-drawer) > .splitter:nth-child(4) {
+.workspace:not(.left-hidden):has(.preset-drawer) > .inspector-host,
+.workspace:not(.left-hidden):has(.preset-drawer) > .splitter:nth-child(4) {
   visibility: hidden;
   overflow: hidden;
 }
@@ -650,12 +650,12 @@
 .library:has(.preset-drawer) .library-tabs button span {
   display: none;
 }
-.workspace:has(.preset-drawer) .studio > .timeline {
+.workspace:not(.left-hidden):has(.preset-drawer) .studio > .timeline {
   height: 130px !important;
   flex: 0 1 130px;
   min-height: 90px;
 }
-.workspace:has(.preset-drawer) .studio .preview-area {
+.workspace:not(.left-hidden):has(.preset-drawer) .studio .preview-area {
   min-height: 240px;
 }
 .inspector-title {
@@ -697,7 +697,7 @@
   padding: 5px 10px;
 }
 @media (max-width: 1000px) {
-  .workspace.flexible:has(.preset-drawer) {
+  .workspace.flexible:not(.left-hidden):has(.preset-drawer) {
     grid-template-columns: minmax(300px, 40%) 6px minmax(260px, 1fr) 0 0;
   }
 }

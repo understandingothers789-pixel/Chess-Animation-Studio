@@ -176,6 +176,10 @@ try {
       });
     }
   }
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.locator(".library")).toBeHidden();
+  await expect(page.locator(".inspector-host")).toBeVisible();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page
     .getByRole("button", { name: "Close animation library", exact: true })
     .click();

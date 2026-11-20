@@ -88,6 +88,9 @@ try {
   await page
     .getByRole("button", { name: "Flip + smooth beat zoom", exact: true })
     .click();
+  await expect(
+    page.getByLabel("Beat zoom rhythm", { exact: true }),
+  ).toBeInViewport();
   let p = await state();
   assert.equal(p.moves[0].effect.preset, "somersault");
   assert.equal(p.moves[0].effect.jam.rhythm, "swell");

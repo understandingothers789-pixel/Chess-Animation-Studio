@@ -24,7 +24,7 @@ export function EffectPicker({
   checked: Set<string>;
   edit: Edit;
   browse: () => void;
-  inspect: (tab: string) => void;
+  inspect: (tab: string, section?: string) => void;
   global: () => void;
 }) {
   const [open, setOpen] = useState(false),
@@ -40,6 +40,17 @@ export function EffectPicker({
     edit(label, (draft) => {
       for (const m of draft.moves) if (ids.has(m.id)) fn(m.effect);
     });
+  const sections: Record<string, string> = {
+    "Piece flip": "Movement",
+    "Soft hop": "Movement",
+    Movement: "Movement",
+    "Beat zoom": "Beat spotlight transition",
+    "Flip + smooth beat zoom": "Beat spotlight transition",
+    "Capture dust": "Capture impact",
+    "Light wash": "Move light & flicker",
+    "Follow camera": `Camera · ${p.format}`,
+    Camera: `Camera · ${p.format}`,
+  };
   const items = [
     {
       name: "Piece flip",
@@ -174,7 +185,7 @@ export function EffectPicker({
                 key={v.name}
                 onClick={() => {
                   change("Add " + v.name, v.add);
-                  inspect(v.tab);
+                  inspect(v.tab, sections[v.name]);
                   setOpen(false);
                 }}
               >
@@ -223,7 +234,9 @@ export function EffectPicker({
           .filter((v) => v.on)
           .map((v) => (
             <div className="button-row" key={v.name}>
-              <button onClick={() => inspect(v.tab)}>{v.name}</button>
+              <button onClick={() => inspect(v.tab, sections[v.name])}>
+                {v.name}
+              </button>
               <button
                 aria-label={`Remove ${v.name}`}
                 onClick={() => change("Remove " + v.name, v.reset)}

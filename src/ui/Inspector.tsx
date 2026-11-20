@@ -6,7 +6,12 @@ import {
   settingsKinds,
 } from "../core/editing";
 import { landingDuration } from "../core/audio";
-import { segments, moveHold, spotlightStart } from "../core/timeline";
+import {
+  segments,
+  moveHold,
+  spotlightStart,
+  spotlightPeaks,
+} from "../core/timeline";
 import { focusSetting } from "./focusSetting";
 import { KeyframePanel } from "./keyframes/KeyframePanel";
 import { CurveEditor } from "./keyframes/CurveEditor";
@@ -242,7 +247,17 @@ export function Inspector({
         checked={checked}
         edit={edit}
         browse={onBrowsePresets}
-        inspect={setTab}
+        inspect={(nextTab, section) => {
+          setTab(nextTab);
+          requestAnimationFrame(() =>
+            focusSetting(
+              document.querySelector(
+                `.inspector [data-inspector-tab="${nextTab}"]`,
+              ),
+              section,
+            ),
+          );
+        }}
         global={onGlobalEffects}
       />
       <nav className="tabs">
@@ -889,9 +904,13 @@ export function Inspector({
                 />
                 <p className="hint">
                   Beat source ·{" "}
-                  {e.jam.clock !== "bpm" && project.beats.some((b) => b.enabled)
-                    ? "Music markers"
-                    : `BPM grid (${e.jam.bpm} BPM)`}
+                  {e.jam.enabled
+                    ? (spotlightPeaks(
+                        project,
+                        e,
+                        spotlightStart(e, segments(project)[index]),
+                      )[0]?.clock ?? "No beats within this spotlight")
+                    : "Spotlight off"}
                 </p>
                 <p className="hint">
                   {e.jam.enabled

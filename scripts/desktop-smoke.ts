@@ -111,13 +111,21 @@ try {
   console.log(
     "PASS: packaged hover flyouts, exact duration targeting, and bulk panel cancellation.",
   );
-  await page.getByRole("button", {name:"Add animation or effect",exact:true}).click();
-  await page.getByRole("button", {name:"Flip + smooth beat zoom",exact:true}).click();
-  await expect(page.getByLabel("Beat zoom rhythm",{exact:true})).toHaveValue("swell");
-  await page.getByTitle("Undo",{exact:true}).click();
-  await page.getByLabel("Playback speed",{exact:true}).selectOption("0.5");
-  await page.getByLabel("Playback speed",{exact:true}).selectOption("1");
-  console.log("PASS: packaged effect picker, flip-and-zoom recipe, Undo and preview speed controls.");
+  await page
+    .getByRole("button", { name: "Add animation or effect", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Flip + smooth beat zoom", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Beat zoom rhythm", { exact: true }),
+  ).toHaveValue("swell");
+  await page.getByTitle("Undo", { exact: true }).click();
+  await page.getByLabel("Playback speed", { exact: true }).selectOption("0.5");
+  await page.getByLabel("Playback speed", { exact: true }).selectOption("1");
+  console.log(
+    "PASS: packaged effect picker, flip-and-zoom recipe, Undo and preview speed controls.",
+  );
   await page.evaluate(() => {
     const old = AudioBufferSourceNode.prototype.start;
     (window as any).__musicStarts = [];
@@ -901,8 +909,16 @@ try {
   await expect(
     page.getByLabel("Seek storyboard", { exact: true }),
   ).not.toHaveValue("0");
-  if (await page.getByLabel("Pause storyboard", { exact: true }).count())
-    await page.getByLabel("Pause storyboard", { exact: true }).click();
+  // Short playback may finish between two browser round trips. Click the current
+  // pause button in one renderer task, or accept already completed playback.
+  await page
+    .getByLabel("Pause storyboard", { exact: true })
+    .evaluateAll((buttons) => {
+      (buttons[0] as HTMLButtonElement | undefined)?.click();
+    });
+  await expect(
+    page.getByLabel("Play storyboard", { exact: true }),
+  ).toBeVisible();
   await page.screenshot({ path: path.join(dir, "packaged-storyboard.png") });
   const storyFile = path.join(dir, "packaged-storyboard.mp4");
   await launch.evaluate((_, file) => {

@@ -23,8 +23,17 @@ jobs:
       - name: Capture setup result and visible errors
         shell: pwsh
         run: |
+          $setup = 'desktop/whisperSetup.ts'
+          $setupText = [IO.File]::ReadAllText($setup).Replace('stdio: "ignore"', 'stdio: "inherit"').Replace('-Force",', '-Force -ErrorAction Stop",')
+          $setupText = $setupText.Replace('if (!(await find(unpacked)))', 'console.log("WHISPER EXTRACTED FILES", await fs.readdir(unpacked, {recursive:true})); if (!(await find(unpacked)))')
+          [IO.File]::WriteAllText($setup, $setupText)
           $file = 'scripts/transcript-desktop-smoke.ts'
           $text = [IO.File]::ReadAllText($file)
+          $text = $text.Replace('180000', '60000')
           $text = $text.Replace('} finally {', '} finally { const diagnosticPage = await app.firstWindow(); console.log("TRANSCRIPT SETUP DIAGNOSTIC", await diagnosticPage.locator(".transcript-dialog").innerText().catch(() => "Dialog closed"));')
           [IO.File]::WriteAllText($file, $text)
+          npm run build
           node --import tsx scripts/transcript-desktop-smoke.ts
+          $diagnosticStatus = $LASTEXITCODE
+          try { Get-MpThreatDetection -ErrorAction Stop | Select-Object ThreatID,Resources,ActionSuccess | Format-List } catch { Write-Host $_.Exception.Message }
+          exit $diagnosticStatus

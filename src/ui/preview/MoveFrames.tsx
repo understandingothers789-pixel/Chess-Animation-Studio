@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/project";
 import { stepFrame } from "../../core/timeline";
 import { moveFrameStops } from "../movePreview";
@@ -27,9 +27,18 @@ export function MoveFrames({
   const stops = useMemo(() => moveFrameStops(project, index), [project, index]);
   const [preview, setPreview] = useState<{
     stops: typeof stops;
+    revision: number;
     frames: (string | null)[];
   }>();
+  const completed = useRef<{ stops: typeof stops; revision: number } | null>(
+    null,
+  );
   useEffect(() => {
+    if (
+      completed.current?.stops === stops &&
+      completed.current.revision === revision
+    )
+      return;
     if (!expanded || playing || !stops.length) return;
     const portrait =
       project.format === "vertical" || project.format === "square-in-vertical";
@@ -60,8 +69,9 @@ export function MoveFrames({
       }
       frames.push(frame);
       attempts = 0;
-      setPreview({ stops, frames: [...frames] });
+      setPreview({ stops, revision, frames: [...frames] });
       if (frames.length < stops.length) timer = setTimeout(render, 24);
+      else if (frames.every(Boolean)) completed.current = { stops, revision };
     };
     // Wait briefly for slider and key edits to settle before borrowing the renderer.
     timer = setTimeout(render, 120);
@@ -71,7 +81,10 @@ export function MoveFrames({
     };
   }, [expanded, playing, stops, port, project, revision]);
   if (!stops.length) return null;
-  const currentFrames = preview?.stops === stops ? preview.frames : [];
+  const currentFrames =
+    preview?.stops === stops && preview.revision === revision
+      ? preview.frames
+      : [];
   const start = stops[0].time,
     end = stops[stops.length - 1].time;
   const at = Math.max(start, Math.min(end, time));

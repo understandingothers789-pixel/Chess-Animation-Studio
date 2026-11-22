@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { memo, useRef, useState } from "react";
 import type { Move } from "../../core/project";
 import type { Edit } from "../state";
-export function MoveClip({
+export const MoveClip = memo(function MoveClip({
   move,
   index,
   left,
@@ -151,4 +151,4 @@ export function MoveClip({
       )}
     </div>
   );
-}
+});

@@ -10,21 +10,22 @@ export type ThumbnailRenderer = (
 export type ThumbnailPort = { current: ThumbnailRenderer | null };
 /** One idle queue borrows the existing preview renderer; no per-card WebGL contexts. */
 export class StoryThumbnails {
+  private projectKeys = new WeakMap<Project, number>();
+  private sequence = 0;
   private cache = new Map<string, string>();
   private pending = new Map<string, Promise<string | null>>();
   private tasks: (() => void)[] = [];
   private busy = false;
   constructor(readonly port: ThumbnailPort) {}
-  request(p: Project, id: string): Promise<string | null> {
+  request(p: Project, id: string, revision: number): Promise<string | null> {
     const entry = compileStoryboard(p).shots.find((e) => e.shot.id === id);
     if (!entry) return Promise.resolve(null);
-    const { storyboard, pgn, lines, music, cues, scenes, ...visual } = p;
-    const key = JSON.stringify({
-      visual,
-      shot: entry.shot,
-      start: entry.start,
-      beats: p.storyboard.beats,
-    });
+    let projectKey = this.projectKeys.get(p);
+    if (projectKey === undefined) {
+      projectKey = this.sequence++;
+      this.projectKeys.set(p, projectKey);
+    }
+    const key = `${projectKey}:${revision}:${id}`;
     const hit = this.cache.get(key);
     if (hit) return Promise.resolve(hit);
     const pending = this.pending.get(key);

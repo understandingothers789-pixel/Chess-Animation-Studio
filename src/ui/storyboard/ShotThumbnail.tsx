@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { Project, StoryboardShot } from "../../core/project";
 import { compileStoryboard } from "../../core/storyboard";
 import type { StoryThumbnails } from "./thumbnails";
@@ -16,15 +16,17 @@ const pieces: Record<string, string> = {
   bn: "♞",
   bp: "♟",
 };
-export function ShotThumbnail({
+export const ShotThumbnail = memo(function ShotThumbnail({
   p,
   shot,
   service,
+  graphicsRevision,
   playing,
 }: {
   p: Project;
   shot: StoryboardShot;
   service?: StoryThumbnails;
+  graphicsRevision: number;
   playing: boolean;
 }) {
   const [image, setImage] = useState<string | null>(null),
@@ -40,14 +42,14 @@ export function ShotThumbnail({
   useEffect(() => {
     let live = true;
     if (visible && !playing && service) {
-      void service.request(p, shot.id).then((image) => {
+      void service.request(p, shot.id, graphicsRevision).then((image) => {
         if (live) setImage(image);
       });
     }
     return () => {
       live = false;
     };
-  }, [p, shot.id, visible, playing, service]);
+  }, [p, shot.id, visible, playing, service, graphicsRevision]);
   const c = compileStoryboard(p).shots.find((e) => e.shot.id === shot.id),
     board =
       shot.kind === "position-hold"
@@ -94,4 +96,4 @@ export function ShotThumbnail({
       )}
     </div>
   );
-}
+});

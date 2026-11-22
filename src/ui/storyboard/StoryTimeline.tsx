@@ -26,6 +26,7 @@ export function StoryTimeline({
   report,
   time,
   thumbnails,
+  graphicsRevision,
   playing,
   playShot,
 }: {
@@ -41,6 +42,7 @@ export function StoryTimeline({
   report: (s: string) => void;
   time: number;
   thumbnails?: StoryThumbnails;
+  graphicsRevision: number;
   playing: boolean;
 }) {
   const c = compileStoryboard(p),
@@ -203,6 +205,7 @@ export function StoryTimeline({
               key={entry.shot.id}
               p={p}
               thumbnails={thumbnails}
+              graphicsRevision={graphicsRevision}
               isPlaying={playing}
               shot={entry.shot}
               index={entry.index}
@@ -253,6 +256,7 @@ export function StoryTimeline({
 function ShotCard({
   p,
   thumbnails,
+  graphicsRevision,
   isPlaying,
   shot,
   index,
@@ -276,6 +280,7 @@ function ShotCard({
 }: {
   p: Project;
   thumbnails?: StoryThumbnails;
+  graphicsRevision: number;
   isPlaying: boolean;
   shot: StoryboardShot;
   index: number;
@@ -350,6 +355,7 @@ function ShotCard({
         p={p}
         shot={shot}
         service={thumbnails}
+        graphicsRevision={graphicsRevision}
         playing={isPlaying}
       />
       <div className="shot-card-name">

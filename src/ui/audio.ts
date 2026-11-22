@@ -5,26 +5,36 @@ import {
 import { audioEvents } from "../core/audioEvents";
 import { presentationDuration } from "../core/storyboard";
 import { musicAt, musicVolumeAt, musicEnd } from "../core/audio";
-import { segments } from "../core/timeline";
-import { buildGame } from "../core/chess";
 import type { Project, PlaybackMode } from "../core/project";
 export class AudioPlayer {
   context = new AudioContext();
   buffers = new Map<string, AudioBuffer>();
   sources: AudioScheduledSourceNode[] = [];
-  generation = 0;
+  private playbackRequest = 0;
+  private loads = new Map<string, object>();
   musicGain: GainNode | null = null;
   async load(id: string, url: string) {
-    const generation = this.generation;
-    const bytes = await (await fetch(url)).arrayBuffer();
-    const buffer = await this.context.decodeAudioData(bytes);
-    if (generation === this.generation) this.buffers.set(id, buffer);
-    return buffer;
+    const request = {};
+    this.loads.set(id, request);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw Error("Could not load audio.");
+      const bytes = await response.arrayBuffer();
+      if (this.loads.get(id) !== request) return null;
+      const buffer = await this.context.decodeAudioData(bytes);
+      if (this.loads.get(id) !== request) return null;
+      this.buffers.set(id, buffer);
+      return buffer;
+    } catch (error) {
+      if (this.loads.get(id) !== request) return null;
+      throw error;
+    } finally {
+      if (this.loads.get(id) === request) this.loads.delete(id);
+    }
   }
   clear(id: string) {
-    // Removing one unavailable asset must not stop every scheduled source.
-    // Asset health checks can clear an unrelated, unused audio asset while
-    // the selected music is playing.
+    // Clearing an unavailable asset must not stop other playing sources.
+    this.loads.delete(id);
     this.buffers.delete(id);
   }
   async play(
@@ -33,15 +43,18 @@ export class AudioPlayer {
     mode: PlaybackMode = "source",
     rate = 1,
   ) {
-    const outputEnd = presentationDuration(p, mode);
     this.stop();
+    const request = this.playbackRequest;
     await this.context.resume();
+    if (request !== this.playbackRequest) return null;
     if (p.audio.knightHorse && !this.buffers.has("__knightHorse")) {
       await this.load(
         "__knightHorse",
         new URL("sounds/horse.oga", document.baseURI).href,
       );
     }
+    if (request !== this.playbackRequest) return null;
+    const outputEnd = presentationDuration(p, mode);
     const origin = this.context.currentTime + 0.09;
     const perf = performance.now() + 90;
     const m = p.music,
@@ -171,6 +184,7 @@ export class AudioPlayer {
     );
   }
   stop() {
+    this.playbackRequest++;
     this.musicGain = null;
     for (const s of this.sources)
       try {
@@ -180,7 +194,8 @@ export class AudioPlayer {
   }
   dispose() {
     this.stop();
-    this.generation++;
+    this.loads.clear();
+    this.buffers.clear();
     void this.context.close();
   }
 }

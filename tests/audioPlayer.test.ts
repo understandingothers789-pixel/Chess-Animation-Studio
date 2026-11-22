@@ -166,3 +166,88 @@ it("keeps one continuous storyboard music source and resumes the output-capped f
   expect(stop).not.toHaveBeenCalled();
   player.dispose();
 });
+
+it("ignores a cancelled audio start without interrupting the newer playback", async () => {
+  const resumes: (() => void)[] = [];
+  const start = vi.fn(),
+    stop = vi.fn();
+  class Context {
+    currentTime = 0;
+    destination = {};
+    resume() {
+      return new Promise<void>((resolve) => resumes.push(resolve));
+    }
+    close = async () => {};
+    createBufferSource() {
+      return { buffer: null, connect: (node: unknown) => node, start, stop };
+    }
+    createGain() {
+      return {
+        gain: {
+          value: 1,
+          setValueAtTime: vi.fn(),
+          linearRampToValueAtTime: vi.fn(),
+        },
+        connect: (node: unknown) => node,
+      };
+    }
+  }
+  vi.stubGlobal("AudioContext", Context);
+  const project = blank();
+  project.music.asset = "music";
+  const player = new AudioPlayer();
+  player.buffers.set("music", { duration: 90 } as AudioBuffer);
+
+  const replaced = player.play(project, 0);
+  const current = player.play(project, 1);
+  resumes[1]();
+  expect(await current).toEqual(expect.any(Number));
+  resumes[0]();
+  expect(await replaced).toBeNull();
+  expect(start).toHaveBeenCalledOnce();
+  expect(stop).not.toHaveBeenCalled();
+
+  const cancelled = player.play(project, 0);
+  player.stop();
+  resumes[2]();
+  expect(await cancelled).toBeNull();
+  expect(start).toHaveBeenCalledOnce();
+  player.dispose();
+});
+
+it("keeps replaced and removed audio out of the buffer cache when decoding finishes late", async () => {
+  const decodes: ((buffer: AudioBuffer) => void)[] = [];
+  class Context {
+    close = async () => {};
+    decodeAudioData() {
+      return new Promise<AudioBuffer>((resolve) => decodes.push(resolve));
+    }
+  }
+  vi.stubGlobal("AudioContext", Context);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(1),
+    })),
+  );
+  const player = new AudioPlayer();
+  const older = player.load("music", "older");
+  await vi.waitFor(() => expect(decodes).toHaveLength(1));
+  const latest = player.load("music", "newer");
+  await vi.waitFor(() => expect(decodes).toHaveLength(2));
+  const fresh = { duration: 2 } as AudioBuffer;
+  decodes[1](fresh);
+  expect(await latest).toBe(fresh);
+  decodes[0]({ duration: 1 } as AudioBuffer);
+  expect(await older).toBeNull();
+  expect(player.buffers.get("music")).toBe(fresh);
+
+  const deleted = player.load("music", "deleted");
+  await vi.waitFor(() => expect(decodes).toHaveLength(3));
+  player.clear("music");
+  decodes[2](fresh);
+  expect(await deleted).toBeNull();
+  expect(player.buffers.has("music")).toBe(false);
+  player.dispose();
+});

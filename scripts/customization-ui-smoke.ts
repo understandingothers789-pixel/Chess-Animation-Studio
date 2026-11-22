@@ -65,6 +65,58 @@ try {
   await page.goto(origin);
   await page.waitForSelector(".app-shell", { timeout: 90000 });
   await page.waitForFunction(() => !!(window as any).__state);
+  const preview = page.locator(".preview-host canvas");
+  await expect(preview).toBeVisible();
+  await page.evaluate(async () => {
+    const { Scene } = await import("/src/render/Scene.ts" as string);
+    const render = Scene.prototype.render;
+    (window as any).__previewDraws = 0;
+    Scene.prototype.render = function (...args: Parameters<typeof render>) {
+      (window as any).__previewDraws++;
+      return render.apply(this, args);
+    };
+  });
+  const drawCount = () =>
+    page.evaluate(() => (window as any).__previewDraws as number);
+  const canvasWidth = () =>
+    preview.evaluate((canvas: HTMLCanvasElement) => canvas.width);
+  await page.getByLabel("Seek composition", { exact: true }).fill("3");
+  await expect.poll(drawCount).toBeGreaterThan(0);
+  // A paused preview should settle with zero further draw calls.
+  await page.waitForTimeout(100);
+  const idleDraws = await drawCount();
+  await page.waitForTimeout(400);
+  assert.equal(
+    await drawCount(),
+    idleDraws,
+    "Paused preview must not schedule repeated renders",
+  );
+  const originalWidth = await canvasWidth();
+  await page.setViewportSize({ width: 1200, height: 700 });
+  await expect.poll(canvasWidth).not.toBe(originalWidth);
+  const resizedWidth = await canvasWidth();
+  const png = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Save PNG", exact: true }).click();
+  assert.match((await png).suggestedFilename(), /frame\.png$/);
+  await expect.poll(canvasWidth).toBe(resizedWidth);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect.poll(canvasWidth).toBe(originalWidth);
+  await preview.evaluate((canvas: HTMLCanvasElement) =>
+    canvas
+      .getContext("webgl2")
+      ?.getExtension("WEBGL_lose_context")
+      ?.loseContext(),
+  );
+  await page
+    .getByRole("button", { name: "Reload graphics", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Reload graphics", exact: true }),
+  ).toHaveCount(0);
+  await expect.poll(canvasWidth).toBe(originalWidth);
+  console.log(
+    "PASS: paused redraw stops, preview seeks and resizes, PNG restores the canvas, context loss recovers.",
+  );
   await fs.mkdir("test-results/customization", { recursive: true });
   const fixture = sample();
   fixture.beats = [

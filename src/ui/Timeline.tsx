@@ -10,10 +10,9 @@ import { ControlGroup } from "./timeline/ControlGroup";
 import { MoveClip } from "./timeline/MoveClip";
 import { AnnotationRegion } from "./timeline/AnnotationRegion";
 import { settingHelp } from "./help";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  segments,
-  duration,
+  compileTimeline,
   spotlightStart,
   spotlightPeaks,
   stepFrame,
@@ -117,41 +116,65 @@ export function Timeline({
     localStorage.setItem("studio.timeline.snap", String(snap));
   }, [snap]);
   const host = useRef<HTMLDivElement>(null),
-    length = duration(p),
-    seq = segments(p),
+    { duration: length, segments: seq } = compileTimeline(p),
     width = Math.max(1, length * 52 * zoom),
-    x = (t: number) => (t / length) * width;
-  const active = introSelected ? undefined : seq[selected];
-  const activeEffect = active ? p.moves[active.i].effect : undefined;
-  const cues = active
-    ? [
-        { label: "Departure", time: active.depart, detail: "" },
-        { label: "Landing", time: active.land, detail: "" },
-      ]
-    : [];
-  if (active && activeEffect?.jam.enabled) {
-    const start = spotlightStart(activeEffect, active);
-    for (const peak of spotlightPeaks(p, activeEffect, start))
-      cues.push({ label: "Zoom beat", time: peak.time, detail: peak.clock });
-    cues.push({
-      label: "Spotlight end",
-      time: start + activeEffect.jam.duration,
-      detail: "",
-    });
-  }
-  const events = [
-    ...cues.map((cue) => cue.time),
-    ...seq.flatMap((s, i) => [
-      s.land,
-      ...Object.values(p.moves[i].effect.keys).flatMap((keys) =>
-        (keys ?? []).map((k) => s.depart + k.at * p.moves[i].effect.duration),
-      ),
-    ]),
-    ...p.annotations.flatMap((a) => [a.start, a.end]),
-  ].sort((a, b) => a - b);
+    pixels = length > 0 ? width / length : 0,
+    x = (t: number) => t * pixels;
+  const cues = useMemo(() => {
+    const active = introSelected ? undefined : seq[selected];
+    if (!active) return [];
+    const effect = p.moves[active.i].effect;
+    const markers = [
+      { label: "Departure", time: active.depart, detail: "" },
+      { label: "Landing", time: active.land, detail: "" },
+    ];
+    if (effect.jam.enabled) {
+      const start = spotlightStart(effect, active);
+      for (const peak of spotlightPeaks(p, effect, start))
+        markers.push({
+          label: "Zoom beat",
+          time: peak.time,
+          detail: peak.clock,
+        });
+      markers.push({
+        label: "Spotlight end",
+        time: start + effect.jam.duration,
+        detail: "",
+      });
+    }
+    return markers;
+  }, [introSelected, p, selected, seq]);
+  const events = useMemo(
+    () =>
+      [
+        ...cues.map((cue) => cue.time),
+        ...seq.flatMap((s, i) => [
+          s.land,
+          ...Object.values(p.moves[i].effect.keys).flatMap((keys) =>
+            (keys ?? []).map(
+              (k) => s.depart + k.at * p.moves[i].effect.duration,
+            ),
+          ),
+        ]),
+        ...p.annotations.flatMap((a) => [a.start, a.end]),
+      ].sort((a, b) => a - b),
+    [cues, p, seq],
+  );
+  const boundaries = useMemo(
+    () => [
+      0,
+      p.lead,
+      length,
+      ...seq.flatMap((segment) => [segment.start, segment.end, segment.land]),
+      ...p.beats.filter((beat) => beat.enabled).map((beat) => beat.time),
+      ...cues.map((cue) => cue.time),
+    ],
+    [cues, length, p.beats, p.lead, seq],
+  );
   const dragged = useRef<string | null>(null);
   const pointer = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect();
+    if (!r.width) return;
     const t = Math.max(
       0,
       Math.min(length, ((e.clientX - r.left) / r.width) * length),
@@ -167,21 +190,16 @@ export function Timeline({
           b.sourceTime = beatTime + p.music.trimStart - p.music.offset;
       });
     } else {
-      const boundaries = [
-        0,
-        p.lead,
-        length,
-        ...seq.flatMap((segment) => [segment.start, segment.end, segment.land]),
-        ...p.beats.filter((beat) => beat.enabled).map((beat) => beat.time),
-        ...cues.map((cue) => cue.time),
-      ];
       const nearest = boundaries.reduce(
         (best, boundary) =>
           Math.abs(boundary - t) < Math.abs(best - t) ? boundary : best,
         boundaries[0],
       );
       seek(
-        snap && !e.altKey && (Math.abs(nearest - t) * r.width) / length <= 8
+        snap &&
+          !e.altKey &&
+          length > 0 &&
+          (Math.abs(nearest - t) * r.width) / length <= 8
           ? nearest
           : t,
       );
@@ -194,19 +212,18 @@ export function Timeline({
           p.moves.findIndex((m) => checked.has(m.id)),
         )
       : selected;
-  const sourceLength = p.music.sourceDuration || length,
-    wave = p.waveform
-      .map((v, i) => {
-        const source = (i / p.waveform.length) * sourceLength,
-          projectTime = source - p.music.trimStart + p.music.offset;
-        return { x: x(projectTime), v };
+  const waveformPath = useMemo(() => {
+    const sourceLength = p.music.sourceDuration || length;
+    const trimEnd = p.music.trimEnd || Infinity;
+    return p.waveform
+      .map((value, i) => {
+        const source = (i / p.waveform.length) * sourceLength;
+        if (source < p.music.trimStart || source >= trimEnd) return "";
+        const x = (source - p.music.trimStart + p.music.offset) * pixels;
+        return `M${x},${22 - value * 18}L${x},${22 + value * 18}`;
       })
-      .filter(
-        (v) =>
-          v.x >= x(p.music.offset) &&
-          (!p.music.trimEnd ||
-            v.x < x(p.music.trimEnd - p.music.trimStart + p.music.offset)),
-      );
+      .join("");
+  }, [length, p.music, p.waveform, pixels]);
   const openMenu = (e: React.MouseEvent, trackOverride?: string) => {
     e.preventDefault();
     const target = e.target as HTMLElement;
@@ -617,7 +634,7 @@ export function Timeline({
                   index={i}
                   left={x(s.start)}
                   width={Math.max(2, x(s.end - s.start) - 2)}
-                  pixels={width / length}
+                  pixels={pixels}
                   selected={!introSelected && selected === i}
                   checked={checked.has(p.moves[i].id)}
                   snap={snap}
@@ -695,7 +712,7 @@ export function Timeline({
                 <AnnotationRegion
                   key={a.id}
                   a={a}
-                  pixels={width / length}
+                  pixels={pixels}
                   snap={snap}
                   seek={seek}
                   edit={edit}
@@ -709,11 +726,7 @@ export function Timeline({
             >
               <svg width={width} height={44} aria-label="Music waveform">
                 <path
-                  d={wave
-                    .map(
-                      (v) => `M${v.x},${22 - v.v * 18}L${v.x},${22 + v.v * 18}`,
-                    )
-                    .join("")}
+                  d={waveformPath}
                   stroke="currentColor"
                   fill="none"
                   strokeWidth="1.1"

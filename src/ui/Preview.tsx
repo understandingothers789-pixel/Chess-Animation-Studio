@@ -17,13 +17,14 @@ import { TimelineMenu, type MenuAction } from "./timeline/TimelineMenu";
 import { positionFen } from "./preview/positionFen";
 import { segments } from "../core/timeline";
 import { ViewportTools, initialViewport } from "./preview/ViewportTools";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Scene, ContextLostError } from "../render/Scene";
 import { sizes, type Project } from "../core/project";
 export function Preview({
   project,
   mode = "source",
   thumbnailPort,
+  onGraphicsChanged,
   onAddCaption,
   onTranscript,
   onAddMove,
@@ -49,6 +50,7 @@ export function Preview({
   project: Project;
   mode?: PlaybackMode;
   thumbnailPort?: ThumbnailPort;
+  onGraphicsChanged: () => void;
   onAddCaption?: () => void;
   onTranscript?: () => void;
   onAddMove?: () => void;
@@ -133,99 +135,119 @@ export function Preview({
     [generation, setGeneration] = useState(0),
     [graphicsFailed, setGraphicsFailed] = useState(false);
   latest.current = { project, time, mode, playing };
+  const queueDraw = useRef<() => void>(() => {});
+  const reportError = useRef(onError);
+  reportError.current = onError;
   const click = useRef(onSquare);
   click.current = onSquare;
   useEffect(() => {
     setReady(false);
-    let s: Scene;
+    const element = canvas.current;
+    const container = host.current;
+    if (!element || !container) return;
+    let renderer: Scene;
     try {
-      s = new Scene(canvas.current!);
+      renderer = new Scene(element);
     } catch (error) {
-      onError((error as Error).message);
+      reportError.current((error as Error).message);
       setGraphicsFailed(true);
       return;
     }
     setGraphicsFailed(false);
-    scene.current = s;
-    let alive = true,
-      frame = 0,
-      available = false,
-      renderError = "";
-    void s.ready
-      .then(() => {
-        if (alive) {
-          available = true;
-          setReady(true);
-        }
-      })
-      .catch((e) => {
-        if (alive) onError(e.message);
-      });
+    scene.current = renderer;
+    let alive = true;
+    let frame: number | null = null;
+    let available = false;
+    let renderError = "";
     const draw = () => {
-      if (alive && available && host.current) {
-        const { project, time, mode } = latest.current,
-          [w, h] = sizes[project.format],
-          scale = Math.min(
-            host.current.clientWidth / w,
-            host.current.clientHeight / h,
-          ),
-          width = Math.max(2, Math.floor(w * scale)),
-          height = Math.max(2, Math.floor(h * scale));
-        canvas.current!.parentElement!.style.width = width + "px";
-        canvas.current!.parentElement!.style.height = height + "px";
-        canvas.current!.style.width = width + "px";
-        canvas.current!.style.height = height + "px";
-        try {
-          s.render(
-            project,
-            time,
-            Math.round(width * devicePixelRatio),
-            Math.round(height * devicePixelRatio),
-            project.format,
-            mode,
-          );
-          const bounds = s.textGeometry(),
-            key = JSON.stringify(bounds);
-          if (geometryKey.current !== key) {
-            geometryKey.current = key;
-            setTextBounds(bounds);
-          }
-          renderError = "";
-        } catch (error) {
-          if (error instanceof ContextLostError) {
-            available = false;
-            setGraphicsFailed(true);
-          }
-          const message = (error as Error).message;
-          if (message !== renderError) onError(message);
-          renderError = message;
+      frame = null;
+      if (!alive || !available) return;
+      const { project, time, mode } = latest.current;
+      const [w, h] = sizes[project.format];
+      const scale = Math.min(
+        container.clientWidth / w,
+        container.clientHeight / h,
+      );
+      const width = Math.max(2, Math.floor(w * scale));
+      const height = Math.max(2, Math.floor(h * scale));
+      const viewport = element.parentElement!;
+      viewport.style.width = element.style.width = width + "px";
+      viewport.style.height = element.style.height = height + "px";
+      try {
+        renderer.render(
+          project,
+          time,
+          Math.round(width * devicePixelRatio),
+          Math.round(height * devicePixelRatio),
+          project.format,
+          mode,
+        );
+        const bounds = renderer.textGeometry(),
+          key = JSON.stringify(bounds);
+        if (geometryKey.current !== key) {
+          geometryKey.current = key;
+          setTextBounds(bounds);
         }
+        renderError = "";
+      } catch (error) {
+        if (error instanceof ContextLostError) {
+          available = false;
+          setGraphicsFailed(true);
+        }
+        const message = (error as Error).message;
+        if (message !== renderError) reportError.current(message);
+        renderError = message;
       }
-      frame = requestAnimationFrame(draw);
     };
-    draw();
+    const schedule = () => {
+      if (alive && available && frame === null)
+        frame = requestAnimationFrame(draw);
+    };
+    queueDraw.current = schedule;
+    const observer = new ResizeObserver(schedule);
+    observer.observe(container);
+    window.addEventListener("resize", schedule);
+    element.addEventListener("webglcontextlost", schedule);
+    void renderer.ready
+      .then(() => {
+        if (!alive) return;
+        available = true;
+        setReady(true);
+        schedule();
+        onGraphicsChanged();
+      })
+      .catch((error) => {
+        if (alive) reportError.current(error.message);
+      });
     return () => {
       alive = false;
-      cancelAnimationFrame(frame);
+      if (frame !== null) cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("resize", schedule);
+      element.removeEventListener("webglcontextlost", schedule);
+      queueDraw.current = () => {};
       scene.current = null;
       requested.current.clear();
-      s.dispose();
+      renderer.dispose();
     };
-  }, [generation]);
+  }, [generation, onGraphicsChanged]);
   useEffect(() => {
-    if (!thumbnailPort || !ready) return;
-    thumbnailPort.current = (p, time, w, h, mode = "storyboard") => {
-      const current = latest.current,
-        s = scene.current,
-        c = canvas.current;
-      if (!s || !c || current.playing) return null;
-      const width = c.width,
-        height = c.height;
+    queueDraw.current();
+  }, [project, time, mode]);
+
+  // Snapshot on the live canvas, then immediately restore its render and picking state.
+  const snapshot = useCallback(
+    (p: Project, time: number, w: number, h: number, mode: PlaybackMode) => {
+      const renderer = scene.current,
+        element = canvas.current;
+      if (!renderer || !element) return null;
+      const current = latest.current;
+      const { width, height } = element;
       try {
-        s.render(p, time, w, h, p.format, mode);
-        return c.toDataURL("image/png");
+        renderer.render(p, time, w, h, p.format, mode);
+        return element.toDataURL("image/png");
       } finally {
-        s.render(
+        renderer.render(
           current.project,
           current.time,
           width,
@@ -234,45 +256,70 @@ export function Preview({
           current.mode,
         );
       }
-    };
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!thumbnailPort || !ready || graphicsFailed) return;
+    thumbnailPort.current = (p, time, w, h, mode = "storyboard") =>
+      latest.current.playing ? null : snapshot(p, time, w, h, mode);
     return () => {
       thumbnailPort.current = null;
     };
-  }, [ready, thumbnailPort, generation]);
+  }, [ready, graphicsFailed, thumbnailPort, generation, snapshot]);
   const requested = useRef(new Set<string>());
   useEffect(() => {
-    if (!scene.current) return;
+    const renderer = scene.current;
+    if (!renderer || !ready || graphicsFailed) return;
+    let removed = false;
     for (const id of requested.current)
       if (!assets[id]) {
-        scene.current.removeAsset(id);
+        renderer.removeAsset(id);
         requested.current.delete(id);
+        removed = true;
       }
+    if (removed) {
+      queueDraw.current();
+      onGraphicsChanged();
+    }
     setAssetFailed(false);
     let active = true;
-    for (const [id, url] of Object.entries(assets)) {
+    const loads = Object.entries(assets).flatMap(([id, url]) => {
       requested.current.add(id);
-      void scene.current.setAsset(id, url, { retries: 2 }).catch((e) => {
-        if (active) {
-          setAssetFailed(true);
-          onError(e.message);
-        }
+      const current = renderer.assetState(id);
+      if (current?.state === "ready" && current.url === url) return [];
+      return [
+        renderer
+          .setAsset(id, url, { retries: 2 })
+          .then(() => {
+            if (active) queueDraw.current();
+          })
+          .catch((error) => {
+            if (active) {
+              setAssetFailed(true);
+              reportError.current(error.message);
+            }
+          }),
+      ];
+    });
+    if (loads.length)
+      void Promise.all(loads).then(() => {
+        if (active) onGraphicsChanged();
       });
-    }
     return () => {
       active = false;
     };
-  }, [assets, ready, retry]);
+  }, [assets, ready, graphicsFailed, retry, onGraphicsChanged]);
   const saveFrame = () => {
     try {
-      if (!scene.current || !ready || !canvas.current)
-        throw Error("Preview is still preparing.");
-      // Snapshot a single evaluated frame before asking the browser to save it.
+      if (!ready || graphicsFailed) throw Error("Preview is still preparing.");
       const { project, time, mode } = latest.current,
         [w, h] = sizes[project.format];
-      scene.current.render(project, time, w, h, project.format, mode);
+      const image = snapshot(project, time, w, h, mode);
+      if (!image) throw Error("Preview is still preparing.");
       const link = document.createElement("a");
       link.download = `${project.title}-frame.png`;
-      link.href = canvas.current.toDataURL("image/png");
+      link.href = image;
       link.click();
       onReport?.("PNG download started.");
     } catch (error) {
@@ -621,6 +668,7 @@ export function Preview({
           }}
         >
           <canvas
+            key={generation}
             aria-label="Chess composition preview"
             ref={canvas}
             tabIndex={0}

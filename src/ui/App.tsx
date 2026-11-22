@@ -248,8 +248,27 @@ export function App() {
     audio = useRef<AudioPlayer | null>(null),
     saved = useRef(p),
     clipboard = useRef<SettingsClipboard | null>(null),
-    assetKeys = useRef(new Map<string, string>());
+    assetKeys = useRef(new Map<string, { path: string; kind: string }>());
   const [assetRevision, setAssetRevision] = useState(0);
+  const assetListKey = useMemo(
+    () =>
+      JSON.stringify(p.assets.map(({ id, path, kind }) => [id, path, kind])),
+    [p.assets],
+  );
+  const [graphicsRevision, setGraphicsRevision] = useState(0);
+  const graphicsChanged = useCallback(
+    () => setGraphicsRevision((value) => value + 1),
+    [],
+  );
+  const previewAssets = useMemo(
+    () =>
+      Object.fromEntries(
+        p.assets
+          .filter((asset) => asset.kind === "image" && assets[asset.id])
+          .map((asset) => [asset.id, assets[asset.id]]),
+      ),
+    [p.assets, assets],
+  );
   const fingerprints = useRef(new Map<string, string | null>());
   latest.current = p;
   timeRef.current = time;
@@ -383,26 +402,41 @@ export function App() {
   }, [p.id, p.moves.length]);
   useEffect(() => {
     let alive = true;
+    let checkingAssets = false;
     for (const id of assetKeys.current.keys())
       if (!p.assets.some((a) => a.id === id)) {
         assetKeys.current.delete(id);
         audio.current?.clear(id);
-        setAssets((v) => {
-          const n = { ...v };
-          delete n[id];
-          return n;
+        fingerprints.current.delete(id);
+        setMissing((previous) => {
+          if (!previous.has(id)) return previous;
+          const next = new Set(previous);
+          next.delete(id);
+          return next;
+        });
+        setAssets((previous) => {
+          if (!(id in previous)) return previous;
+          const next = { ...previous };
+          delete next[id];
+          return next;
         });
       }
     for (const a of p.assets) {
-      if (assetKeys.current.get(a.id) === a.path) continue;
-      assetKeys.current.set(a.id, a.path);
-      if (a.kind === "audio") setLoadingAudio((n) => n + 1);
+      const previous = assetKeys.current.get(a.id);
+      if (previous?.path === a.path && previous.kind === a.kind) continue;
+      const request = { path: a.path, kind: a.kind };
+      assetKeys.current.set(a.id, request);
+      if (a.kind === "audio") {
+        audio.current?.clear(a.id);
+        setLoadingAudio((n) => n + 1);
+      }
       run(async () => {
         try {
           const url = await window.studio.assetData(a);
           if (
+            assetKeys.current.get(a.id) !== request ||
             !latest.current.assets.some(
-              (v) => v.id === a.id && v.path === a.path,
+              (v) => v.id === a.id && v.path === a.path && v.kind === a.kind,
             )
           )
             return;
@@ -418,7 +452,11 @@ export function App() {
           setAssets((v) => ({ ...v, [a.id]: url }));
           if (a.kind === "audio") {
             const buffer = await audio.current!.load(a.id, url);
+            if (!buffer || assetKeys.current.get(a.id) !== request) return;
             if (
+              latest.current.assets.some(
+                (asset) => asset.id === a.id && asset.path === a.path,
+              ) &&
               latest.current.music.asset === a.id &&
               latest.current.music.sourceDuration === 0
             ) {
@@ -440,6 +478,10 @@ export function App() {
                   }
                   const current = latest.current;
                   if (
+                    assetKeys.current.get(a.id) === request &&
+                    current.assets.some(
+                      (asset) => asset.id === a.id && asset.path === a.path,
+                    ) &&
                     current.music.asset === a.id &&
                     current.music.sourceDuration === 0
                   )
@@ -464,30 +506,46 @@ export function App() {
     const interval = setInterval(
       () =>
         run(async () => {
-          const states = await window.studio.assetStatus(latest.current.assets);
-          const ids = Object.entries(states)
-            .filter(([, value]) => value === null)
-            .map(([id]) => id);
-          for (const [id, value] of Object.entries(states)) {
-            if (
-              fingerprints.current.has(id) &&
-              fingerprints.current.get(id) !== value
-            ) {
-              assetKeys.current.delete(id);
-              setAssetRevision((n) => n + 1);
+          if (checkingAssets || latest.current.assets.length === 0) return;
+          checkingAssets = true;
+          try {
+            const states = await window.studio.assetStatus(
+              latest.current.assets,
+            );
+            if (!alive) return;
+            const ids = Object.entries(states)
+              .filter(([, value]) => value === null)
+              .map(([id]) => id);
+            for (const [id, value] of Object.entries(states)) {
+              if (
+                fingerprints.current.has(id) &&
+                fingerprints.current.get(id) !== value
+              ) {
+                assetKeys.current.delete(id);
+                setAssetRevision((n) => n + 1);
+              }
+              fingerprints.current.set(id, value);
             }
-            fingerprints.current.set(id, value);
-          }
-          if (!alive) return;
-          setMissing(new Set(ids));
-          for (const id of ids) {
-            audio.current?.clear(id);
-            assetKeys.current.delete(id);
-            setAssets((v) => {
-              const n = { ...v };
-              delete n[id];
-              return n;
-            });
+            const missingIds = new Set(ids);
+            setMissing((previous) =>
+              previous.size === missingIds.size &&
+              ids.every((id) => previous.has(id))
+                ? previous
+                : missingIds,
+            );
+            for (const id of ids) {
+              audio.current?.clear(id);
+              assetKeys.current.delete(id);
+            }
+            if (ids.length)
+              setAssets((previous) => {
+                if (!ids.some((id) => id in previous)) return previous;
+                const next = { ...previous };
+                for (const id of ids) delete next[id];
+                return next;
+              });
+          } finally {
+            checkingAssets = false;
           }
         }),
       4000,
@@ -496,28 +554,33 @@ export function App() {
       alive = false;
       clearInterval(interval);
     };
-  }, [p.assets.map((a) => a.id + a.path).join("|"), assetRevision]);
+  }, [assetListKey, assetRevision]);
   useEffect(() => {
     if (!playing) return;
     let alive = true,
       raf = 0;
     const start = timeRef.current;
     run(async () => {
-      const origin = await audio.current!.play(
-        previewProjectRef.current,
-        start,
-        modeRef.current,
-        playbackSpeed,
-      );
-      if (!alive) {
-        audio.current!.stop();
-        return;
+      let origin: number | null;
+      try {
+        origin = await audio.current!.play(
+          previewProjectRef.current,
+          start,
+          modeRef.current,
+          playbackSpeed,
+        );
+      } catch (error) {
+        if (!alive) return;
+        stop();
+        throw error;
       }
+      if (!alive || origin === null) return;
+      const startedAt = origin;
       const tick = () => {
         if (!alive) return;
         const t =
           start +
-          Math.max(0, ((performance.now() - origin) / 1000) * playbackSpeed);
+          Math.max(0, ((performance.now() - startedAt) / 1000) * playbackSpeed);
         if (audition && t >= audition.end) {
           if (loopPreview && audition.loopStart !== undefined) {
             timeRef.current = audition.loopStart;
@@ -564,13 +627,9 @@ export function App() {
       time,
       mode,
       playing,
-      assets: Object.fromEntries(
-        p.assets
-          .filter((a) => a.kind === "image" && assets[a.id])
-          .map((a) => [a.id, assets[a.id]]),
-      ),
+      assets: previewAssets,
     });
-  }, [p, time, playing, assets, mode]);
+  }, [p, time, playing, previewAssets, mode]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -1550,6 +1609,7 @@ export function App() {
             <Preview
               mode={mode}
               thumbnailPort={thumbnailPort}
+              onGraphicsChanged={graphicsChanged}
               onAddMove={() => addToStoryboard()}
               onAddPosition={addPosition}
               onPrepareShotEdit={(id, localTime) => {
@@ -1588,11 +1648,7 @@ export function App() {
               }}
               project={previewProject}
               time={time}
-              assets={Object.fromEntries(
-                p.assets
-                  .filter((a) => a.kind === "image" && assets[a.id])
-                  .map((a) => [a.id, assets[a.id]]),
-              )}
+              assets={previewAssets}
               onCompositionPoint={(x, y) => {
                 if (annotationIds.length > 1) {
                   message(
@@ -1781,7 +1837,7 @@ export function App() {
                   fps={fps}
                   port={thumbnailPort}
                   seek={seek}
-                  revision={assetRevision}
+                  revision={graphicsRevision}
                 />
               )}
               <Transport
@@ -1831,6 +1887,7 @@ export function App() {
               report={message}
               time={time}
               thumbnails={thumbnails}
+              graphicsRevision={graphicsRevision}
               playing={playing}
             />
           ) : (

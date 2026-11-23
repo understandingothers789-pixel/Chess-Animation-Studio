@@ -60,8 +60,19 @@ export function BoardPanel(q: PanelProps) {
         <p className="hint">
           {p.style.pieceSet === "sculpted"
             ? "Solid figures with rounded surfaces. Turn around the X or Y axis to show depth."
-            : "Illustrated pieces with thin solid edges and a mirrored reverse face."}
+            : "Illustrated faces with contoured sides that deepen during X- and Y-axis turns."}
         </p>
+        {p.style.pieceSet !== "sculpted" && (
+          <Toggle
+            label="Solid sides on turns"
+            checked={p.style.solidPieceSides}
+            onChange={(value) =>
+              edit("Solid sides on turns", (p) => {
+                p.style.solidPieceSides = value;
+              })
+            }
+          />
+        )}
         {(["light", "dark", "rim", "accent"] as const).map((k) => (
           <Color
             label={

@@ -685,6 +685,7 @@ export const projectSchema = z.object({
   defaults: effectSchema,
   style: z.object({
     pieceSet: z.enum(["cburnett", "merida", "neo", "sculpted"]),
+    solidPieceSides: z.boolean().default(true),
     light: color,
     dark: color,
     rim: color,
@@ -932,6 +933,7 @@ export function blank(): Project {
     defaults: effect(),
     style: {
       pieceSet: "merida",
+      solidPieceSides: true,
       light: "#EDD6B0",
       dark: "#B88762",
       rim: "#454f49",

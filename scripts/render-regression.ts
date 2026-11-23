@@ -108,8 +108,10 @@ try {
     ] as const;
     // Keep the reference's historical size curve for pixel parity. The
     // current size profiles have their own decoded-render validation.
-    for (const [, project] of fixtures)
+    for (const [, project] of fixtures) {
+      project.style.solidPieceSides = false;
       for (const move of project.moves) move.effect.sizeProfile = "original";
+    }
     const frames: { key: string; png: string }[] = [];
     for (const [name, p] of fixtures)
       for (const format of [

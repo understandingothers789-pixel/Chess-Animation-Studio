@@ -180,6 +180,8 @@ const help: Record<string, string> = {
   "Sway cycles":
     "Number of rocking cycles. 0.5 makes a single lean and return; 1 rocks both ways.",
   "Hop height": "How far the moving piece lifts above the board.",
+  "Solid sides on turns":
+    "Give illustrated pieces more visible depth when they tilt around the X or Y axis.",
   "Meme image":
     "Choose an imported image to show in this piece’s starting square.",
   "Meme duration":

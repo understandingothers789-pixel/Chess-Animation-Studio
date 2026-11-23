@@ -134,6 +134,57 @@ try {
     await scene.ready;
     Object.assign(window, { scene, project: p });
   }, p);
+  for (const [preset, set] of [
+    ["spin", "merida"],
+    ["flip", "neo"],
+    ["dramatic", "cburnett"],
+    ["somersault", "merida"],
+  ] as const) {
+    const turning = structuredClone(p);
+    turning.style.pieceSet = set;
+    turning.moves[0].effect = effect(preset);
+    if (preset === "somersault") turning.moves[0].effect.axis = "x";
+    const dir = turning.moves[0].effect.axis === "x" ? "rx" : "ry";
+    const game = buildGame(turning);
+    const clip = segments(turning)[0];
+    const turn = Array.from({ length: 180 }, (_, i) => {
+      const time = clip.depart + ((clip.land - clip.depart) * i) / 180;
+      const piece = evaluate(turning, time, game).pieces.find(
+        (item) => item.id === game.steps[0].pieceId,
+      )!;
+      return { time, error: Math.abs(piece[dir] - Math.PI / 2) };
+    }).sort((a, b) => a.error - b.error)[0];
+    assert.ok(turn.error < 0.06);
+    const rendered = await page.evaluate(
+      ({ turning, turn, clip }) => {
+        const { scene } = window as any;
+        const thin = {
+          ...turning,
+          style: { ...turning.style, solidPieceSides: false },
+        };
+        const capture = (project: typeof turning, time: number) => {
+          scene.render(project, time, 320, 180, "landscape");
+          return scene.renderer.domElement.toDataURL();
+        };
+        const edge = capture(turning, turn.time);
+        return {
+          edgeChanged: edge !== capture(thin, turn.time),
+          restMatches:
+            capture(turning, clip.depart) === capture(thin, clip.depart),
+          seekMatches: edge === capture(turning, turn.time),
+        };
+      },
+      { turning, turn, clip },
+    );
+    assert.deepEqual(
+      rendered,
+      { edgeChanged: true, restMatches: true, seekMatches: true },
+      `${preset} in ${set}`,
+    );
+  }
+  console.log(
+    "PASS: solid sides during X/Y turns across all illustrated artwork sets.",
+  );
   const options = validateExport(p, {
     format: "landscape",
     mode: "source",

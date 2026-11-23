@@ -74,18 +74,24 @@ export class PieceSystem {
       m.position.set(v.x, v.y, 0.08 + v.z);
       m.rotation.set(v.rx, v.ry, v.rz + (sign < 0 ? Math.PI : 0));
       m.scale.setScalar(v.scale);
-      if (sculpted) {
+      if (sculpted || (p.style.solidPieceSides !== false && (v.rx || v.ry))) {
         // Raise the rotated model by its extent beneath the centre so the
         // flip stays above the board, including at quarter turns.
-        const bounds = m.geometry.boundingBox!;
         const up = this.up
           .set(0, 0, 1)
           .applyQuaternion(this.inverseRotation.copy(m.quaternion).invert());
+        // Keep the illustrated face at its original size while the side
+        // walls smoothly deepen as the piece tilts away from the board.
+        const tilt = Math.max(0, 1 - up.z * up.z);
+        if (!sculpted) m.scale.z *= 1 + 6 * tilt;
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        const bounds = m.geometry.boundingBox!;
         const lowest =
-          up.x * (up.x < 0 ? bounds.max.x : bounds.min.x) +
-          up.y * (up.y < 0 ? bounds.max.y : bounds.min.y) +
-          up.z * (up.z < 0 ? bounds.max.z : bounds.min.z);
-        m.position.z = 0.035 + v.z - lowest * v.scale;
+          up.x * (up.x < 0 ? bounds.max.x : bounds.min.x) * m.scale.x +
+          up.y * (up.y < 0 ? bounds.max.y : bounds.min.y) * m.scale.y +
+          up.z * (up.z < 0 ? bounds.max.z : bounds.min.z) * m.scale.z;
+        m.position.z =
+          v.z + (sculpted ? 0.035 - lowest : Math.max(0.08, 0.035 - lowest));
       }
       for (const mat of m.material as T.Material[]) {
         mat.opacity = v.opacity;

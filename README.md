@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.42
+# Chess Animation Studio · 0.2.43
 
 A local desktop editor for chess videos. Import a PGN/FEN, play an animated first draft, refine individual moves, align landings to music, and render an MP4. Built with Electron, React, TypeScript, Three.js, chess.js, and FFmpeg.
 
@@ -7,6 +7,8 @@ Current editor source and the editing guide are on [architecture/effect-composit
 ![Earlier version 0.1 editor](docs/images/editor.png)
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.43 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.43/Chess-Animation-Studio-0.2.43-Windows-x64.zip?download=1).** Adds visible side depth to Thin-edge spin, Capture flip, Dramatic landing, and custom turns. The executable is unsigned.
 
 **[Download Chess Animation Studio 0.2.42 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.42/Chess-Animation-Studio-0.2.42-Windows-x64.zip?download=1).** Extract all files and open `Chess Animation Studio.exe`. The executable is unsigned. [Starting-square meme demo (MP4)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.42/starting-square-meme-demo.mp4).
 

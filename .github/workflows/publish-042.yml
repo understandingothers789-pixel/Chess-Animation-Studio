@@ -1,0 +1,37 @@
+name: Publish validated Studio 0.2.42
+on:
+  push:
+    branches: [release/publish-042]
+    paths: [.github/workflows/publish-042.yml]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify validated source and artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE: 237b36b62f47de80a89ba3bfe4e9f9d50a8bc543
+          RUN: '45252470044'
+        run: |
+          set -euo pipefail
+          gh run watch "$RUN" --exit-status --interval 25
+          gh api "repos/$GH_REPO/actions/runs/$RUN" > run.json
+          jq -e --arg source "$SOURCE" '.head_sha == $source and .status == "completed" and .conclusion == "success"' run.json
+          gh api "repos/$GH_REPO/actions/runs/$RUN/artifacts" > artifacts.json
+          id=$(jq -er '.artifacts[] | select(.name == "Chess-Animation-Studio-0.2.42-Windows-Portable" and .expired == false) | .id' artifacts.json)
+          digest=$(jq -er --argjson id "$id" '.artifacts[] | select(.id == $id) | .digest' artifacts.json)
+          zip=Chess-Animation-Studio-0.2.42-Windows-x64.zip
+          gh api "repos/$GH_REPO/actions/artifacts/$id/zip" > "$zip"
+          echo "${digest#sha256:}  $zip" | sha256sum --check
+          unzip -p "$zip" BUILD.json | jq -e --arg source "$SOURCE" '.appVersion == "0.2.42" and .sourceCommit == $source and .buildArch == "x64" and .sourceDirty == false'
+          sha256sum "$zip" > "$zip.sha256"
+          evidence=$(jq -er '.artifacts[] | select(.name == "Chromium-visual-evidence") | .id' artifacts.json)
+          gh api "repos/$GH_REPO/actions/artifacts/$evidence/zip" > evidence.zip
+          unzip -p evidence.zip test-results/customization-render/starting-square-meme.mp4 > starting-square-meme-demo.mp4
+          gh release create studio-v0.2.42 "$zip" "$zip.sha256" starting-square-meme-demo.mp4 --target "$SOURCE" --latest --title "Chess Animation Studio 0.2.42 for Windows (x64)" --notes-file docs/releases/0.2.42.md

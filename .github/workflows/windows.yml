@@ -39,9 +39,16 @@ jobs:
       - name: Install export validation tool
         shell: pwsh
         run: |
-          choco install ffmpeg -y --no-progress
+          # The Windows 9.1 essentials build hangs during the audio mix test.
+          choco install ffmpeg --version=9.0.2 -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned FFmpeg installation failed' }
           $ffmpeg = (Get-Command ffmpeg.exe -ErrorAction Stop).Source
           $ffprobe = (Get-Command ffprobe.exe -ErrorAction Stop).Source
+          $ffmpegVersion = & $ffmpeg -version | Select-Object -First 1
+          if ($ffmpegVersion -notmatch '^ffmpeg version 9\.0\.2(?:[-\s]|$)') {
+            throw "Expected FFmpeg 9.0.2, got: $ffmpegVersion"
+          }
+          Write-Host $ffmpegVersion
           "FFMPEG_PATH=$ffmpeg" >> $env:GITHUB_ENV
           "FFPROBE_PATH=$ffprobe" >> $env:GITHUB_ENV
       - name: Install pinned Stockfish for validation only

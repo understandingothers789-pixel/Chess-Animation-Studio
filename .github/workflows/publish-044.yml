@@ -1,0 +1,70 @@
+name: Publish validated Studio 0.2.44
+on:
+  push:
+    branches: [release/publish-044]
+    paths: [.github/workflows/publish-044.yml]
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify validated source and artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE: 0323c220213df718c683d62ee266df8309749503
+          RUN: '45289000499'
+        run: |
+          set -euo pipefail
+          gh run watch "$RUN" --exit-status --interval 25
+          gh api "repos/$GH_REPO/actions/runs/$RUN" > run.json
+          jq -e --arg source "$SOURCE" '.head_sha == $source and .status == "completed" and .conclusion == "success"' run.json
+          gh api "repos/$GH_REPO/actions/runs/$RUN/artifacts" > artifacts.json
+          id=$(jq -er '.artifacts[] | select(.name == "Chess-Animation-Studio-0.2.44-Windows-Portable" and .expired == false) | .id' artifacts.json)
+          digest=$(jq -er --argjson id "$id" '.artifacts[] | select(.id == $id) | .digest' artifacts.json)
+          zip=Chess-Animation-Studio-0.2.44-Windows-x64.zip
+          gh api "repos/$GH_REPO/actions/artifacts/$id/zip" > "$zip"
+          echo "${digest#sha256:}  $zip" | sha256sum --check
+          unzip -p "$zip" BUILD.json | jq -e --arg source "$SOURCE" '.appVersion == "0.2.44" and .sourceCommit == $source and .buildArch == "x64" and .sourceDirty == false'
+          sha256sum "$zip" > "$zip.sha256"
+          gh release create studio-v0.2.44 "$zip" "$zip.sha256" --target "$SOURCE" --latest --title "Chess Animation Studio 0.2.44 for Windows (x64)" --notes-file docs/releases/0.2.44.md
+      - name: Verify and link the public ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          download="https://github.com/${{ github.repository }}/releases/download/studio-v0.2.44/Chess-Animation-Studio-0.2.44-Windows-x64.zip?download=1"
+          curl --fail --silent --show-error --location --retry 6 --retry-all-errors "$download" -o downloaded.zip
+          cmp downloaded.zip Chess-Animation-Studio-0.2.44-Windows-x64.zip
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main architecture/effect-compositor
+          for branch in main architecture/effect-compositor; do
+            git checkout --detach "origin/$branch"
+            python - <<'LINK'
+          from pathlib import Path
+          p = Path("README.md")
+          contents = p.read_text()
+          heading = contents.splitlines()[0]
+          assert heading.startswith("# Chess Animation Studio · ")
+          installed = heading.rsplit(" ", 1)[-1]
+          assert installed in ("0.2.42", "0.2.43")
+          previous = f"**[Download Chess Animation Studio {installed} for Windows (x64)]"
+          assert previous in contents
+          link = (
+              "**[Download Chess Animation Studio 0.2.44 for Windows (x64)]("
+              "https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/"
+              "studio-v0.2.44/Chess-Animation-Studio-0.2.44-Windows-x64.zip?download=1).** "
+              "Opens meme controls directly and preserves complete game variations. "
+              "The executable is unsigned.\n\n"
+          )
+          contents = contents.replace(heading, "# Chess Animation Studio · 0.2.44", 1)
+          p.write_text(contents.replace(previous, link + previous, 1))
+          LINK
+            git commit -m "Link the validated Studio 0.2.44 Windows download" -- README.md
+            if [[ "$branch" == main ]]; then main_sha=$(git rev-parse HEAD); fi
+          done
+          git push --atomic origin "$main_sha:refs/heads/main" HEAD:refs/heads/architecture/effect-compositor

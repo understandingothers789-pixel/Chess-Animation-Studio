@@ -1,6 +1,8 @@
-# Chess Animation Studio · 0.2.39
+# Chess Animation Studio · 0.2.40
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
+
+Version **0.2.40** reduces idle preview and timeline work, fixes graphics recovery and PNG preview restoration, and prevents cancelled playback and stale audio decodes from taking effect. See the [0.2.40 release notes](docs/releases/0.2.40.md).
 
 Version **0.2.39** keeps new spins and flips at normal piece size and lets you tune how smoothly larger pieces return to normal. Open **Move frames** to inspect departure, mid-move, landing, and settled frames directly beneath the board. See the [0.2.39 release notes](docs/releases/0.2.39.md).
 
@@ -33,6 +35,8 @@ Right-click a timeline clip, or click the **⋯** on its track header, to open i
 Use **Copy** and **Paste** to transfer movement, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.40 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.40/Chess-Animation-Studio-0.2.40-Windows-x64.zip?download=1).** Extract all files and open `Chess Animation Studio.exe`. The executable is unsigned.
 
 **[Download Chess Animation Studio 0.2.39 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.39/Chess-Animation-Studio-0.2.39-Windows-x64.zip?download=1).** Extract all files and open `Chess Animation Studio.exe`. The executable is unsigned.
 

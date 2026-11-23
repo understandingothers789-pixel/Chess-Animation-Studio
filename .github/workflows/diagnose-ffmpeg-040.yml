@@ -13,9 +13,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: '9.1.0', command: direct}
-          - {version: '9.1.0', command: shim}
-          - {version: '9.0.2', command: shim}
+          - {version: '9.1.0', command: direct, test: nostdin}
+          - {version: '9.1.0', command: direct, test: finite-padding}
+          - {version: '9.1.0', command: direct, test: both}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,6 +37,15 @@ jobs:
           }
           & $env:FFMPEG_PATH -version | Select-Object -First 1
           Write-Host "Using $env:FFMPEG_PATH"
+          $source = 'desktop/export.ts'
+          $export = [IO.File]::ReadAllText($source)
+          if ('${{ matrix.test }}' -in @('nostdin', 'both')) {
+            $export = $export.Replace('const c = this.launch(args);', 'const c = this.launch(["-nostdin", ...args]);')
+          }
+          if ('${{ matrix.test }}' -in @('finite-padding', 'both')) {
+            $export = $export.Replace('latency=1,apad,atrim', 'latency=1,apad=whole_dur=${seconds},atrim')
+          }
+          [IO.File]::WriteAllText($source, $export)
           $file = 'tests/services.test.ts'
           $test = [IO.File]::ReadAllText($file)
           $test = $test.Replace('await job.start();', 'console.log("encoder start"); await job.start(); console.log("encoder started");')

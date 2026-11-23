@@ -100,7 +100,7 @@ export function MoveFrames({
         <div className="move-frames-content">
           <div
             className="move-frame-stops"
-            data-after-effect={stops.length > 4}
+            data-extra-frames={stops.length > 4}
           >
             {stops.map(({ label, time: checkpoint }, i) => (
               <button

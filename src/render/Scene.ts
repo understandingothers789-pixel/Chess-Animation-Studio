@@ -14,6 +14,7 @@ import { RenderGraph, type Pass } from "./engine/RenderGraph";
 import { BackgroundSystem } from "./systems/BackgroundSystem";
 import { CameraSystem } from "./systems/CameraSystem";
 import { BoardSystem } from "./systems/BoardSystem";
+import { StartingSquareMeme } from "./systems/StartingSquareMeme";
 import { PieceSystem } from "./systems/PieceSystem";
 import { MotionSystem } from "./systems/MotionSystem";
 import { CaptureSystem } from "./systems/CaptureSystem";
@@ -109,6 +110,7 @@ export class Scene {
     const overlay = new OverlaySystem(this.root, r, this.assets);
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
+    const meme = new StartingSquareMeme(this.root, this.assets);
     const capture = new CaptureSystem(this.root, camera, pieces.meshes);
     const cinematic = new CinematicCaptureSystem(
       this.root,
@@ -123,6 +125,7 @@ export class Scene {
       cinematic,
       capture,
       pieces,
+      meme,
       atmosphere,
       overlay,
       motion,
@@ -197,8 +200,14 @@ export class Scene {
           stage: "board",
           inputs: ["motion"],
           outputs: ["pieces"],
-          render: (c) => pieces.update(c),
-          dispose: () => pieces.dispose(),
+          render: (c) => pieces.update(c, meme.update(c)),
+          dispose: () => {
+            try {
+              pieces.dispose();
+            } finally {
+              meme.dispose();
+            }
+          },
         },
         {
           id: "capture",

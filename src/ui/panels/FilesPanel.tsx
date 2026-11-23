@@ -204,6 +204,13 @@ export function FilesPanel(q: PanelProps) {
                           source: a.source,
                           guidance: a.guidance,
                         });
+                        for (const fx of [
+                          p.defaults,
+                          ...p.moves.map((m) => m.effect),
+                          ...p.presets.map((v) => v.effect),
+                        ])
+                          if (fx.preMoveMeme?.asset === a.id)
+                            fx.preMoveMeme.asset = replacement.id;
                         if (p.music.asset === a.id)
                           p.music.asset = replacement.id;
                         for (const c of p.cues)
@@ -224,6 +231,12 @@ export function FilesPanel(q: PanelProps) {
                 onClick={() =>
                   q.edit("Remove asset", (p) => {
                     p.assets = p.assets.filter((v) => v.id !== a.id);
+                    for (const fx of [
+                      p.defaults,
+                      ...p.moves.map((m) => m.effect),
+                      ...p.presets.map((v) => v.effect),
+                    ])
+                      if (fx.preMoveMeme?.asset === a.id) fx.preMoveMeme = null;
                     if (p.music.asset === a.id) p.music.asset = null;
                     p.cues = p.cues.filter((c) => c.asset !== a.id);
                     for (const key of Object.keys(p.badgeAssets))

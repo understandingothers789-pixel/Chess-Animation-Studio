@@ -160,6 +160,7 @@ export const settingsKinds = [
   "timing",
   "everything",
 ] as const;
+export const memeTiming = { min: 0.1, max: 4, default: 0.45 };
 export const effectSchema = z.object({
   preset: z.enum(presets),
   duration: n(0.2, 30),
@@ -191,6 +192,13 @@ export const effectSchema = z.object({
     .default("auto"),
   sizeReturn: n(0.1, 0.8).default(0.5),
   peak: n(0.1, 0.95),
+  preMoveMeme: z
+    .object({
+      asset: str,
+      duration: n(memeTiming.min, memeTiming.max),
+    })
+    .nullable()
+    .default(null),
   after: z
     .object({
       kind: z.enum(afterEffectKinds),
@@ -316,6 +324,7 @@ export function effect(preset: Preset = "slide"): Effect {
     sizeProfile: "auto",
     sizeReturn: 0.5,
     peak: 0.6,
+    preMoveMeme: null,
     after: { ...afterEffectDefaults },
     jam: { ...beatSpotlightDefaults },
     light: { ...moveLightDefaults },

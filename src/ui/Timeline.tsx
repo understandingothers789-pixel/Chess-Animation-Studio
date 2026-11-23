@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   afterEffectWindow,
   compileTimeline,
+  memeWindow,
   spotlightStart,
   spotlightPeaks,
   stepFrame,
@@ -129,6 +130,9 @@ export function Timeline({
       { label: "Departure", time: active.depart, detail: "" },
       { label: "Landing", time: active.land, detail: "" },
     ];
+    const meme = memeWindow(effect, active);
+    if (meme)
+      markers.push({ label: "Meme starts", time: meme.start, detail: "" });
     if (effect.jam.enabled) {
       const start = spotlightStart(effect, active);
       for (const peak of spotlightPeaks(p, effect, start))
@@ -707,6 +711,7 @@ export function Timeline({
                 >
                   {[
                     p.moves[i].effect.badge.manual,
+                    p.moves[i].effect.preMoveMeme ? "Meme" : "",
                     p.moves[i].effect.jam.enabled ? "Spotlight" : "",
                     p.moves[i].effect.after.kind !== "none"
                       ? "After effect"

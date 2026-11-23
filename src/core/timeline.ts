@@ -87,11 +87,27 @@ function pieceSize(e: Effect, u: number, originalGrowth: number) {
   return 1 + growth * (maximum - 1) * e.intensity;
 }
 
+export function moveLead(e: Effect) {
+  return Math.max(e.delay, e.preMoveMeme?.duration ?? 0);
+}
+
+export function memeWindow(
+  e: Effect,
+  segment: { start: number; depart: number },
+) {
+  if (!e.preMoveMeme) return null;
+  return {
+    start: Math.max(segment.start, segment.depart - e.preMoveMeme.duration),
+    end: segment.depart,
+    asset: e.preMoveMeme.asset,
+  };
+}
+
 export function segments(p: Project) {
   let at = p.lead;
   return p.moves.map((m, i) => {
     const start = at,
-      depart = start + m.effect.delay,
+      depart = start + moveLead(m.effect),
       land = depart + m.effect.duration * m.effect.landing,
       finish = depart + m.effect.duration;
     at = finish + moveHold(m.effect);
@@ -187,6 +203,7 @@ export interface Frame {
   index: number;
   u: number;
   pieces: Visual[];
+  preMoveMeme: { square: string; pieceId: string; asset: string } | null;
   camera: {
     x: number;
     y: number;
@@ -552,6 +569,7 @@ export function evaluate(
       ),
     });
   }
+  const meme = e ? memeWindow(e, seg) : null;
   const light = evaluateMoveLight(p, time, index, seq);
   if (jam) {
     const strength =
@@ -569,6 +587,10 @@ export function evaluate(
     index,
     u,
     pieces,
+    preMoveMeme:
+      meme && time >= meme.start && time < meme.end
+        ? { square: step.from, pieceId: step.pieceId, asset: meme.asset }
+        : null,
     camera: cam,
     effect: e,
     source: step?.from ?? null,

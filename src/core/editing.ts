@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { moveLead } from "./timeline";
 import {
   effectSchema,
   settingsKinds,
@@ -37,6 +38,10 @@ export function preserveLockedTiming(before: Effect, after: Effect) {
   after.after.duration = before.after.duration;
   for (const key of timingKeys)
     (after as any)[key] = structuredClone(before[key]);
+  const lockedLead = moveLead(before);
+  if (moveLead(after) > lockedLead)
+    after.preMoveMeme = structuredClone(before.preMoveMeme);
+  if (moveLead(after) < lockedLead) after.delay = lockedLead;
 }
 export function pasteSettings(
   target: Effect,
@@ -60,7 +65,8 @@ export function pasteSettings(
         !timing &&
         !visual &&
         !size &&
-        key !== "after")
+        key !== "after" &&
+        key !== "preMoveMeme")
     )
       (next as any)[key] = structuredClone(source[key]);
   }

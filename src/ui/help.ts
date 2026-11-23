@@ -180,6 +180,10 @@ const help: Record<string, string> = {
   "Sway cycles":
     "Number of rocking cycles. 0.5 makes a single lean and return; 1 rocks both ways.",
   "Hop height": "How far the moving piece lifts above the board.",
+  "Meme image":
+    "Choose an imported image to show in this piece’s starting square.",
+  "Meme duration":
+    "Set how long the image fills the square immediately before departure.",
   "After-effect type":
     "Choose an optional rebound, size pulse, or camera push-in after the main move.",
   "After-effect delay":

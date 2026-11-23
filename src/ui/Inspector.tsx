@@ -1,3 +1,4 @@
+import { StartingSquareMeme } from "./StartingSquareMeme";
 import { AfterEffect } from "./AfterEffect";
 import { settingsLabel } from "./commands/bulkEditing";
 import { BeatAlignment } from "./BeatAlignment";
@@ -50,6 +51,8 @@ export function Inspector({
   time,
   fps,
   onGlobalEffects,
+  images,
+  run,
   seek,
 }: {
   project: Project;
@@ -63,6 +66,8 @@ export function Inspector({
   time: number;
   fps: number;
   onGlobalEffects: () => void;
+  images: Record<string, string>;
+  run: (job: () => Promise<unknown>) => void;
   seek?: (time: number) => void;
 }) {
   const [tab, setTab] = useState("move"),
@@ -83,6 +88,7 @@ export function Inspector({
       effects: ["effects", "Capture impact", "Capture camera shake value"],
       badge: ["effects", "Move badge", "Badge override"],
       spotlight: ["effects", "Beat spotlight transition", "Beat spotlight"],
+      meme: ["move", "Starting-square meme", "Meme image"],
     };
     return targets[requestedTab!.section] ?? [requestedTab!.section, "", ""];
   };
@@ -269,6 +275,7 @@ export function Inspector({
                   Movement: "Move preset",
                   "Beat spotlight transition": "Beat zoom rhythm",
                   "After effect": "After-effect type",
+                  "Starting-square meme": "Meme image",
                   "Capture impact": "Captured piece exit",
                   "Move light & flicker": "Move light wash",
                 } as Record<string, string>
@@ -316,6 +323,11 @@ export function Inspector({
             <>
               <nav className="button-row" aria-label="Move effect modules">
                 {[
+                  [
+                    "Starting-square meme",
+                    "Starting-square meme",
+                    "Meme image",
+                  ],
                   ["Main effect", "Movement", "Move preset"],
                   ["Piece size", "Piece size", "Size during move"],
                   ["After effect", "After effect", "After-effect type"],
@@ -336,6 +348,16 @@ export function Inspector({
                   </button>
                 ))}
               </nav>
+              <StartingSquareMeme
+                project={project}
+                index={index}
+                targets={targets(project)}
+                edit={edit}
+                images={images}
+                run={run}
+                seek={seek}
+                segment={frame}
+              />
               <Section
                 title="Movement"
                 onReset={() =>

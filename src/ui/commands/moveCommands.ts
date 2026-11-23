@@ -89,6 +89,14 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
   }));
   const actions: MenuAction[] = [
     { label: "Preview this move", run: () => c.preview(index) },
+    ...(track === "camera"
+      ? []
+      : [
+          {
+            label: "Starting-square meme…",
+            run: () => c.inspect(index, "meme"),
+          },
+        ]),
     {
       label:
         track === "camera"

@@ -1,6 +1,11 @@
 import type { Project } from "../core/project";
 import { buildGame } from "../core/chess";
-import { afterEffectWindow, duration, segments } from "../core/timeline";
+import {
+  afterEffectWindow,
+  duration,
+  memeWindow,
+  segments,
+} from "../core/timeline";
 
 /** Audition a clip without changing its authored timing or the composition. */
 export function movePreviewWindow(project: Project, index: number) {
@@ -29,6 +34,8 @@ export function moveFrameStops(project: Project, index: number) {
     { label: "Landing", time: segment.land },
     { label: "Settled", time: segment.finish },
   ];
+  const meme = memeWindow(project.moves[index].effect, segment);
+  if (meme) stops.unshift({ label: "Meme", time: meme.start });
   const after = afterEffectWindow(project.moves[index].effect, segment);
   if (after)
     stops.push(

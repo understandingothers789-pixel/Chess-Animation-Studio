@@ -732,10 +732,19 @@
   gap: 6px;
   max-width: 630px;
 }
-.move-frame-stops[data-after-effect="true"] {
-  grid-template-columns: repeat(6, minmax(64px, 1fr));
+.move-frame-stops[data-extra-frames="true"] {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(64px, 1fr);
   max-width: 860px;
   overflow-x: auto;
+}
+.starting-square-meme-image {
+  display: block;
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border: 1px solid var(--line);
 }
 .move-frame-stop {
   display: grid;

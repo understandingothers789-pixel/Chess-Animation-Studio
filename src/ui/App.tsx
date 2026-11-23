@@ -2027,6 +2027,8 @@ export function App() {
                 <SettingsScope.Provider value="move-inspector">
                   <Inspector
                     requestedTab={inspectorRequest}
+                    images={previewAssets}
+                    run={run}
                     project={p}
                     checked={checked}
                     index={selected}

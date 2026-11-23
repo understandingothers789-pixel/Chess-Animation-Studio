@@ -35,6 +35,7 @@ jobs:
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
           node --import tsx scripts/customization-ui-smoke.ts
           node --import tsx scripts/customization-render-smoke.ts
+          node --import tsx scripts/meme-render-smoke.ts
           npm run test:timeline
           npm run test:storyboard
           npm run test:finishing

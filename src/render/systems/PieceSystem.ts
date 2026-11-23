@@ -26,7 +26,7 @@ export class PieceSystem {
     this.resources.own(this.radial);
     this.ready = this.prepare();
   }
-  update(c: RenderFrame) {
+  update(c: RenderFrame, hiddenPiece?: string) {
     const { p, e, sign, game } = c;
     const set = p.style.pieceSet;
     const sculpted = set === "sculpted";
@@ -50,6 +50,7 @@ export class PieceSystem {
       if (!k.startsWith("template-")) m.visible = false;
     for (const m of this.shadows.values()) m.visible = false;
     for (const v of e.pieces) {
+      if (v.id === hiddenPiece) continue;
       const key = `${p.style.pieceSet}-${v.id}-${v.type}`;
       let m = this.meshes.get(key);
       if (!m) {

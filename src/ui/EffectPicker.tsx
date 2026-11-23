@@ -44,6 +44,7 @@ export function EffectPicker({
   const sections: Record<string, string> = {
     "Piece flip": "Movement",
     "3D piece flip": "Movement",
+    "Starting-square meme": "Starting-square meme",
     "After-effect rebound": "After effect",
     "After effect": "After effect",
     "Soft hop": "Movement",
@@ -56,6 +57,8 @@ export function EffectPicker({
     Camera: `Camera · ${p.format}`,
   };
   const items = [
+    { name: "Starting-square meme", tab: "move" },
+
     {
       name: "3D piece flip",
       tab: "move",
@@ -229,7 +232,7 @@ export function EffectPicker({
                     : undefined
                 }
                 onClick={() => {
-                  change("Add " + v.name, v.add, v.sculpted);
+                  if (v.add) change("Add " + v.name, v.add, v.sculpted);
                   inspect(v.tab, sections[v.name]);
                   setOpen(false);
                 }}

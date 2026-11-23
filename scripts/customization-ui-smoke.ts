@@ -357,9 +357,67 @@ try {
   const group = await state();
   assert.equal(group.moves[0].effect.duration, lockedDuration);
   assert.equal(group.moves[1].effect.jam.enabled, true);
+  await page.locator('.move-clip[data-move-index="0"] .clip-select').click();
+  await page.locator('.inspector [data-tab="move"]').click();
+  await page.getByLabel("Lock timing", { exact: true }).uncheck();
+  await page.evaluate(() => {
+    const w = window as any;
+    w.studio.importAsset = async () => ({
+      id: "meme-image",
+      name: "Reaction.svg",
+      path: "/fixtures/reaction.svg",
+      kind: "image",
+      source: "Fixture",
+      guidance: "",
+    });
+    w.studio.assetData = async () =>
+      "data:image/svg+xml," +
+      encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120"><rect width="240" height="120" fill="#ff0080"/></svg>',
+      );
+  });
+  await page
+    .getByRole("button", { name: "Add animation or effect", exact: true })
+    .click();
+  await page
+    .getByRole("region", { name: "Add animation or effect", exact: true })
+    .getByRole("button", { name: "Starting-square meme", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Import meme image", exact: true })
+    .click();
+  await expect(
+    page.getByRole("img", { name: "Meme preview cropped to a square" }),
+  ).toBeVisible();
+  await page.getByLabel("Meme duration value", { exact: true }).fill("0.65");
+  await expect
+    .poll(async () => (await state()).moves[0].effect.preMoveMeme)
+    .toEqual({
+      asset: "meme-image",
+      duration: 0.65,
+    });
+  assert.equal((await state()).moves[1].effect.preMoveMeme, null);
+  await page
+    .getByRole("button", { name: "Preview meme on board", exact: true })
+    .click();
+  await frameStrip.locator("summary").click();
+  await expect(frameStrip.locator("img")).toHaveCount(7, { timeout: 20000 });
+  await frameStrip
+    .getByRole("button", { name: "View meme frame", exact: true })
+    .click();
+  await expect(
+    frameStrip.getByRole("button", { name: "View meme frame", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.screenshot({
+    path: "test-results/customization/starting-square-meme.png",
+  });
+  await page.getByLabel("Meme image", { exact: true }).selectOption("");
+  await expect
+    .poll(async () => (await state()).moves[0].effect.preMoveMeme)
+    .toBeNull();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: recipe, landing proposal/commit/lock, preset category/save/import/export, personal library, laptop/large layouts and preview speed.",
+    "PASS: recipe, landing alignment, preset workflows, preview controls, and starting-square meme import, timing, thumbnails and removal.",
   );
 } finally {
   await browser.close();

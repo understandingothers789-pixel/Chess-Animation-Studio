@@ -13,9 +13,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {version: '9.1.0', command: direct, test: nostdin}
-          - {version: '9.1.0', command: direct, test: finite-padding}
-          - {version: '9.1.0', command: direct, test: both}
+          - {version: '9.1.0', command: direct, test: one-filter-thread}
+          - {version: '9.1.0', command: direct, test: limiter}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,11 +38,10 @@ jobs:
           Write-Host "Using $env:FFMPEG_PATH"
           $source = 'desktop/export.ts'
           $export = [IO.File]::ReadAllText($source)
-          if ('${{ matrix.test }}' -in @('nostdin', 'both')) {
-            $export = $export.Replace('const c = this.launch(args);', 'const c = this.launch(["-nostdin", ...args]);')
-          }
-          if ('${{ matrix.test }}' -in @('finite-padding', 'both')) {
-            $export = $export.Replace('latency=1,apad,atrim', 'latency=1,apad=whole_dur=${seconds},atrim')
+          if ('${{ matrix.test }}' -eq 'one-filter-thread') {
+            $export = $export.Replace('"-filter_complex",', '"-filter_complex_threads", "1", "-filter_complex",')
+          } else {
+            $export = $export.Replace('limit=0.95:level=0:latency=1', 'limit=0.95:level=0:latency=0')
           }
           [IO.File]::WriteAllText($source, $export)
           $file = 'tests/services.test.ts'

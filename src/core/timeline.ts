@@ -285,7 +285,13 @@ export function evaluate(
     impact = 0,
     shown: string | null = null,
     anchor: [number, number] | null = null;
+  let afterPulse = 0;
   if (e && step) {
+    const followup = afterEffectWindow(e, seg);
+    if (followup && time > followup.start && time < followup.end) {
+      const phase = (time - followup.start) / e.after.duration;
+      afterPulse = Math.sin(Math.PI * phase) ** 2 * e.after.strength;
+    }
     const v = pieces.find((x) => x.id === step.pieceId)!,
       a = xy(step.from),
       b = xy(step.to),
@@ -399,6 +405,12 @@ export function evaluate(
         opacity: 1,
         moving: false,
       }));
+      if (afterPulse > 0) {
+        const landed = pieces.find((piece) => piece.id === step.pieceId);
+        if (landed && e.after.kind === "rebound") landed.z = afterPulse * 0.7;
+        if (landed && e.after.kind === "size-pulse")
+          landed.scale = 1 + afterPulse;
+      }
       glow = 0;
       impact = 0;
     }
@@ -485,6 +497,12 @@ export function evaluate(
     cam.zoom *= 1 + j.zoom * env * jam.zoomLevel;
     cam.rotation +=
       Math.cos(jam.phase * Math.PI) * j.roll * env * (0.35 + 0.65 * jam.pulse);
+  }
+  if (afterPulse > 0 && e?.after.kind === "camera-pulse" && step) {
+    const [x, y] = xy(step.to);
+    cam.x = mix(cam.x, x, afterPulse);
+    cam.y = mix(cam.y, y, afterPulse);
+    cam.zoom *= 1 + afterPulse * 0.55;
   }
   let pulse = 0;
   if (p.pulse.enabled)
@@ -766,12 +784,22 @@ export function moveChannelSampler(
   };
 }
 
+export function afterEffectWindow(e: Effect, segment: { finish: number }) {
+  if (!e.after || e.after.kind === "none") return null;
+  const start = segment.finish + e.after.delay;
+  return { start, end: start + e.after.duration };
+}
+
 export function moveHold(e: Effect) {
   const overlap =
     e.jam.start === "landing"
       ? e.duration * (1 - e.landing) + Math.min(0.12, e.duration * e.landing)
       : 0;
-  return Math.max(e.hold, e.jam.enabled ? e.jam.duration - overlap : 0);
+  return Math.max(
+    e.hold,
+    e.jam.enabled ? e.jam.duration - overlap : 0,
+    afterEffectWindow(e, { finish: 0 })?.end ?? 0,
+  );
 }
 export function spotlightPeaks(p: Project, e: Effect, start: number) {
   const j = e.jam;

@@ -36,12 +36,16 @@ export function EffectPicker({
       .filter((m) => (checked.size ? checked.has(m.id) : m.id === move.id))
       .map((m) => m.id),
   );
-  const change = (label: string, fn: (e: Effect) => void) =>
+  const change = (label: string, fn: (e: Effect) => void, sculpted = false) =>
     edit(label, (draft) => {
+      if (sculpted) draft.style.pieceSet = "sculpted";
       for (const m of draft.moves) if (ids.has(m.id)) fn(m.effect);
     });
   const sections: Record<string, string> = {
     "Piece flip": "Movement",
+    "3D piece flip": "Movement",
+    "After-effect rebound": "After effect",
+    "After effect": "After effect",
     "Soft hop": "Movement",
     Movement: "Movement",
     "Beat zoom": "Beat spotlight transition",
@@ -52,6 +56,33 @@ export function EffectPicker({
     Camera: `Camera · ${p.format}`,
   };
   const items = [
+    {
+      name: "3D piece flip",
+      tab: "move",
+      sculpted: true,
+      add: (e: Effect) => {
+        Object.assign(
+          e,
+          applyPresetEffect(
+            e,
+            effect("somersault"),
+            p.format,
+            false,
+            "movement",
+            true,
+            false,
+          ),
+        );
+        e.axis = "x";
+      },
+    },
+    {
+      name: "After-effect rebound",
+      tab: "move",
+      add: (e: Effect) => {
+        e.after.kind = "rebound";
+      },
+    },
     {
       name: "Piece flip",
       tab: "move",
@@ -120,6 +151,14 @@ export function EffectPicker({
         ),
     },
     {
+      name: "After effect",
+      tab: "move",
+      on: move.effect.after.kind !== "none",
+      reset: (e: Effect) => {
+        e.after.kind = "none";
+      },
+    },
+    {
       name: "Beat zoom",
       tab: "effects",
       on: move.effect.jam.enabled,
@@ -183,13 +222,25 @@ export function EffectPicker({
             .map((v) => (
               <button
                 key={v.name}
+                aria-label={v.name}
+                aria-description={
+                  v.sculpted
+                    ? "Uses sculpted artwork for the whole board."
+                    : undefined
+                }
                 onClick={() => {
-                  change("Add " + v.name, v.add);
+                  change("Add " + v.name, v.add, v.sculpted);
                   inspect(v.tab, sections[v.name]);
                   setOpen(false);
                 }}
               >
                 {v.name}
+                {v.sculpted && (
+                  <small className="effect-picker-scope">
+                    {" "}
+                    · 3D artwork on the whole board
+                  </small>
+                )}
               </button>
             ))}
           <button onClick={browse}>Browse all animation presets</button>

@@ -12,6 +12,7 @@ import { AnnotationRegion } from "./timeline/AnnotationRegion";
 import { settingHelp } from "./help";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  afterEffectWindow,
   compileTimeline,
   spotlightStart,
   spotlightPeaks,
@@ -142,6 +143,17 @@ export function Timeline({
         detail: "",
       });
     }
+    const after = afterEffectWindow(effect, active);
+    if (after)
+      markers.push(
+        { label: "After-effect start", time: after.start, detail: "" },
+        {
+          label: "After-effect peak",
+          time: (after.start + after.end) / 2,
+          detail: "",
+        },
+        { label: "After-effect end", time: after.end, detail: "" },
+      );
     return markers;
   }, [introSelected, p, selected, seq]);
   const events = useMemo(
@@ -696,6 +708,9 @@ export function Timeline({
                   {[
                     p.moves[i].effect.badge.manual,
                     p.moves[i].effect.jam.enabled ? "Spotlight" : "",
+                    p.moves[i].effect.after.kind !== "none"
+                      ? "After effect"
+                      : "",
                     p.moves[i].effect.keys.opacity?.length ? "Opacity" : "",
                   ]
                     .filter(Boolean)

@@ -1530,6 +1530,7 @@ export function App() {
                             replaceAll,
                             kind,
                             preserveKeys,
+                            false,
                           );
                           const draft = {
                             ...p,
@@ -2087,7 +2088,9 @@ export function App() {
             ? "Nibbler"
             : p.style.pieceSet === "neo"
               ? "Neo"
-              : "Cburnett"}
+              : p.style.pieceSet === "sculpted"
+                ? "Sculpted 3D"
+                : "Cburnett"}
         </span>
       </footer>
       {transcriptOpen && (

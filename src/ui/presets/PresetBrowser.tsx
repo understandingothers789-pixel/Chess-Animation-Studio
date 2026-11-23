@@ -1,3 +1,4 @@
+import { settingsLabel } from "../commands/bulkEditing";
 import { useState } from "react";
 import {
   effect,
@@ -159,7 +160,9 @@ export function PresetBrowser({
             }}
           >
             {settingsKinds.map((k) => (
-              <option key={k}>{k}</option>
+              <option key={k} value={k}>
+                {settingsLabel(k)}
+              </option>
             ))}
           </select>
         </label>
@@ -206,7 +209,7 @@ export function PresetBrowser({
         <p className="hint">
           {replaceAll
             ? "Replace animation, camera, effects, custom curves and unlocked timing."
-            : `Apply ${kind}. ${preserveKeys ? "Existing custom curves are kept and may override the preset." : "Replace curves in this category."} Timing locks are respected.`}
+            : `Apply ${settingsLabel(kind).toLowerCase()}. ${preserveKeys ? "Existing custom curves are kept and may override the preset." : "Replace curves in this category."} Timing locks are respected.`}
         </p>
         {previewActive && selected && (
           <>
@@ -243,6 +246,7 @@ export function PresetBrowser({
                       replaceAll,
                       kind,
                       preserveKeys,
+                      false,
                     );
               });
               const next = [

@@ -1,3 +1,4 @@
+import { createSculptedPiece, sculptedGeometry } from "../sculptedPieces";
 import type { Game } from "../../core/chess";
 import {
   createPiece,
@@ -16,6 +17,9 @@ export class PieceSystem {
   readonly ready: Promise<void>;
   private dead = false;
   private lastGame?: Game;
+  private lastSet?: string;
+  private up = new T.Vector3();
+  private inverseRotation = new T.Quaternion();
   private releaseArtwork = retainPieceAssets();
   private radial = radialTexture();
   constructor(private root: T.Group) {
@@ -24,9 +28,23 @@ export class PieceSystem {
   }
   update(c: RenderFrame) {
     const { p, e, sign, game } = c;
-    if (this.lastGame !== game) {
-      this.prune(game, p.style.pieceSet);
+    const set = p.style.pieceSet;
+    const sculpted = set === "sculpted";
+    if (sculpted && !this.meshes.has("template-sculpted-w-k")) {
+      for (const type of "kqrbnp") {
+        const geometry = this.resources.own(sculptedGeometry(type));
+        for (const color of ["w", "b"]) {
+          this.meshes.set(
+            `template-sculpted-${color}-${type}`,
+            createSculptedPiece(geometry, color),
+          );
+        }
+      }
+    }
+    if (this.lastGame !== game || this.lastSet !== set) {
+      this.prune(game, set);
       this.lastGame = game;
+      this.lastSet = set;
     }
     for (const [k, m] of this.meshes)
       if (!k.startsWith("template-")) m.visible = false;
@@ -55,6 +73,19 @@ export class PieceSystem {
       m.position.set(v.x, v.y, 0.08 + v.z);
       m.rotation.set(v.rx, v.ry, v.rz + (sign < 0 ? Math.PI : 0));
       m.scale.setScalar(v.scale);
+      if (sculpted) {
+        // Raise the rotated model by its extent beneath the centre so the
+        // flip stays above the board, including at quarter turns.
+        const bounds = m.geometry.boundingBox!;
+        const up = this.up
+          .set(0, 0, 1)
+          .applyQuaternion(this.inverseRotation.copy(m.quaternion).invert());
+        const lowest =
+          up.x * (up.x < 0 ? bounds.max.x : bounds.min.x) +
+          up.y * (up.y < 0 ? bounds.max.y : bounds.min.y) +
+          up.z * (up.z < 0 ? bounds.max.z : bounds.min.z);
+        m.position.z = 0.035 + v.z - lowest * v.scale;
+      }
       for (const mat of m.material as T.Material[]) {
         mat.opacity = v.opacity;
         mat.transparent = true;

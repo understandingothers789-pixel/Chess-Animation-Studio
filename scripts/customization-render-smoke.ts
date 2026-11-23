@@ -5,18 +5,26 @@ import path from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { blank, effect } from "../src/core/project";
 import { importPgn, buildGame } from "../src/core/chess";
-import { duration, segments, evaluate } from "../src/core/timeline";
+import {
+  afterEffectWindow,
+  duration,
+  segments,
+  evaluate,
+} from "../src/core/timeline";
 import { validateExport } from "../src/core/exportOptions";
 import { VideoJob } from "../desktop/export";
 const dir = path.resolve("test-results/customization-render");
 await fs.mkdir(dir, { recursive: true });
-const p = importPgn(blank(), "1. e4");
+const p = importPgn(blank(), "1. Nf3");
+p.style.pieceSet = "sculpted";
 p.lead = 0.2;
 p.tail = 0;
 p.boardFX.intro = false;
 p.moves[0].effect = effect("somersault");
 const e = p.moves[0].effect;
 e.duration = 1;
+e.axis = "x";
+e.after = { kind: "size-pulse", delay: 0.7, duration: 0.8, strength: 0.44 };
 e.landing = 0.8;
 e.hold = 0;
 e.sizeProfile = "smooth";
@@ -68,6 +76,7 @@ const game = buildGame(p),
   mid = evaluate(p, 0.6, game, "landscape"),
   land = evaluate(p, 1, game, "landscape");
 const moved = game.steps[0].pieceId;
+const after = afterEffectWindow(e, segments(p)[0])!;
 const sizeAt = (time: number) =>
   evaluate(p, time, game, "landscape").pieces.find(
     (piece) => piece.id === moved,
@@ -76,9 +85,11 @@ assert.ok(sizeAt(0.56) > 1.45);
 assert.ok(Math.abs(sizeAt(29 / 30) - 1) < 0.01);
 assert.equal(sizeAt(1), 1);
 assert.equal(sizeAt(1.2), 1);
-assert.ok(Math.abs(mid.pieces.find((v) => v.id === moved)!.rz) > 0.2);
+assert.ok(sizeAt((after.start + after.end) / 2) > 1.4);
+assert.equal(sizeAt(after.end), 1);
+assert.ok(Math.abs(mid.pieces.find((v) => v.id === moved)!.rx) > 0.2);
 assert.ok(
-  Math.abs(Math.sin(land.pieces.find((v) => v.id === moved)!.rz)) < 0.001,
+  Math.abs(Math.sin(land.pieces.find((v) => v.id === moved)!.rx)) < 0.001,
 );
 assert.ok(
   evaluate(p, 1.08, game, "landscape").camera.zoom !==
@@ -157,6 +168,17 @@ try {
     await job.cancel();
     throw error;
   }
+  let darkPiecePixels = 0;
+  const opening = originals[7];
+  for (let offset = 0; offset < opening.length; offset += 4) {
+    const red = opening[offset];
+    const blue = opening[offset + 2];
+    if (red < 100 && blue > red + 18) darkPiecePixels++;
+  }
+  assert.ok(
+    darkPiecePixels > 150,
+    "The 3D pieces must be visible in the rendered frame",
+  );
   const probe = JSON.parse(
     execFileSync(
       "ffprobe",
@@ -223,6 +245,8 @@ try {
         landingFrame: 30,
         pieceSizeAtLanding: sizeAt(1),
         pieceSizeBeforeLanding: sizeAt(29 / 30),
+        afterEffectPeak: (after.start + after.end) / 2,
+        darkPiecePixels,
         audioDuration: +sound.duration,
         decodedMeanError: error / count,
       },
@@ -235,7 +259,7 @@ try {
     JSON.stringify(p, null, 2),
   );
   console.log(
-    `PASS: ${job.frames} decoded H.264 frames, continuous AAC, smooth size return, upright landing at frame 30 and beat-driven zoom.`,
+    `PASS: ${job.frames} decoded H.264 frames, continuous AAC, visible sculpted pieces, smooth size return, upright landing at frame 30, beat-driven zoom and an after-effect pulse.`,
   );
 } finally {
   await browser?.close();

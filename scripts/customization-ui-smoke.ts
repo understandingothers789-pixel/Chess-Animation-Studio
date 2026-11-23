@@ -197,6 +197,62 @@ try {
   ).toBeDisabled();
   await page.getByLabel("Lock timing", { exact: true }).uncheck();
   await page
+    .getByRole("button", { name: "Add animation or effect", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "3D piece flip", exact: true })
+    .click();
+  await expect
+    .poll(async () => (await state()).style.pieceSet)
+    .toBe("sculpted");
+  assert.equal((await state()).moves[0].effect.axis, "x");
+  assert.equal((await state()).moves[0].effect.scale, 1.4);
+  assert.equal((await state()).moves[0].effect.sizeReturn, 0.65);
+  await page
+    .getByRole("navigation", { name: "Move effect modules" })
+    .getByRole("button", { name: "After effect", exact: true })
+    .click();
+  const after = page.getByLabel("After-effect type", { exact: true });
+  await after.selectOption("size-pulse");
+  await page
+    .getByLabel("After-effect delay value", { exact: true })
+    .fill("0.2");
+  await page
+    .getByLabel("After-effect duration value", { exact: true })
+    .fill("0.6");
+  await page
+    .getByLabel("After-effect strength value", { exact: true })
+    .fill("60");
+  assert.deepEqual((await state()).moves[0].effect.after, {
+    kind: "size-pulse",
+    delay: 0.2,
+    duration: 0.6,
+    strength: 0.6,
+  });
+  await frameStrip.locator("summary").click();
+  await expect(frameStrip.locator("img")).toHaveCount(6, { timeout: 20000 });
+  const peak = frameStrip.getByRole("button", {
+    name: "View after-effect peak frame",
+    exact: true,
+  });
+  await page
+    .getByRole("button", { name: "View after-effect peak", exact: true })
+    .click();
+  await expect(peak).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: "Reload graphics", exact: true }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: "test-results/customization/sculpted-after-effect.png",
+  });
+  await frameStrip.locator("summary").click();
+  await page.getByLabel("Lock timing", { exact: true }).check();
+  await expect(after).toBeDisabled();
+  await expect(
+    page.getByLabel("After-effect duration value", { exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel("Lock timing", { exact: true }).uncheck();
+  await page
     .getByLabel("Preset name", { exact: true })
     .fill("My flip and zoom");
   await page
@@ -232,6 +288,7 @@ try {
   assert.equal(saved[0].name, "My flip and zoom");
   assert.equal(saved[0].effect.sizeProfile, "smooth");
   assert.equal(saved[0].effect.sizeReturn, 0.65);
+  assert.equal(saved[0].effect.after.kind, "size-pulse");
   const download = page.waitForEvent("download");
   await page
     .getByRole("button", { name: "Download preset", exact: true })

@@ -7,9 +7,13 @@ import {
 import type { Effect, Project } from "../../core/project";
 import type { Edit } from "../state";
 export const settingsLabel = (kind: SettingsKind) =>
-  kind === "everything"
-    ? "Everything (all formats)"
-    : kind[0].toUpperCase() + kind.slice(1);
+  kind === "after-effect"
+    ? "After effect"
+    : kind === "size"
+      ? "Piece size"
+      : kind === "everything"
+        ? "Everything (all formats)"
+        : kind[0].toUpperCase() + kind.slice(1);
 export function bulkGroups(p: Project, source: string, checked: Set<string>) {
   return {
     "This move": [source],

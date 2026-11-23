@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import {
   effectSchema,
+  settingsKinds,
   type Effect,
   type Project,
   type Format,
@@ -12,21 +13,14 @@ export const timingKeys = [
   "landing",
   "landingBeat",
 ] as const;
-export type SettingsKind =
-  | "movement"
-  | "camera"
-  | "effects"
-  | "timing"
-  | "everything";
+export { settingsKinds };
+export type SettingsKind = (typeof settingsKinds)[number];
 export const settingsAffectTiming = (kind: SettingsKind) =>
-  ["timing", "effects", "everything"].includes(kind);
-export const settingsKinds: SettingsKind[] = [
-  "movement",
-  "camera",
-  "effects",
-  "timing",
-  "everything",
-];
+  kind === "timing" ||
+  kind === "effects" ||
+  kind === "after-effect" ||
+  kind === "everything";
+const sizeFields = ["scale", "sizeProfile", "sizeReturn", "peak"] as const;
 const visualKeys = ["capture", "highlight", "badge", "jam", "light"] as const;
 export type SettingsClipboard = {
   kind: SettingsKind;
@@ -38,6 +32,9 @@ export function preserveLockedTiming(before: Effect, after: Effect) {
   after.jam.enabled = before.jam.enabled;
   after.jam.duration = before.jam.duration;
   after.jam.start = before.jam.start;
+  after.after.kind = before.after.kind;
+  after.after.delay = before.after.delay;
+  after.after.duration = before.after.duration;
   for (const key of timingKeys)
     (after as any)[key] = structuredClone(before[key]);
 }
@@ -51,15 +48,24 @@ export function pasteSettings(
   for (const key of Object.keys(source) as (keyof Effect)[]) {
     if (key === "locked" || key === "keys" || key === "cameras") continue;
     const timing = timingKeys.includes(key as any),
+      size = sizeFields.includes(key as (typeof sizeFields)[number]),
       visual = visualKeys.includes(key as any);
     if (
       clip.kind === "everything" ||
       (clip.kind === "timing" && timing) ||
       (clip.kind === "effects" && visual) ||
-      (clip.kind === "movement" && !timing && !visual)
+      (clip.kind === "after-effect" && key === "after") ||
+      (clip.kind === "size" && size) ||
+      (clip.kind === "movement" &&
+        !timing &&
+        !visual &&
+        !size &&
+        key !== "after")
     )
       (next as any)[key] = structuredClone(source[key]);
   }
+  if (clip.kind === "size") next.capture.grow = source.capture.grow;
+  if (clip.kind === "effects") next.capture.grow = target.capture.grow;
   if (clip.kind === "everything")
     next.cameras = structuredClone(source.cameras);
   if (clip.kind === "camera") {
@@ -75,7 +81,9 @@ export function pasteSettings(
       ? "camera"
       : key === "opacity"
         ? "effects"
-        : "movement";
+        : key === "scale"
+          ? "size"
+          : "movement";
     if (clip.kind === "everything" || clip.kind === kind) {
       delete (next.keys as any)[key];
       if ((source.keys as any)[key])
@@ -93,12 +101,24 @@ export function applyPresetEffect(
   replaceAll = false,
   kind: SettingsKind = "movement",
   preserveKeys = true,
+  includePresetSize = true,
 ) {
   const next = pasteSettings(target, {
     source,
     format,
     kind: replaceAll ? "everything" : kind,
   });
+  if (!replaceAll && kind === "movement" && includePresetSize) {
+    const size = effectSchema.parse(source);
+    next.scale = size.scale;
+    next.sizeProfile = size.sizeProfile;
+    next.sizeReturn = size.sizeReturn;
+    next.peak = size.peak;
+    next.capture.grow = size.capture.grow;
+    if (size.keys.scale?.length)
+      next.keys.scale = structuredClone(size.keys.scale);
+    else delete next.keys.scale;
+  }
   if (!replaceAll && preserveKeys)
     next.keys = { ...next.keys, ...structuredClone(target.keys) };
   if (replaceAll && !target.locked) next.landingBeat = null;

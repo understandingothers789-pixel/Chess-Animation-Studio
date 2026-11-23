@@ -180,10 +180,18 @@ const help: Record<string, string> = {
   "Sway cycles":
     "Number of rocking cycles. 0.5 makes a single lean and return; 1 rocks both ways.",
   "Hop height": "How far the moving piece lifts above the board.",
+  "After-effect type":
+    "Choose an optional rebound, size pulse, or camera push-in after the main move.",
+  "After-effect delay":
+    "Seconds between the end of the main move and the start of the follow-up.",
+  "After-effect duration":
+    "Seconds the follow-up lasts before returning to rest.",
+  "After-effect strength":
+    "Controls the peak rebound height, size change, or camera move.",
   "Size during move":
     "Keep the piece at its normal size, add smooth growth before landing, or use the original curve. Custom scale keys take priority.",
   "Peak piece size":
-    "Normal size is 100%. This sets how large the moving piece can grow at intensity 1.",
+    "Normal size is 100%. This sets the size at the strongest point of the size effect at intensity 1.",
   "Size return span":
     "Percentage of travel used to ease back to normal size. A longer span starts the return earlier, while the piece reaches normal size at landing.",
   "Maximum size":

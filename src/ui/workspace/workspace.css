@@ -732,6 +732,11 @@
   gap: 6px;
   max-width: 630px;
 }
+.move-frame-stops[data-after-effect="true"] {
+  grid-template-columns: repeat(6, minmax(64px, 1fr));
+  max-width: 860px;
+  overflow-x: auto;
+}
 .move-frame-stop {
   display: grid;
   grid-template-columns: 1fr auto;

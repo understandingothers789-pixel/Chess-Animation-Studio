@@ -98,7 +98,10 @@ export function MoveFrames({
       <summary>Move frames · {project.moves[index].san}</summary>
       {expanded && (
         <div className="move-frames-content">
-          <div className="move-frame-stops">
+          <div
+            className="move-frame-stops"
+            data-after-effect={stops.length > 4}
+          >
             {stops.map(({ label, time: checkpoint }, i) => (
               <button
                 key={label}

@@ -139,6 +139,27 @@ export const beatSpotlightDefaults = {
   desaturate: 0.65,
   vignette: 0.4,
 };
+export const afterEffectKinds = [
+  "none",
+  "rebound",
+  "size-pulse",
+  "camera-pulse",
+] as const;
+export const afterEffectDefaults = {
+  kind: "none" as const,
+  delay: 0,
+  duration: 0.45,
+  strength: 0.4,
+};
+export const settingsKinds = [
+  "movement",
+  "size",
+  "after-effect",
+  "camera",
+  "effects",
+  "timing",
+  "everything",
+] as const;
 export const effectSchema = z.object({
   preset: z.enum(presets),
   duration: n(0.2, 30),
@@ -164,12 +185,20 @@ export const effectSchema = z.object({
   hop: n(0, 3),
   path: n(-3, 3),
   overshoot: n(0, 0.3),
-  scale: n(1, 3),
+  scale: n(0.5, 3),
   sizeProfile: z
     .enum(["auto", "constant", "smooth", "original"])
     .default("auto"),
   sizeReturn: n(0.1, 0.8).default(0.5),
   peak: n(0.1, 0.95),
+  after: z
+    .object({
+      kind: z.enum(afterEffectKinds),
+      delay: n(0, 3),
+      duration: n(0.1, 5),
+      strength: n(0, 1),
+    })
+    .default(() => ({ ...afterEffectDefaults })),
   jam: z
     .object({
       enabled: z.boolean(),
@@ -287,6 +316,7 @@ export function effect(preset: Preset = "slide"): Effect {
     sizeProfile: "auto",
     sizeReturn: 0.5,
     peak: 0.6,
+    after: { ...afterEffectDefaults },
     jam: { ...beatSpotlightDefaults },
     light: { ...moveLightDefaults },
     capture: {
@@ -645,7 +675,7 @@ export const projectSchema = z.object({
     .max(3000),
   defaults: effectSchema,
   style: z.object({
-    pieceSet: z.enum(["cburnett", "merida", "neo"]),
+    pieceSet: z.enum(["cburnett", "merida", "neo", "sculpted"]),
     light: color,
     dark: color,
     rim: color,
@@ -848,9 +878,7 @@ export const projectSchema = z.object({
         id: z.string().optional(),
         name: z.string().max(100),
         effect: effectSchema,
-        kind: z
-          .enum(["movement", "camera", "effects", "timing", "everything"])
-          .optional(),
+        kind: z.enum(settingsKinds).optional(),
       }),
     )
     .max(100),

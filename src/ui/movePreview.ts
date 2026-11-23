@@ -1,6 +1,6 @@
 import type { Project } from "../core/project";
 import { buildGame } from "../core/chess";
-import { duration, segments } from "../core/timeline";
+import { afterEffectWindow, duration, segments } from "../core/timeline";
 
 /** Audition a clip without changing its authored timing or the composition. */
 export function movePreviewWindow(project: Project, index: number) {
@@ -23,10 +23,17 @@ export function movePreviewWindow(project: Project, index: number) {
 export function moveFrameStops(project: Project, index: number) {
   const segment = segments(project)[index];
   if (!segment) return [];
-  return [
+  const stops = [
     { label: "Departure", time: segment.depart },
     { label: "Mid-move", time: (segment.depart + segment.land) / 2 },
     { label: "Landing", time: segment.land },
     { label: "Settled", time: segment.finish },
   ];
+  const after = afterEffectWindow(project.moves[index].effect, segment);
+  if (after)
+    stops.push(
+      { label: "After-effect peak", time: (after.start + after.end) / 2 },
+      { label: "After-effect end", time: after.end },
+    );
+  return stops;
 }

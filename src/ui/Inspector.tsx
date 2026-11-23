@@ -1,3 +1,5 @@
+import { AfterEffect } from "./AfterEffect";
+import { settingsLabel } from "./commands/bulkEditing";
 import { BeatAlignment } from "./BeatAlignment";
 import { EffectPicker } from "./EffectPicker";
 import {
@@ -7,6 +9,7 @@ import {
 } from "../core/editing";
 import { landingDuration } from "../core/audio";
 import {
+  afterEffectWindow,
   segments,
   moveHold,
   spotlightStart,
@@ -132,6 +135,7 @@ export function Inspector({
         });
       });
   const selectedEffects = targets(project).map((m) => m.effect);
+  const frame = segments(project)[index];
   const hasSizeKeys = selectedEffects.some((fx) => fx.keys.scale?.length);
   const usesImpactSize = (fx: Effect) =>
     fx.preset === "capture" || fx.preset === "finale";
@@ -264,6 +268,7 @@ export function Inspector({
                 {
                   Movement: "Move preset",
                   "Beat spotlight transition": "Beat zoom rhythm",
+                  "After effect": "After-effect type",
                   "Capture impact": "Captured piece exit",
                   "Move light & flicker": "Move light wash",
                 } as Record<string, string>
@@ -309,6 +314,28 @@ export function Inspector({
         {
           <div data-inspector-tab="move" hidden={tab !== "move"}>
             <>
+              <nav className="button-row" aria-label="Move effect modules">
+                {[
+                  ["Main effect", "Movement", "Move preset"],
+                  ["Piece size", "Piece size", "Size during move"],
+                  ["After effect", "After effect", "After-effect type"],
+                ].map(([label, section, control]) => (
+                  <button
+                    key={label}
+                    onClick={() =>
+                      focusSetting(
+                        document.querySelector(
+                          '.inspector [data-inspector-tab="move"]',
+                        ),
+                        section,
+                        control,
+                      )
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
               <Section
                 title="Movement"
                 onReset={() =>
@@ -322,9 +349,6 @@ export function Inspector({
                     "sway",
                     "cycles",
                     "hop",
-                    "scale",
-                    "sizeProfile",
-                    "sizeReturn",
                     "path",
                     "overshoot",
                   ])
@@ -342,6 +366,10 @@ export function Inspector({
                           m.effect,
                           effect(v),
                           p.format,
+                          false,
+                          "movement",
+                          true,
+                          false,
                         );
                       }
                     })
@@ -490,7 +518,7 @@ export function Inspector({
                     mixed={mixed((fx) =>
                       usesImpactSize(fx) ? fx.capture.grow : fx.scale,
                     )}
-                    min={100}
+                    min={selectedEffects.some(usesImpactSize) ? 100 : 50}
                     max={300}
                     step={1}
                     unit="%"
@@ -504,6 +532,10 @@ export function Inspector({
                     }
                   />
                 )}
+                {(pieceSizeProfile(e) !== "constant" ||
+                  mixed(pieceSizeProfile)) &&
+                  (!usesImpactSize(e) || pieceSizeProfile(e) === "smooth") &&
+                  range("peak", "Size peak phase", 0.1, 0.95)}
                 {(pieceSizeProfile(e) === "smooth" ||
                   selectedEffects.some(
                     (fx) => pieceSizeProfile(fx) === "smooth",
@@ -521,6 +553,15 @@ export function Inspector({
                   />
                 )}
               </Section>
+              <AfterEffect
+                effect={e}
+                selection={selectedEffects}
+                preview={afterEffectWindow(move.effect, frame)}
+                seek={seek}
+                update={(label, change) =>
+                  edit(label, (draft) => each(draft, change))
+                }
+              />
               <BeatAlignment project={project} index={index} edit={edit} />
               <Section
                 title="Timing & landing"
@@ -530,7 +571,6 @@ export function Inspector({
                     "hold",
                     "landing",
                     "settle",
-                    "peak",
                     "locked",
                     "landingBeat",
                   ])
@@ -541,7 +581,6 @@ export function Inspector({
                 {e.preset !== "somersault" &&
                   range("landing", "Landing phase", 0.25, 0.98)}
                 {range("settle", "Settle window", 0.01, 0.5)}
-                {range("peak", "Size peak phase", 0.1, 0.95)}
                 <Toggle
                   label="Lock timing"
                   checked={e.locked}
@@ -623,7 +662,9 @@ export function Inspector({
                   }
                 >
                   {settingsKinds.map((k) => (
-                    <option key={k}>{k}</option>
+                    <option key={k} value={k}>
+                      {settingsLabel(k)}
+                    </option>
                   ))}
                 </select>
               </label>

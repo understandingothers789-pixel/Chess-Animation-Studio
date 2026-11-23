@@ -50,11 +50,11 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
     applyMoveSettings(p, edit, c.report, kind, ids, source, sourceFormat);
   };
 
-  const kinds: SettingsKind[] =
+  const kinds: readonly SettingsKind[] =
     track === "camera"
       ? ["camera"]
       : track === "effect"
-        ? ["effects"]
+        ? ["effects", "after-effect"]
         : settingsKinds;
   const copies = kinds.map((kind) => ({
     id: `copy.${kind}`,

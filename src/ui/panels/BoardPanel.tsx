@@ -47,6 +47,7 @@ export function BoardPanel(q: PanelProps) {
           value={p.style.pieceSet}
           options={[
             ["merida", "Nibbler (Merida)"],
+            ["sculpted", "Sculpted 3D"],
             ["neo", "Neo"],
             ["cburnett", "Lichess (Cburnett)"],
           ]}
@@ -57,8 +58,9 @@ export function BoardPanel(q: PanelProps) {
           }
         />
         <p className="hint">
-          Nocturne's vector artwork, with a thin solid edge and mirrored reverse
-          face.
+          {p.style.pieceSet === "sculpted"
+            ? "Solid figures with rounded surfaces. Turn around the X or Y axis to show depth."
+            : "Illustrated pieces with thin solid edges and a mirrored reverse face."}
         </p>
         {(["light", "dark", "rim", "accent"] as const).map((k) => (
           <Color

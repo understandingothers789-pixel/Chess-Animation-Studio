@@ -1,0 +1,47 @@
+name: Diagnose FFmpeg 0.2.40
+on:
+  push:
+    branches: [diagnose/ffmpeg-040]
+    paths: [.github/workflows/diagnose-ffmpeg-040.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {version: '9.1.0', command: direct}
+          - {version: '9.1.0', command: shim}
+          - {version: '9.0.2', command: shim}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - run: npm ci
+      - name: Install the selected FFmpeg
+        shell: pwsh
+        run: choco install ffmpeg --version '${{ matrix.version }}' -y --no-progress
+      - name: Identify the failing export stage
+        shell: pwsh
+        run: |
+          $direct = Get-ChildItem "$env:ChocolateyInstall/lib/ffmpeg/tools" -Filter ffmpeg.exe -Recurse -File | Select-Object -First 1
+          if ('${{ matrix.command }}' -eq 'direct') {
+            $env:FFMPEG_PATH = $direct.FullName
+          } else {
+            $env:FFMPEG_PATH = (Get-Command ffmpeg.exe -ErrorAction Stop).Source
+          }
+          & $env:FFMPEG_PATH -version | Select-Object -First 1
+          Write-Host "Using $env:FFMPEG_PATH"
+          $file = 'tests/services.test.ts'
+          $test = [IO.File]::ReadAllText($file)
+          $test = $test.Replace('await job.start();', 'console.log("encoder start"); await job.start(); console.log("encoder started");')
+          $test = $test.Replace('await job.finish();', 'console.log("finish started"); await job.finish(); console.log("finish done");')
+          $test = $test.Replace('await cancelled.cancel();', 'console.log("cancel started"); await cancelled.cancel(); console.log("cancel done");')
+          $test = $test.Replace('      () => {},','      (progress) => console.log(progress.phase),')
+          [IO.File]::WriteAllText($file, $test)
+          npx vitest run tests/services.test.ts -t 'exports measured audio offset'

@@ -13,7 +13,6 @@ import {
   type Preset,
   type Effect,
 } from "../../core/project";
-import { selectLine } from "../../core/chess";
 import { align, syncMarkers } from "../../core/audio";
 import { badge, segments } from "../../core/timeline";
 import {
@@ -50,7 +49,7 @@ export function GamePanel(q: PanelProps) {
           label="Variation"
           value={String(p.line)}
           options={p.lines.map((l, i) => [String(i), l.name] as const)}
-          onChange={(v) => q.run(async () => q.replace(selectLine(p, +v)))}
+          onChange={(v) => q.chooseLine(Number(v))}
         />
         <button className="wide" onClick={q.onOpen}>
           Open saved composition…
@@ -129,7 +128,8 @@ export function GamePanel(q: PanelProps) {
         </div>
         <p className="hint">
           Click a piece in the preview, then a legal destination to enter a
-          move. New board input creates a separate variation.
+          move. A different move creates a variation. Use Game line above the
+          board to switch back to the original sequence.
         </p>
         <Select
           label="Promote pawn to"

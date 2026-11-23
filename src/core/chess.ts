@@ -104,13 +104,20 @@ export function setLine(
 ): Project {
   const chess = new Chess(fen),
     old = new Map(p.moves.map((m) => [m.id, m]));
-  let prefix = fen;
+  let prefix = fen,
+    matchingPrefix = true;
   const moves = sans.map((token, index) => {
     const m = chess.move(token);
     if (!m) throw Error(`Illegal move: ${token}`);
     prefix += " " + m.san;
     const id = hash(prefix),
-      match = preserve ? old.get(id) : undefined;
+      match = preserve
+        ? (old.get(id) ??
+          (fen === p.fen && matchingPrefix && p.moves[index]?.san === m.san
+            ? p.moves[index]
+            : undefined))
+        : undefined;
+    matchingPrefix = matchingPrefix && p.moves[index]?.san === m.san;
     const automatic = defaultMove(
       p,
       index,
@@ -179,10 +186,29 @@ export function importPgn(p: Project, text: string, preserve = true): Project {
     title: text.match(/\[Event\s+"([^"]+)"\]/i)?.[1] ?? p.title,
   };
 }
-export function selectLine(p: Project, i: number) {
-  if (!p.lines[i]) throw Error("Missing variation.");
-  return { ...setLine(p, p.lines[i].sans), line: i };
+function saveActiveLine(next: Project, current: Project) {
+  next.lines[current.line] = {
+    ...current.lines[current.line],
+    sans: current.moves.map((move) => move.san),
+    moves: structuredClone(current.moves),
+  };
 }
+
+export function selectLine(p: Project, index: number): Project {
+  const target = p.lines[index];
+  if (!target) throw Error("Missing variation.");
+  if (index === p.line) return p;
+
+  // Older projects kept only SAN for inactive variations. Reconstruct those
+  // lines once, carrying over matching move settings from the active line.
+  const next = target.moves ? structuredClone(p) : setLine(p, target.sans);
+  saveActiveLine(next, p);
+  if (target.moves) next.moves = next.lines[index].moves!;
+  delete next.lines[index].moves;
+  next.line = index;
+  return next;
+}
+
 export function appendMove(
   p: Project,
   at: number,
@@ -194,16 +220,48 @@ export function appendMove(
   const chess = new Chess(at < 0 ? p.fen : (g.steps[at]?.fen ?? p.fen));
   if (at >= 0) chess.move(p.moves[at].san);
   const m = chess.move({ from, to, promotion });
+  if (p.moves[at + 1]?.san === m.san) return p;
+
   const sans = p.moves
     .slice(0, at + 1)
-    .map((m) => m.san)
+    .map((move) => move.san)
     .concat(m.san);
-  const lines = [
-    ...p.lines,
-    { name: `Board variation ${p.lines.length}`, sans },
-  ];
-  return { ...setLine(p, sans), lines, line: lines.length - 1 };
+  if (sans.length > 3000)
+    throw Error("A game line can contain up to 3,000 moves.");
+  const existing = p.lines.findIndex(
+    (line, index) =>
+      index !== p.line &&
+      line.sans.length >= sans.length &&
+      sans.every((san, ply) => line.sans[ply] === san),
+  );
+  if (existing >= 0) return selectLine(p, existing);
+
+  const extendsDraft =
+    !p.moves.length ||
+    (at === p.moves.length - 1 && p.lines[p.line].boardEdited);
+  if (!extendsDraft && p.lines.length >= 200)
+    throw Error("This composition already has 200 game lines.");
+  const next = setLine(p, sans);
+  if (extendsDraft) {
+    next.lines[p.line] = {
+      name: p.lines[p.line].name,
+      sans,
+      boardEdited: true,
+    };
+  } else {
+    saveActiveLine(next, p);
+    const replaced = p.moves[at + 1]?.san;
+    const suffix = replaced ? `${replaced} → ${m.san}` : `+${m.san}`;
+    next.line = next.lines.length;
+    next.lines.push({
+      name: `Board variation ${next.line} · ${suffix}`,
+      sans,
+      boardEdited: true,
+    });
+  }
+  return next;
 }
+
 export function legalMoves(p: Project, at: number, square: string) {
   const g = buildGame(p),
     chess = new Chess(at < 0 ? p.fen : g.steps[at].fen);

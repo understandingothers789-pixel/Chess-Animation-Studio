@@ -77,10 +77,17 @@ import {
   type Asset,
   type Effect,
 } from "../core/project";
-import { sample, buildGame, appendMove, legalMoves } from "../core/chess";
+import {
+  sample,
+  buildGame,
+  appendMove,
+  legalMoves,
+  selectLine,
+} from "../core/chess";
 import { duration, segments, stepFrame } from "../core/timeline";
 import { detectedMarkers } from "../core/audio";
 import { AudioPlayer } from "./audio";
+import { StartingSquareMeme } from "./StartingSquareMeme";
 import { Preview } from "./Preview";
 import { Inspector } from "./Inspector";
 import { IntroInspector } from "./Intro";
@@ -132,6 +139,15 @@ export function App() {
     control?: string;
     serial: number;
   } | null>(null);
+  const [memeMoveId, setMemeMoveId] = useState<string | null>(null);
+  const memeDialog = useRef<HTMLDialogElement>(null);
+  const memeIndex = memeMoveId
+    ? p.moves.findIndex((m) => m.id === memeMoveId)
+    : -1;
+  useEffect(() => {
+    const dialog = memeDialog.current;
+    if (memeIndex >= 0 && dialog && !dialog.open) dialog.showModal();
+  }, [memeIndex]);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [annotationFocus, setAnnotationFocus] = useState(0);
   const [annotationId, setAnnotationId] = useState<string | null>(null);
@@ -302,6 +318,7 @@ export function App() {
   const seek = useCallback(
     (t: number) => {
       stop();
+      setPicked(null);
       const next = Math.max(
         0,
         Math.min(presentationDuration(latest.current, modeRef.current), t),
@@ -399,7 +416,12 @@ export function App() {
     stop();
     setTime((t) => Math.min(t, duration(p)));
     setSelected((i) => Math.max(0, Math.min(i, p.moves.length - 1)));
-  }, [p.id, p.moves.length]);
+    const ids = new Set(p.moves.map((m) => m.id));
+    setChecked((old) => {
+      const kept = new Set([...old].filter((id) => ids.has(id)));
+      return kept.size === old.size ? old : kept;
+    });
+  }, [p.id, p.line, p.moves.length]);
   useEffect(() => {
     let alive = true;
     let checkingAssets = false;
@@ -662,6 +684,7 @@ export function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         stop();
+        setPicked(null);
         e.shiftKey ? redo() : undo();
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -871,25 +894,55 @@ export function App() {
       ]);
     });
   }
+  function showLine(next: Project, index: number, time: number) {
+    stop();
+    if (modeRef.current !== "source") switchMode("source", false);
+    if (next !== p) replace(next);
+    const id = next.moves[index]?.id;
+    selectionAnchor.current = index;
+    setSelected(index);
+    setChecked(new Set(id ? [id] : []));
+    setPicked(null);
+    setDrawing(null);
+    annotationFrom.current = null;
+    setIntroSelected(false);
+    sourceClock.current = time;
+    timeRef.current = time;
+    setTime(time);
+  }
+  function chooseLine(index: number) {
+    run(async () => {
+      const next = selectLine(latest.current, index);
+      if (next === latest.current) return;
+      const ply = Math.max(0, Math.min(selected, next.moves.length - 1));
+      showLine(next, ply, segments(next)[ply]?.depart ?? 0);
+      message(
+        `Showing ${next.lines[index].name} · ${next.moves.length} moves.`,
+      );
+    });
+  }
   function square(s: string) {
     stop();
-    const at =
-      timeRef.current < p.lead
-        ? -1
-        : Math.max(
-            -1,
-            segments(p).findIndex((seg) => timeRef.current < seg.end) - 1,
-          );
-    if (picked) {
+    const nextUnfinished = segments(p).findIndex(
+      (segment) => timeRef.current < segment.land,
+    );
+    const at = nextUnfinished < 0 ? p.moves.length - 1 : nextUnfinished - 1;
+    if (picked && legalMoves(p, at, picked).some((to) => to === s)) {
       try {
         const next = appendMove(p, at, picked, s, promotion);
-        replace(next);
-        setSelected(next.moves.length - 1);
-        setTime(segments(next).at(-1)!.end);
-        setPicked(null);
-        message("Legal move added as a new variation.");
-        return;
-      } catch {}
+        const index = at + 1;
+        showLine(next, index, segments(next)[index].end);
+        message(
+          next === p
+            ? `Played ${next.moves[index].san} in ${next.lines[next.line].name}.`
+            : next.line !== p.line
+              ? `Showing ${next.lines[next.line].name}. Switch back using Game line above the board.`
+              : `Added ${next.moves[index].san} to ${next.lines[next.line].name}.`,
+        );
+      } catch (error) {
+        message((error as Error).message);
+      }
+      return;
     }
     const moves = legalMoves(p, at, s);
     if (moves.length) {
@@ -1144,6 +1197,7 @@ export function App() {
     setPromotion,
     analysisProgress,
     addToStoryboard,
+    chooseLine,
   };
   function selectIntro() {
     setIntroSelected(true);
@@ -1194,6 +1248,35 @@ export function App() {
       !["Complete", "Failed", "Cancelled"].includes(exportProgress.phase);
   return (
     <div className="app-shell">
+      {memeIndex >= 0 && (
+        <dialog
+          ref={memeDialog}
+          className="meme-dialog"
+          aria-labelledby="meme-dialog-heading"
+          onClose={() => setMemeMoveId(null)}
+        >
+          <h2 id="meme-dialog-heading">
+            Starting-square meme · {p.moves[memeIndex].san}
+          </h2>
+          <StartingSquareMeme
+            standalone
+            project={p}
+            index={memeIndex}
+            targets={[p.moves[memeIndex]]}
+            segment={segments(p)[memeIndex]}
+            edit={edit}
+            images={previewAssets}
+            run={run}
+            seek={(time) => {
+              setMemeMoveId(null);
+              seek(time);
+            }}
+          />
+          <button type="button" onClick={() => setMemeMoveId(null)}>
+            Done
+          </button>
+        </dialog>
+      )}
       <header className="app-header">
         <div className="brand">
           <img
@@ -1248,6 +1331,7 @@ export function App() {
             disabled={!canUndo}
             onClick={() => {
               stop();
+              setPicked(null);
               undo();
             }}
           >
@@ -1258,6 +1342,7 @@ export function App() {
             disabled={!canRedo}
             onClick={() => {
               stop();
+              setPicked(null);
               redo();
             }}
           >
@@ -1584,6 +1669,20 @@ export function App() {
               <span className="eyebrow">COMPOSITION</span>
               <strong>{p.title}</strong>
             </div>
+            {mode === "source" && p.lines.length > 1 && (
+              <Select
+                label="Game line"
+                value={String(p.line)}
+                options={p.lines.map(
+                  (line, i) =>
+                    [
+                      String(i),
+                      `${line.name} (${i === p.line ? p.moves.length : line.sans.length})`,
+                    ] as const,
+                )}
+                onChange={(value) => chooseLine(Number(value))}
+              />
+            )}
             <Select
               label="Output format"
               value={
@@ -1608,6 +1707,7 @@ export function App() {
           </div>
           <div className="preview-area">
             <Preview
+              drawing={drawing !== null}
               mode={mode}
               thumbnailPort={thumbnailPort}
               onGraphicsChanged={graphicsChanged}
@@ -1914,7 +2014,15 @@ export function App() {
               }}
               inspect={(index, section, annotation) => {
                 workspace.patch({ hideRight: false });
-                if (section === "intro") {
+                if (section === "meme") {
+                  const move = p.moves[index];
+                  if (!move) return;
+                  contextSelect(index);
+                  setPicked(null);
+                  setDrawing(null);
+                  annotationFrom.current = null;
+                  setMemeMoveId(move.id);
+                } else if (section === "intro") {
                   selectIntro();
                 } else if (section === "annotations") {
                   if (annotation) {

@@ -15,7 +15,7 @@ import {
 } from "../../core/project";
 import { selectLine } from "../../core/chess";
 import { align, syncMarkers } from "../../core/audio";
-import { badge, segments } from "../../core/timeline";
+import { badge, moveLead, segments } from "../../core/timeline";
 import {
   Section,
   Range,
@@ -30,6 +30,16 @@ import type { Edit } from "../state";
 import type { Settings } from "../../bridge";
 import type { PanelProps } from "./types";
 import { BadgeArtworkPanel } from "./BadgeArtworkPanel";
+function storedEffects(project: Project) {
+  return [
+    project.defaults,
+    ...project.moves.map((move) => move.effect),
+    ...project.lines.flatMap(
+      (line) => line.moves?.map((move) => move.effect) ?? [],
+    ),
+    ...project.presets.map((preset) => preset.effect),
+  ];
+}
 export function FilesPanel(q: PanelProps) {
   const p = q.project,
     [token, setToken] = useState("");
@@ -204,11 +214,7 @@ export function FilesPanel(q: PanelProps) {
                           source: a.source,
                           guidance: a.guidance,
                         });
-                        for (const fx of [
-                          p.defaults,
-                          ...p.moves.map((m) => m.effect),
-                          ...p.presets.map((v) => v.effect),
-                        ])
+                        for (const fx of storedEffects(p))
                           if (fx.preMoveMeme?.asset === a.id)
                             fx.preMoveMeme.asset = replacement.id;
                         if (p.music.asset === a.id)
@@ -231,12 +237,11 @@ export function FilesPanel(q: PanelProps) {
                 onClick={() =>
                   q.edit("Remove asset", (p) => {
                     p.assets = p.assets.filter((v) => v.id !== a.id);
-                    for (const fx of [
-                      p.defaults,
-                      ...p.moves.map((m) => m.effect),
-                      ...p.presets.map((v) => v.effect),
-                    ])
-                      if (fx.preMoveMeme?.asset === a.id) fx.preMoveMeme = null;
+                    for (const fx of storedEffects(p))
+                      if (fx.preMoveMeme?.asset === a.id) {
+                        if (fx.locked) fx.delay = moveLead(fx);
+                        fx.preMoveMeme = null;
+                      }
                     if (p.music.asset === a.id) p.music.asset = null;
                     p.cues = p.cues.filter((c) => c.asset !== a.id);
                     for (const key of Object.keys(p.badgeAssets))

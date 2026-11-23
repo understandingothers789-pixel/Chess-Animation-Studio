@@ -37,6 +37,7 @@ jobs:
           node --import tsx scripts/customization-render-smoke.ts
           node --import tsx scripts/meme-render-smoke.ts
           npm run test:timeline
+          node --import tsx scripts/game-edit-ui-smoke.ts
           npm run test:storyboard
           npm run test:finishing
           npm run test:composition

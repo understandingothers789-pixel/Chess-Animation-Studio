@@ -648,6 +648,18 @@ export const storyboardSchema = z
   });
 export type StoryboardShot = z.infer<typeof storyboardShotSchema>;
 export type PlaybackMode = "source" | "storyboard";
+const moveListSchema = z
+  .array(
+    z.object({
+      id: str,
+      san: z.string().max(30),
+      effect: effectSchema,
+      autoPreset: z.enum(["flip", "finale"]).optional(),
+      analysis: analysisSchema,
+    }),
+  )
+  .max(3000);
+
 export const projectSchema = z.object({
   storyboard: storyboardSchema.default({ shots: [], beats: [] }),
   annotations: z.array(annotationSchema).max(5000).default([]),
@@ -667,21 +679,18 @@ export const projectSchema = z.object({
   fen: z.string().max(200),
   pgn: z.string().max(2e6),
   lines: z
-    .array(z.object({ name: str, sans: z.array(z.string().max(30)).max(3000) }))
+    .array(
+      z.object({
+        name: str,
+        sans: z.array(z.string().max(30)).max(3000),
+        moves: moveListSchema.optional(),
+        boardEdited: z.boolean().optional(),
+      }),
+    )
     .min(1)
     .max(200),
   line: n(0, 199).int(),
-  moves: z
-    .array(
-      z.object({
-        id: str,
-        san: z.string().max(30),
-        effect: effectSchema,
-        autoPreset: z.enum(["flip", "finale"]).optional(),
-        analysis: analysisSchema,
-      }),
-    )
-    .max(3000),
+  moves: moveListSchema,
   defaults: effectSchema,
   style: z.object({
     pieceSet: z.enum(["cburnett", "merida", "neo", "sculpted"]),
@@ -1064,6 +1073,15 @@ export function parseProject(value: unknown): Project {
   if (p.line >= p.lines.length) throw Error("Selected variation is missing.");
   if (new Set(p.moves.map((m) => m.id)).size !== p.moves.length)
     throw Error("Duplicate move identities.");
+  for (const line of p.lines) {
+    if (!line.moves) continue;
+    if (
+      line.moves.length !== line.sans.length ||
+      line.moves.some((move, index) => move.san !== line.sans[index]) ||
+      new Set(line.moves.map((move) => move.id)).size !== line.moves.length
+    )
+      throw Error("Saved variation does not match its move list.");
+  }
   if (new Set(p.assets.map((a) => a.id)).size !== p.assets.length)
     throw Error("Duplicate asset identities.");
   if (p.music.trimEnd > 0 && p.music.trimEnd <= p.music.trimStart)

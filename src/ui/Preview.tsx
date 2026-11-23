@@ -23,6 +23,7 @@ import { sizes, type Project } from "../core/project";
 export function Preview({
   project,
   mode = "source",
+  drawing = false,
   thumbnailPort,
   onGraphicsChanged,
   onAddCaption,
@@ -49,6 +50,7 @@ export function Preview({
 }: {
   project: Project;
   mode?: PlaybackMode;
+  drawing?: boolean;
   thumbnailPort?: ThumbnailPort;
   onGraphicsChanged: () => void;
   onAddCaption?: () => void;
@@ -671,6 +673,7 @@ export function Preview({
             key={generation}
             aria-label="Chess composition preview"
             ref={canvas}
+            data-drawing={drawing || undefined}
             tabIndex={0}
             onClick={(e) => {
               if (e.altKey) {

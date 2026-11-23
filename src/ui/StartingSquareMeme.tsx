@@ -12,6 +12,7 @@ export function StartingSquareMeme({
   run,
   seek,
   segment,
+  standalone = false,
 }: {
   project: Project;
   index: number;
@@ -21,6 +22,7 @@ export function StartingSquareMeme({
   run: (job: () => Promise<unknown>) => void;
   seek?: (time: number) => void;
   segment: Parameters<typeof memeWindow>[1];
+  standalone?: boolean;
 }) {
   const move = project.moves[index];
   const active = (targets.find((m) => m.id === move.id) ?? targets[0]).effect;
@@ -48,29 +50,27 @@ export function StartingSquareMeme({
       };
   };
 
-  return (
-    <Section
-      title="Starting-square meme"
-      status={
-        mixed ? "Mixed" : (asset?.name ?? (meme ? "Image missing" : "Off"))
-      }
-      open={false}
-    >
+  const controls = (
+    <>
       <div className="button-row">
         <button
           type="button"
+          autoFocus={standalone}
           disabled={targets.every((m) => !canAdd(m.effect))}
           onClick={() =>
             run(async () => {
               const image = await window.studio.importAsset("image");
               if (!image) return;
               edit("Import starting-square meme", (draft) => {
-                if (draft.id !== project.id) return;
+                if (draft.id !== project.id || draft.line !== project.line)
+                  return;
                 const eligible = group(draft).filter((m) => canAdd(m.effect));
                 if (!eligible.length) return;
                 const existing = draft.assets.find(
                   (a) => a.kind === image.kind && a.path === image.path,
                 );
+                if (!existing && draft.assets.length >= 150)
+                  throw Error("This project already has 150 local assets.");
                 if (!existing) draft.assets.push(image);
                 for (const m of eligible)
                   setImage(m.effect, (existing ?? image).id);
@@ -140,6 +140,24 @@ export function StartingSquareMeme({
         before the move. On a timing lock, the meme fits the time already
         reserved.
       </p>
+      {targets.every((m) => !canAdd(m.effect)) && (
+        <p className="hint">
+          Unlock this move’s timing to make room for an image.
+        </p>
+      )}
+    </>
+  );
+  return standalone ? (
+    controls
+  ) : (
+    <Section
+      title="Starting-square meme"
+      status={
+        mixed ? "Mixed" : (asset?.name ?? (meme ? "Image missing" : "Off"))
+      }
+      open={false}
+    >
+      {controls}
     </Section>
   );
 }

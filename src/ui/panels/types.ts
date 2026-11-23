@@ -6,6 +6,7 @@ export interface PanelProps {
   edit: Edit;
   replace: (p: Project) => void;
   selected: number;
+  chooseLine: (index: number) => void;
   checked: Set<string>;
   setChecked: (s: Set<string>) => void;
   select: (

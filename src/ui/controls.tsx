@@ -211,6 +211,7 @@ export function Select<T extends string>({
   mixed = false,
   value,
   options,
+  optionDescriptions,
   onChange,
 }: {
   label: string;
@@ -218,18 +219,21 @@ export function Select<T extends string>({
   value: T;
   disabled?: boolean;
   options: readonly T[] | readonly (readonly [T, string])[];
+  optionDescriptions?: Partial<Record<T, string>>;
   onChange: (v: T) => void;
 }) {
+  const description =
+    (!mixed && optionDescriptions?.[value]) || settingHelp(label);
   return (
-    <label className="select-field" title={settingHelp(label)}>
+    <label className="select-field" title={description}>
       <span>
         {label}
         {mixed && <em className="mixed-value">Mixed</em>}
       </span>
       <select
         aria-label={label}
-        title={settingHelp(label)}
-        aria-description={settingHelp(label)}
+        title={description}
+        aria-description={description}
         disabled={disabled}
         value={mixed ? "__mixed__" : value}
         onChange={(e) => onChange(e.target.value as T)}
@@ -242,7 +246,7 @@ export function Select<T extends string>({
         {options.map((o) => {
           const [v, l] = typeof o === "string" ? [o, o] : o;
           return (
-            <option value={v} key={v}>
+            <option value={v} key={v} title={optionDescriptions?.[v]}>
               {l}
             </option>
           );

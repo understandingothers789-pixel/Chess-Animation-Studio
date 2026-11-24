@@ -1,0 +1,117 @@
+.preset-preview {
+  box-sizing: border-box;
+  width: min(710px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 16px;
+  color: var(--text, #e8efe3);
+  background: #17231b;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.preset-preview::backdrop {
+  background: rgb(7 12 9 / 65%);
+}
+.preset-preview-header,
+.preset-preview-transport,
+.preset-preview-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.preset-preview-header,
+.preset-preview-footer {
+  justify-content: space-between;
+}
+.preset-preview-header h2 {
+  margin: 0;
+  font-size: var(--text-label);
+}
+.preset-preview-body {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 2fr);
+  gap: 14px;
+  margin-top: 12px;
+}
+.preset-preview-list {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  z-index: 1;
+}
+.preset-preview-choice {
+  position: relative;
+}
+.preset-preview-choice button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.preset-preview-choice [aria-pressed="true"] {
+  border-color: #b5d192;
+  background: #324a34;
+}
+.preset-preview-choice [role="tooltip"] {
+  position: absolute;
+  pointer-events: none;
+  visibility: hidden;
+  left: calc(100% + 5px);
+  top: 0;
+  width: min(260px, 40vw);
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: #eaf2e2;
+  background: #101a13;
+  box-shadow: 0 2px 12px #0007;
+}
+.preset-preview-choice:is(:hover, :focus-within):not(
+    :has([aria-pressed="true"])
+  )
+  [role="tooltip"] {
+  visibility: visible;
+}
+.preset-preview-stage {
+  min-width: 0;
+}
+.preset-preview-stage p {
+  margin: 4px 0 8px;
+}
+.preset-preview-board {
+  position: relative;
+  width: min(100%, calc(100dvh - 245px), 360px);
+  min-width: min(100%, 180px);
+  aspect-ratio: 1;
+  margin: 0 auto 8px;
+  background: #111918;
+}
+.preset-preview-board canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.preset-preview-board p {
+  position: absolute;
+  inset: 45% 0 auto;
+  text-align: center;
+}
+.preset-preview-transport input {
+  flex: 1;
+  min-width: 50px;
+}
+.preset-preview-footer {
+  margin-top: 8px;
+}
+@media (max-width: 515px) {
+  .preset-preview-body {
+    grid-template-columns: 1fr;
+  }
+  .preset-preview-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .preset-preview-choice [role="tooltip"] {
+    left: 0;
+    top: 100%;
+    z-index: 2;
+  }
+}

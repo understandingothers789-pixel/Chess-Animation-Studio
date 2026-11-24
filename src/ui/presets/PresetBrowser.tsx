@@ -9,6 +9,7 @@ import {
   uid,
   type Effect,
   type Project,
+  type Preset,
 } from "../../core/project";
 import { personalPresets, storePersonalPreset } from "./personalLibrary";
 import {
@@ -16,21 +17,9 @@ import {
   type SettingsKind,
   settingsKinds,
 } from "../../core/editing";
-import { presetLabels } from "./catalog";
+import { presetDescriptions, presetLabels } from "./catalog";
+import { PresetPreview } from "./PresetPreview";
 import type { Edit } from "../state";
-const descriptions: Record<string, string> = {
-  slide: "Direct motion with a smooth arrival.",
-  soft: "A gentle deceleration into the destination.",
-  spin: "Rotate the piece during its journey.",
-  somersault: "Turn head over heels and land upright.",
-  flip: "Flip the piece as it travels.",
-  sway: "Rock through a full sway.",
-  "sway-half": "A single gentle sway.",
-  hop: "Lift off the board and land softly.",
-  dramatic: "An expressive hop and landing.",
-  capture: "Emphasize the impact of a capture.",
-  finale: "A bold finish for the final move.",
-};
 function preference(key: string) {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
@@ -47,6 +36,7 @@ export function PresetBrowser({
   checked,
   edit,
   onPreview,
+  onPausePreview,
   onCancel,
   previewActive,
   before,
@@ -68,6 +58,7 @@ export function PresetBrowser({
   onBefore: (before: boolean) => void;
   report: (message: string) => void;
   onCancel: () => void;
+  onPausePreview: () => void;
 }) {
   const [query, search] = useState(""),
     [scope, setScope] = useState("selected"),
@@ -82,12 +73,13 @@ export function PresetBrowser({
     [replaceAll, setReplaceAll] = useState(false),
     [kind, setKind] = useState<SettingsKind>("movement"),
     [preserveKeys, setPreserveKeys] = useState(true);
+  const [demoPreset, setDemoPreset] = useState<Preset | null>(null);
   const items = [
     ...presets.map((id) => ({
       id,
       name: presetLabels[id],
       effect: effect(id),
-      description: descriptions[id],
+      description: presetDescriptions[id],
       custom: -1,
       kind: "movement" as SettingsKind,
     })),
@@ -111,6 +103,13 @@ export function PresetBrowser({
   const selected = items.find((v) => v.id === chosen);
   return (
     <section className="preset-browser">
+      {demoPreset && (
+        <PresetPreview
+          initial={demoPreset}
+          style={p.style}
+          onClose={() => setDemoPreset(null)}
+        />
+      )}
       <input
         aria-label="Search animation presets"
         title="Filter animations by name and description before previewing or applying them."
@@ -280,6 +279,8 @@ export function PresetBrowser({
             <article key={v.id} className={chosen === v.id ? "chosen" : ""}>
               <button
                 className="animation-card"
+                title={v.description}
+                aria-description={v.description}
                 aria-pressed={chosen === v.id}
                 onClick={() => {
                   choose(v.id);
@@ -328,6 +329,19 @@ export function PresetBrowser({
               >
                 ☆
               </button>
+              {v.custom < 0 && (
+                <button
+                  type="button"
+                  title={v.description}
+                  aria-label={`Pop-up preview for ${v.name}`}
+                  onClick={() => {
+                    onPausePreview();
+                    setDemoPreset(v.effect.preset);
+                  }}
+                >
+                  Preview demo
+                </button>
+              )}
               {v.custom >= 0 && (
                 <>
                   <button

@@ -134,6 +134,85 @@ try {
     })
     .click();
   const state = () => page.evaluate(() => (window as any).__state.project);
+  const options = page
+    .getByLabel("Move preset", { exact: true })
+    .locator("option");
+  const descriptions = await options.evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute("title")),
+  );
+  assert.equal(descriptions.length, 11);
+  assert.ok(descriptions.every((description) => !!description?.trim()));
+  const original = JSON.stringify(await state());
+  await page
+    .getByRole("button", { name: "Preview move presets", exact: true })
+    .click();
+  const demo = page.getByRole("dialog", {
+    name: "Move preset preview",
+    exact: true,
+  });
+  const demoCanvas = demo.getByLabel("Example chess animation", {
+    exact: true,
+  });
+  const pixels = () =>
+    demoCanvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());
+  const pause = demo.getByRole("button", { name: "Pause demo", exact: true });
+  await expect(pause).toBeEnabled();
+  await pause.click();
+  const hop = demo.getByRole("button", { name: "Soft hop", exact: true });
+  await hop.hover();
+  await expect(
+    demo.getByRole("tooltip").filter({ hasText: "Rises off the board" }),
+  ).toBeVisible();
+  await hop.click();
+  const scrub = demo.getByLabel("Scrub preset demo", { exact: true });
+  await scrub.fill("0");
+  const start = await pixels();
+  await scrub.fill("0.67");
+  assert.notEqual(
+    await pixels(),
+    start,
+    "Scrubbing must change the rendered animation",
+  );
+  await demo.getByRole("button", { name: "Restart", exact: true }).click();
+  assert.equal(await pixels(), start, "Restart must restore the initial pose");
+  assert.equal(
+    JSON.stringify(await state()),
+    original,
+    "Previewing must not edit the project",
+  );
+  await page.keyboard.press("Escape");
+  await expect(demo).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Preview move presets", exact: true }),
+  ).toBeFocused();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page
+    .getByRole("button", { name: "Preview move presets", exact: true })
+    .click();
+  await expect(
+    demo.getByRole("button", { name: "Play demo", exact: true }),
+  ).toBeEnabled();
+  const dramatic = demo.getByRole("button", {
+    name: "Dramatic landing",
+    exact: true,
+  });
+  await dramatic.focus();
+  await expect(
+    demo.getByRole("tooltip").filter({ hasText: "full turn" }),
+  ).toBeVisible();
+  await dramatic.click();
+  await scrub.fill("0.85");
+  await page.screenshot({
+    path: "test-results/customization/preset-preview.png",
+  });
+  await demo
+    .getByRole("button", { name: "Apply movement", exact: true })
+    .click();
+  await expect(demo).toHaveCount(0);
+  await expect
+    .poll(async () => (await state()).moves[0].effect.preset)
+    .toBe("dramatic");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page
     .getByRole("button", { name: "Add animation or effect", exact: true })
     .click();
@@ -262,6 +341,16 @@ try {
     .getByRole("button", { name: "Save as reusable preset", exact: true })
     .click();
   await page.getByRole("button", { name: "presets", exact: true }).click();
+  await page
+    .getByRole("button", {
+      name: "Pop-up preview for Capture flip",
+      exact: true,
+    })
+    .click();
+  await expect(
+    demo.getByRole("button", { name: "Capture flip", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await demo.getByRole("button", { name: "Close", exact: true }).click();
   await page
     .getByLabel("Search animation presets", { exact: true })
     .fill("My flip");
@@ -417,7 +506,7 @@ try {
     .toBeNull();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: recipe, landing alignment, preset workflows, preview controls, and starting-square meme import, timing, thumbnails and removal.",
+    "PASS: preset tooltips and live pop-up, explicit apply, reduced motion, landing alignment, preview controls and starting-square meme.",
   );
 } finally {
   await browser.close();

@@ -38,7 +38,8 @@ import {
 } from "../core/project";
 import type { Edit } from "./state";
 import { Section, Range, Select, Toggle, Color, ScrubNumber } from "./controls";
-import { presetLabels } from "./presets/catalog";
+import { presetDescriptions, presetLabels } from "./presets/catalog";
+import { PresetPreview } from "./presets/PresetPreview";
 export function Inspector({
   project,
   requestedTab,
@@ -48,6 +49,7 @@ export function Inspector({
   onCopy,
   onPaste,
   onBrowsePresets,
+  onPausePreview,
   time,
   fps,
   onGlobalEffects,
@@ -63,6 +65,7 @@ export function Inspector({
   onCopy: () => void;
   onPaste: () => void;
   onBrowsePresets: () => void;
+  onPausePreview: () => void;
   time: number;
   fps: number;
   onGlobalEffects: () => void;
@@ -75,6 +78,7 @@ export function Inspector({
     [presetName, setPresetName] = useState(""),
     [presetKind, setPresetKind] = useState<SettingsKind>("movement"),
     [updatePreset, setUpdatePreset] = useState("");
+  const [demoPreset, setDemoPreset] = useState<Preset | null>(null);
   const [keyChannel, setKeyChannel] = useState<{ channel: Channel }>();
   const [timingNotice, setTimingNotice] = useState<{
     id: string;
@@ -122,6 +126,20 @@ export function Inspector({
       : [p.moves[index]];
   const each = (p: Project, fn: (e: Effect) => void) =>
     targets(p).forEach((m) => fn(m.effect));
+  const applyMovement = (preset: Preset) =>
+    edit("Apply preset", (p) => {
+      const settings = effect(preset);
+      for (const m of targets(p))
+        m.effect = applyPresetEffect(
+          m.effect,
+          settings,
+          p.format,
+          false,
+          "movement",
+          true,
+          false,
+        );
+    });
   const resetFields = (keys: (keyof Effect)[]) =>
     edit("Reset " + keys.join(","), (p) =>
       each(p, (e) => {
@@ -381,25 +399,33 @@ export function Inspector({
                   value={e.preset}
                   mixed={mixed((v) => v.preset)}
                   options={presets.map((v) => [v, presetLabels[v]] as const)}
-                  onChange={(v) =>
-                    edit("Apply preset", (p) => {
-                      for (const m of targets(p)) {
-                        m.effect = applyPresetEffect(
-                          m.effect,
-                          effect(v),
-                          p.format,
-                          false,
-                          "movement",
-                          true,
-                          false,
-                        );
-                      }
-                    })
-                  }
+                  optionDescriptions={presetDescriptions}
+                  onChange={applyMovement}
                 />
-                <button className="wide" onClick={onBrowsePresets}>
-                  Browse and preview presets
-                </button>
+                <div className="button-row">
+                  <button
+                    onClick={() => {
+                      onPausePreview();
+                      setDemoPreset(e.preset);
+                    }}
+                  >
+                    Preview move presets
+                  </button>
+                  <button onClick={onBrowsePresets}>
+                    Open animation library
+                  </button>
+                </div>
+                {demoPreset && (
+                  <PresetPreview
+                    initial={demoPreset}
+                    style={project.style}
+                    onClose={() => setDemoPreset(null)}
+                    onApply={(preset) => {
+                      applyMovement(preset);
+                      setDemoPreset(null);
+                    }}
+                  />
+                )}
                 {range("duration", "Duration", 0.2, 30, 0.05, "s")}
                 {e.preset === "somersault" && (
                   <>

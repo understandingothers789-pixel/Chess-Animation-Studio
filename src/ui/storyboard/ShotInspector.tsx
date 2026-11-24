@@ -10,7 +10,7 @@ import {
 import type { Edit } from "../state";
 import { Section, Range, Select, Toggle } from "../controls";
 import { AnnotationEditor } from "../annotations/AnnotationEditor";
-import { presetLabels } from "../presets/catalog";
+import { presetDescriptions, presetLabels } from "../presets/catalog";
 export function ShotInspector({
   p,
   id,
@@ -483,6 +483,7 @@ export function ShotInspector({
           {s.kind === "move-range" && (
             <Select
               label="Shot animation"
+              optionDescriptions={presetDescriptions}
               value={s.preset}
               options={[
                 ["inherit", "Inherit source animation"],

@@ -308,6 +308,11 @@ export function App() {
     setAudition(null);
     audio.current?.stop();
   }, []);
+  const clearPresetPreview = () => {
+    setPresetDraft(null);
+    setBeforePreset(false);
+    stop();
+  };
   useEffect(() => {
     if (presetDraft && !activePreset) {
       setPresetDraft(null);
@@ -1592,7 +1597,10 @@ export function App() {
                     <>
                       <button
                         className="preset-close"
-                        onClick={() => setTab("game")}
+                        onClick={() => {
+                          clearPresetPreview();
+                          setTab("game");
+                        }}
                       >
                         Close animation library
                       </button>
@@ -1602,6 +1610,7 @@ export function App() {
                         checked={checked}
                         edit={edit}
                         previewActive={!!activePreset}
+                        onPausePreview={stop}
                         report={message}
                         before={beforePreset}
                         onBefore={setBeforePreset}
@@ -1641,11 +1650,7 @@ export function App() {
                           setTime(segment.start);
                           setPlaying(true);
                         }}
-                        onCancel={() => {
-                          setPresetDraft(null);
-                          setBeforePreset(false);
-                          stop();
-                        }}
+                        onCancel={clearPresetPreview}
                       />
                     </>
                   ) : (
@@ -2141,6 +2146,7 @@ export function App() {
                     checked={checked}
                     index={selected}
                     edit={edit}
+                    onPausePreview={stop}
                     onBrowsePresets={() => {
                       workspace.patch({ hideLeft: false });
                       setTab("presets");

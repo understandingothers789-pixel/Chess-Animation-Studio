@@ -181,7 +181,7 @@ const help: Record<string, string> = {
     "Number of rocking cycles. 0.5 makes a single lean and return; 1 rocks both ways.",
   "Hop height": "How far the moving piece lifts above the board.",
   "Edge depth":
-    "Adjust the extra thickness of illustrated pieces during X- or Y-axis turns.",
+    "Extra side-wall thickness during illustrated turns. At 100% the edges match the previous version.",
   "Board palette":
     "Apply a pair of square colors. The individual color controls remain editable.",
   "Player photo":

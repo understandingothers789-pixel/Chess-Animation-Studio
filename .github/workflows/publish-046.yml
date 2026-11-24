@@ -10,6 +10,10 @@ jobs:
   check-visual:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0efa0981aeafc97cfce68f47b8bf3e24b310cf80
+          fetch-depth: 0
       - name: Confirm source passed Chromium visual validation
         env:
           GH_TOKEN: ${{ github.token }}
@@ -18,6 +22,8 @@ jobs:
           set -euo pipefail
           gh api "repos/$GH_REPO/actions/runs/45508139119" | jq -e '.head_sha == "4b90a5818a255c9ca66df242fb5a0b8bbfce97d9"'
           gh api "repos/$GH_REPO/actions/runs/45508139119/jobs?filter=all" | jq -e 'any(.jobs[]; .name == "visual / visual" and .conclusion == "success")'
+          changed=$(git diff --name-only 4b90a5818a255c9ca66df242fb5a0b8bbfce97d9 HEAD)
+          [[ "$changed" == "src/ui/help.ts" ]]
   portable:
     needs: check-visual
     runs-on: windows-latest
@@ -25,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 4b90a5818a255c9ca66df242fb5a0b8bbfce97d9
+          ref: 0efa0981aeafc97cfce68f47b8bf3e24b310cf80
       - uses: actions/setup-node@v4
         with:
           node-version: '24.19.0'
@@ -131,7 +137,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SOURCE: 4b90a5818a255c9ca66df242fb5a0b8bbfce97d9
+          SOURCE: 0efa0981aeafc97cfce68f47b8bf3e24b310cf80
           RUN: ${{ github.run_id }}
         run: |
           set -euo pipefail

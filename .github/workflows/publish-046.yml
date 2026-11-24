@@ -7,7 +7,122 @@ permissions:
   actions: read
   contents: write
 jobs:
+  check-visual:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm source passed Chromium visual validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/45508139119" | jq -e '.head_sha == "4b90a5818a255c9ca66df242fb5a0b8bbfce97d9"'
+          gh api "repos/$GH_REPO/actions/runs/45508139119/jobs?filter=all" | jq -e 'any(.jobs[]; .name == "visual / visual" and .conclusion == "success")'
+  portable:
+    needs: check-visual
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 4b90a5818a255c9ca66df242fb5a0b8bbfce97d9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json | ConvertFrom-Json).version
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
+          if (-not (Test-Path "docs/releases/$v.md")) { throw 'Missing release notes' }
+          "value=$v" >> $env:GITHUB_OUTPUT
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: Install export validation tool
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg-9.0.2.zip'
+          $destination = Join-Path $env:RUNNER_TEMP 'ffmpeg-9.0.2'
+          Invoke-WebRequest 'https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip' -OutFile $zip
+          $digest = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($digest -ne '60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba') { throw 'FFmpeg ZIP checksum mismatch' }
+          Expand-Archive -LiteralPath $zip -DestinationPath $destination
+          $ffmpeg = Join-Path $destination 'ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe'
+          $ffprobe = Join-Path $destination 'ffmpeg-9.0.2-essentials_build/bin/ffprobe.exe'
+          $ffmpegVersion = & $ffmpeg -version | Select-Object -First 1
+          if ($ffmpegVersion -notmatch '^ffmpeg version 9\.0\.2(?:[-\s]|$)') {
+            throw "Expected FFmpeg 9.0.2, got: $ffmpegVersion"
+          }
+          Write-Host $ffmpegVersion
+          "FFMPEG_PATH=$ffmpeg" >> $env:GITHUB_ENV
+          "FFPROBE_PATH=$ffprobe" >> $env:GITHUB_ENV
+      - name: Install pinned Stockfish for validation only
+        shell: pwsh
+        run: |
+          Invoke-WebRequest 'https://github.com/official-stockfish/Stockfish/releases/download/sf_17.1/stockfish-windows-x86-64-avx2.zip' -OutFile "$env:RUNNER_TEMP/stockfish.zip"
+          $h = (Get-FileHash "$env:RUNNER_TEMP/stockfish.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($h -ne '92a77f8d8116b4331696eeb7b232bd03db30d6641a6ce1be1759478b8931d28b') { throw 'Stockfish checksum mismatch' }
+          Expand-Archive "$env:RUNNER_TEMP/stockfish.zip" "$env:RUNNER_TEMP/stockfish-check"
+          $exe = (Get-ChildItem "$env:RUNNER_TEMP/stockfish-check" -Recurse -Filter '*.exe' | Select-Object -First 1).FullName
+          "STOCKFISH_PATH=$exe" >> $env:GITHUB_ENV
+      - name: Build application
+        run: npm run build
+      - name: Run unit and service tests
+        run: npm test
+      - name: Build standard portable layout
+        run: node scripts/portable.mjs
+      - name: Record official runtime signature
+        shell: pwsh
+        run: |
+          $p = "release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/Chess Animation Studio.exe"
+          $s = Get-AuthenticodeSignature -LiteralPath $p
+          $s | Format-List Status,StatusMessage,SignerCertificate
+          $s | Select-Object Status,StatusMessage,@{n='Signer';e={$_.SignerCertificate.Subject}} | ConvertTo-Json -Depth 3 | Set-Content 'release/runtime-signature-${{ steps.version.outputs.value }}.json' -Encoding utf8
+          if ($s.Status -notin @('Valid', 'NotSigned')) { throw 'Runtime signature validation error' }
+          if ($s.Status -eq 'NotSigned') { Write-Warning 'Official runtime is unsigned; Smart App Control approval is not guaranteed.' }
+      - name: Exercise packaged Windows app and exports
+        shell: pwsh
+        run: |
+          $fresh = Join-Path $env:RUNNER_TEMP 'Portable launch with spaces'
+          Expand-Archive -LiteralPath 'release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable.zip' -DestinationPath $fresh
+          $env:STUDIO_PACKAGED_EXE = (Join-Path $fresh 'Chess Animation Studio.exe')
+          $desktopLog = Join-Path $env:RUNNER_TEMP 'desktop-validation.log'
+          $desktopStatus = 1
+          try {
+            npm run test:desktop 2>&1 | Tee-Object -FilePath $desktopLog
+            $desktopStatus = $LASTEXITCODE
+          } catch {
+            $_ | Out-File -FilePath $desktopLog -Append
+          }
+          if ($desktopStatus -ne 0) {
+            python .github/scripts/report-context-failure.py $desktopLog 'Packaged Windows validation output'
+            exit $desktopStatus
+          }
+          npm run test:transcript:desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload versioned Windows portable download
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable
+          path: |
+            release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/**
+          if-no-files-found: error
+          retention-days: 90
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-validation-${{ steps.version.outputs.value }}-${{ github.run_number }}
+          path: |
+            test-results/**
+            release/runtime-signature-*.json
+            release/*.sha256
+          if-no-files-found: ignore
   publish:
+    needs: portable
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -17,12 +132,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           SOURCE: 4b90a5818a255c9ca66df242fb5a0b8bbfce97d9
-          RUN: '45508139119'
+          RUN: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          gh run watch "$RUN" --exit-status --interval 25
-          gh api "repos/$GH_REPO/actions/runs/$RUN" > run.json
-          jq -e --arg source "$SOURCE" '.head_sha == $source and .status == "completed" and .conclusion == "success"' run.json
           gh api "repos/$GH_REPO/actions/runs/$RUN/artifacts" > artifacts.json
           id=$(jq -er '.artifacts[] | select(.name == "Chess-Animation-Studio-0.2.46-Windows-Portable" and .expired == false) | .id' artifacts.json)
           digest=$(jq -er --argjson id "$id" '.artifacts[] | select(.id == $id) | .digest' artifacts.json)

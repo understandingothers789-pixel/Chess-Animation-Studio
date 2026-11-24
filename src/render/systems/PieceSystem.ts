@@ -1,4 +1,5 @@
 import { createSculptedPiece, sculptedGeometry } from "../sculptedPieces";
+import { defaultPieceEdgeDepth } from "../../core/project";
 import type { Game } from "../../core/chess";
 import {
   createPiece,
@@ -30,6 +31,7 @@ export class PieceSystem {
     const { p, e, sign, game } = c;
     const set = p.style.pieceSet;
     const sculpted = set === "sculpted";
+    const depth = p.style.pieceEdgeDepth ?? defaultPieceEdgeDepth;
     if (sculpted && !this.meshes.has("template-sculpted-w-k")) {
       for (const type of "kqrbnp") {
         const geometry = this.resources.own(sculptedGeometry(type));
@@ -74,7 +76,10 @@ export class PieceSystem {
       m.position.set(v.x, v.y, 0.08 + v.z);
       m.rotation.set(v.rx, v.ry, v.rz + (sign < 0 ? Math.PI : 0));
       m.scale.setScalar(v.scale);
-      if (sculpted || (p.style.solidPieceSides !== false && (v.rx || v.ry))) {
+      if (
+        sculpted ||
+        (p.style.solidPieceSides !== false && depth > 0 && (v.rx || v.ry))
+      ) {
         // Raise the rotated model by its extent beneath the centre so the
         // flip stays above the board, including at quarter turns.
         const up = this.up
@@ -83,7 +88,7 @@ export class PieceSystem {
         // Keep the illustrated face at its original size while the side
         // walls smoothly deepen as the piece tilts away from the board.
         const tilt = Math.max(0, 1 - up.z * up.z);
-        if (!sculpted) m.scale.z *= 1 + 6 * tilt;
+        if (!sculpted) m.scale.z *= 1 + 6 * tilt * depth;
         if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
         const bounds = m.geometry.boundingBox!;
         const lowest =

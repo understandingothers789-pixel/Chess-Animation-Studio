@@ -504,9 +504,59 @@ try {
   await expect
     .poll(async () => (await state()).moves[0].effect.preMoveMeme)
     .toBeNull();
+  await page.getByRole("button", { name: "board", exact: true }).click();
+  await page
+    .getByLabel("Board palette", { exact: true })
+    .selectOption("monochrome");
+  await expect.poll(async () => (await state()).style.dark).toBe("#858589");
+  await expect.poll(async () => (await state()).style.light).toBe("#F5F5F5");
+  await page
+    .getByLabel("Piece artwork", { exact: true })
+    .selectOption("merida");
+  await expect(
+    page.getByLabel("Edge depth value", { exact: true }),
+  ).toHaveValue("40");
+  await page.getByLabel("Edge depth value", { exact: true }).fill("57");
+  await expect
+    .poll(async () => (await state()).style.pieceEdgeDepth)
+    .toBe(0.57);
+
+  await page.getByRole("button", { name: "framing", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edit intro clip →", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Import player photo", exact: true })
+    .click();
+  await expect(
+    page.getByRole("img", { name: "Player photo preview", exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Player name", { exact: true }).fill("Example player");
+  await page
+    .getByLabel("Player transition", { exact: true })
+    .selectOption("zoom");
+  await page.getByLabel("Player photo size value", { exact: true }).fill("49");
+  await expect
+    .poll(async () => (await state()).playerIntro)
+    .toEqual({
+      enabled: true,
+      asset: "meme-image",
+      name: "Example player",
+      transition: "zoom",
+      size: 0.49,
+    });
+  await page
+    .getByRole("button", { name: "Preview player intro", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Pause", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Play", exact: true }),
+  ).toBeVisible({ timeout: 15000 });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: preset tooltips and live pop-up, explicit apply, reduced motion, landing alignment, preview controls and starting-square meme.",
+    "PASS: preset tooltips and live pop-up, explicit apply, reduced motion, landing alignment, preview controls, edge depth, board palette, and player intro.",
   );
 } finally {
   await browser.close();

@@ -577,6 +577,20 @@ export const transitionSchema = z.object({
   easing: z.enum(["linear", "smooth"]).default("linear"),
 });
 export const transition = () => transitionSchema.parse({});
+export const defaultPieceEdgeDepth = 0.4;
+export const boardPalettes = {
+  classic: { light: "#EDD6B0", dark: "#B88762" },
+  monochrome: { light: "#F5F5F5", dark: "#858589" },
+} as const;
+const playerIntroSchema = z.object({
+  enabled: z.boolean().default(false),
+  asset: str.nullable().default(null),
+  name: z.string().max(80).default(""),
+  size: n(0.18, 0.72).default(0.42),
+  transition: z.enum(["rise", "zoom", "fade"]).default("rise"),
+});
+export const playerIntro = () => playerIntroSchema.parse({});
+
 export const storyboardShotSchema = z
   .object({
     id: z.string().min(1).max(100),
@@ -597,6 +611,7 @@ export const storyboardShotSchema = z
     preset: z.enum(["inherit", ...presets]),
     camera: cameraSchema.nullable(),
     inheritAnnotations: z.boolean(),
+    showPlayerIntro: z.boolean().optional(),
     musicDucking: musicDuckingSchema.prefault({}),
     transition: transitionSchema.prefault({}),
     annotations: z.array(annotationSchema).max(2000),
@@ -695,6 +710,7 @@ export const projectSchema = z.object({
   style: z.object({
     pieceSet: z.enum(["cburnett", "merida", "neo", "sculpted"]),
     solidPieceSides: z.boolean().default(true),
+    pieceEdgeDepth: n(0, 1).default(defaultPieceEdgeDepth),
     light: color,
     dark: color,
     rim: color,
@@ -826,6 +842,7 @@ export const projectSchema = z.object({
     fadeOut: n(0, 30),
   }),
   evalBar: z.boolean().default(false),
+  playerIntro: playerIntroSchema.prefault({}),
   introTitle: z
     .object({
       enabled: z.boolean(),
@@ -943,8 +960,8 @@ export function blank(): Project {
     style: {
       pieceSet: "merida",
       solidPieceSides: true,
-      light: "#EDD6B0",
-      dark: "#B88762",
+      pieceEdgeDepth: defaultPieceEdgeDepth,
+      ...boardPalettes.classic,
       rim: "#454f49",
       background: "#111918",
       accent: "#c6e59d",
@@ -1029,6 +1046,7 @@ export function blank(): Project {
       fadeOut: 1,
     },
     evalBar: false,
+    playerIntro: playerIntro(),
     introTitle: { enabled: false, text: "CHESS STORY", piece: "knight" },
     reviewColors: {
       enabled: true,

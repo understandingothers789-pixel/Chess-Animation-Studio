@@ -57,7 +57,12 @@ try {
       });
       r.setSize(1920, 1080, false);
       r.autoClear = false;
-      const overlay = new OverlaySystem(new T.Group(), r, new Map());
+      const overlay = new OverlaySystem(
+        new T.Group(),
+        r,
+        new Map(),
+        new T.OrthographicCamera(),
+      );
       const version = overlay.overlayTexture.version;
       const start = performance.now();
       for (let i = 0; i < 40; i++)

@@ -21,6 +21,7 @@ import { CaptureSystem } from "./systems/CaptureSystem";
 import { LightingSystem } from "./systems/LightingSystem";
 import { AtmosphereSystem } from "./systems/AtmosphereSystem";
 import { SpotlightSystem } from "./systems/SpotlightSystem";
+import { playerIntroFrame } from "./engine/playerIntro";
 import { OverlaySystem } from "./systems/OverlaySystem";
 import { Assets, type AssetRetry } from "./engine/Assets";
 import type { ResourceKey } from "./engine/RuntimeResources";
@@ -107,7 +108,7 @@ export class Scene {
     this.board = new BoardSystem(this.root);
     const motion = new MotionSystem(this.root);
     const annotations = (this.annotations = new AnnotationSystem(this.root, r));
-    const overlay = new OverlaySystem(this.root, r, this.assets);
+    const overlay = new OverlaySystem(this.root, r, this.assets, camera);
     const atmosphere = new AtmosphereSystem(this.world, camera);
     const pieces = new PieceSystem(this.root);
     const meme = new StartingSquareMeme(this.root, this.assets);
@@ -308,7 +309,9 @@ export class Scene {
           stage: "overlay",
           inputs: ["scene-color"],
           active: (c) =>
-            c.p.evalBar || (c.p.introTitle.enabled && c.time < c.p.lead),
+            c.p.evalBar ||
+            (c.p.introTitle.enabled && c.time < c.p.lead) ||
+            !!playerIntroFrame(c),
           render: (c) => overlay.post(c),
         },
         {

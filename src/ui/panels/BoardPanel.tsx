@@ -5,6 +5,8 @@ import {
   cinematicPresets,
   rainbowDefaults,
   blank,
+  boardPalettes,
+  defaultPieceEdgeDepth,
   presets,
   formats,
   badgeNames,
@@ -32,6 +34,12 @@ import type { PanelProps } from "./types";
 export function BoardPanel(q: PanelProps) {
   const p = q.project,
     edit = q.edit;
+  const palette =
+    (["classic", "monochrome"] as const).find(
+      (id) =>
+        p.style.light.toUpperCase() === boardPalettes[id].light &&
+        p.style.dark.toUpperCase() === boardPalettes[id].dark,
+    ) ?? "custom";
   return (
     <>
       <Section
@@ -73,6 +81,37 @@ export function BoardPanel(q: PanelProps) {
             }
           />
         )}
+        {p.style.pieceSet !== "sculpted" && p.style.solidPieceSides && (
+          <Range
+            label="Edge depth"
+            value={p.style.pieceEdgeDepth * 100}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            resetValue={defaultPieceEdgeDepth * 100}
+            onChange={(value) =>
+              edit("Edge depth", (p) => {
+                p.style.pieceEdgeDepth = value / 100;
+              })
+            }
+          />
+        )}
+        <Select
+          label="Board palette"
+          value={palette}
+          options={[
+            ["classic", "Classic tan & brown"],
+            ["monochrome", "Gray & white"],
+            ...(palette === "custom" ? [["custom", "Custom"] as const] : []),
+          ]}
+          onChange={(value) => {
+            if (value !== "custom")
+              edit("Board palette", (p) => {
+                Object.assign(p.style, boardPalettes[value]);
+              });
+          }}
+        />
         {(["light", "dark", "rim", "accent"] as const).map((k) => (
           <Color
             label={

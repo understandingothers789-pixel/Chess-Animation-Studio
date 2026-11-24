@@ -1210,3 +1210,13 @@ summary:focus-visible {
   margin: 0 0 12px;
   font-size: var(--text-label);
 }
+
+.player-intro-image {
+  display: block;
+  max-width: 100%;
+  width: 112px;
+  height: 96px;
+  object-fit: contain;
+  background: #111918;
+  border: 1px solid var(--line);
+}

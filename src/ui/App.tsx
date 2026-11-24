@@ -826,13 +826,26 @@ export function App() {
   }
   async function importAsset(
     kind: "audio" | "image",
-    use: "music" | "sound" | "background" | "badge",
+    use: "music" | "sound" | "background" | "badge" | "player intro",
     badgeKind?: string,
   ) {
+    const projectId = latest.current.id;
     const a = await window.studio.importAsset(kind);
-    if (!a) return;
+    if (!a || latest.current.id !== projectId) return;
     stop();
     edit("Import " + use, (p) => {
+      if (use === "player intro") {
+        const existing = p.assets.find(
+          (asset) => asset.kind === a.kind && asset.path === a.path,
+        );
+        if (!existing && p.assets.length >= 150)
+          throw Error("This project already has 150 local assets.");
+        if (!existing) p.assets.push(a);
+        p.playerIntro.asset = (existing ?? a).id;
+        p.playerIntro.enabled = true;
+        if (p.lead === 0) p.lead = 2;
+        return;
+      }
       p.assets.push(a);
       if (use === "music") {
         p.music = {
@@ -2127,7 +2140,20 @@ export function App() {
                 />
               </details>
               <div hidden={!introSelected} className="inspector-slot">
-                <IntroInspector project={p} edit={edit} />
+                <IntroInspector
+                  project={p}
+                  edit={edit}
+                  images={previewAssets}
+                  missing={missing}
+                  importPhoto={() =>
+                    run(() => importAsset("image", "player intro"))
+                  }
+                  previewIntro={() => {
+                    seek(0);
+                    setAudition({ time, playing, end: p.lead });
+                    setPlaying(true);
+                  }}
+                />
                 <button
                   className="return-move"
                   data-return-move

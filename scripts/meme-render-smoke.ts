@@ -4,7 +4,7 @@ import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { appendMove, importFen } from "../src/core/chess";
-import { blank, camera } from "../src/core/project";
+import { blank, boardPalettes, camera } from "../src/core/project";
 import { duration, segments } from "../src/core/timeline";
 import { shotFromMove } from "../src/core/storyboard";
 import { VideoJob } from "../desktop/export";
@@ -26,7 +26,22 @@ const p = appendMove(
   "f1",
   "b5",
 );
-p.lead = 0.2;
+p.lead = 1.2;
+Object.assign(p.style, boardPalettes.monochrome);
+p.playerIntro = {
+  enabled: true,
+  name: "Example player",
+  size: 0.42,
+  transition: "zoom",
+  asset: "portrait",
+};
+const portrait = path.join(dir, "test-portrait.svg");
+await fs.writeFile(
+  portrait,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="160">
+  <rect x="4" y="4" width="92" height="152" rx="18" fill="#00c9fd"/>
+</svg>`,
+);
 p.tail = 0.1;
 p.format = "square";
 p.boardFX.intro = false;
@@ -44,8 +59,16 @@ p.assets = [
     guidance: "",
   },
 ];
+p.assets.push({
+  ...p.assets[0],
+  id: "portrait",
+  path: portrait,
+  name: "Example player image",
+});
 const shot = shotFromMove(p, p.moves[0].id);
-p.storyboard.shots = [shot];
+const intro = shotFromMove(p, "@start", "position-hold");
+intro.showPlayerIntro = true;
+p.storyboard.shots = [intro, shot];
 const port = "5198";
 const server = spawn(
   process.execPath,
@@ -80,14 +103,20 @@ try {
   );
   await page.goto(origin + "/validation.html");
   await page.evaluate(
-    async ({ p, url }) => {
+    async ({ p, urls }) => {
       const { Scene } = await import("/src/render/Scene.ts" as string);
       const scene = new Scene(document.createElement("canvas"));
       await scene.ready;
-      await scene.prepareAssets({ reaction: url });
+      await scene.prepareAssets(urls);
       Object.assign(window, { scene, project: p });
     },
-    { p, url: await dataUrl(p.assets[0]) },
+    {
+      p,
+      urls: {
+        reaction: await dataUrl(p.assets[0]),
+        portrait: await dataUrl(p.assets[1]),
+      },
+    },
   );
   const frame = async (
     time: number,
@@ -120,8 +149,30 @@ try {
     const offset = (row * size + col) * 4;
     return rgba[offset] > 190 && rgba[offset + 1] < 70 && rgba[offset + 2] > 55;
   };
+  const blueCenter = (rgba: Buffer) => {
+    const [col, row] = boardPixel(0, 0);
+    const offset = (row * size + col) * 4;
+    return (
+      rgba[offset] < 65 && rgba[offset + 1] > 140 && rgba[offset + 2] > 190
+    );
+  };
+  assert.equal(blueCenter(await frame(0)), false, "Portrait fades in");
+  assert.ok(
+    blueCenter(await frame(0.6)),
+    "Portrait appears at the board center",
+  );
+  assert.ok(
+    blueCenter(await frame(0.6, "storyboard")),
+    "Position hold shows the same portrait",
+  );
+  assert.equal(
+    blueCenter(await frame(p.lead)),
+    false,
+    "Portrait disappears before the first move",
+  );
   const depart = segments(p)[0].depart;
-  const active = await frame(0.4);
+  const memeTime = p.lead + 0.2;
+  const active = await frame(memeTime);
   for (const x of [1.08, 1.92])
     for (const y of [-3.92, -3.08])
       assert.ok(
@@ -129,15 +180,15 @@ try {
         "The center crop fills all four corners of f1",
       );
   assert.equal(pink(active, 2.1, -3.5), false, "The effect stays inside f1");
-  assert.ok(pink(await frame(0.2, "storyboard"), 1.2, -3.7));
-  assert.ok(pink(await frame(0.4, "source", "black"), -1.2, 3.7));
+  assert.ok(pink(await frame(intro.duration + 0.2, "storyboard"), 1.2, -3.7));
+  assert.ok(pink(await frame(memeTime, "source", "black"), -1.2, 3.7));
   assert.equal(pink(await frame(depart), 1.2, -3.7), false);
   assert.deepEqual(
-    await frame(0.4),
+    await frame(memeTime),
     active,
     "Seeking backward restores the image",
   );
-  const destination = path.join(dir, "starting-square-meme.mp4");
+  const destination = path.join(dir, "player-intro-and-square-meme.mp4");
   const job = new VideoJob(
     p,
     {
@@ -180,10 +231,12 @@ try {
   );
   const decodedFrame = (index: number) =>
     decoded.subarray(index * size * size * 4, (index + 1) * size * size * 4);
-  assert.ok(pink(decodedFrame(10), 1.2, -3.7));
+  assert.ok(blueCenter(decodedFrame(14)), "MP4 contains the player portrait");
+  assert.equal(blueCenter(decodedFrame(Math.ceil(p.lead * 24))), false);
+  assert.ok(pink(decodedFrame(Math.round(memeTime * 24)), 1.2, -3.7));
   assert.equal(pink(decodedFrame(Math.ceil(depart * 24)), 1.2, -3.7), false);
   console.log(
-    "PASS: exact-square crop, both board orientations, storyboard, backward seeking, and decoded MP4 departure.",
+    "PASS: centered player intro, storyboard, decoded MP4, exact-square crop, and backward seeking.",
   );
 } finally {
   await browser?.close();

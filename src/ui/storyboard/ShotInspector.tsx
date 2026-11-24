@@ -480,6 +480,24 @@ export function ShotInspector({
             Use Open source move for detailed effects. Source edits affect every
             shot that inherits those settings.
           </p>
+          {s.kind === "position-hold" && (
+            <>
+              <Toggle
+                label="Show player intro"
+                checked={s.showPlayerIntro ?? false}
+                onChange={(v) =>
+                  change("Shot player intro", (shot) => {
+                    shot.showPlayerIntro = v;
+                  })
+                }
+              />
+              {s.showPlayerIntro && !p.playerIntro.asset && (
+                <p className="hint">
+                  Choose a player photo in Full Game → Intro.
+                </p>
+              )}
+            </>
+          )}
           {s.kind === "move-range" && (
             <Select
               label="Shot animation"

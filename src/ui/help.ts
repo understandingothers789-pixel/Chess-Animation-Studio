@@ -180,6 +180,19 @@ const help: Record<string, string> = {
   "Sway cycles":
     "Number of rocking cycles. 0.5 makes a single lean and return; 1 rocks both ways.",
   "Hop height": "How far the moving piece lifts above the board.",
+  "Edge depth":
+    "Adjust the extra thickness of illustrated pieces during X- or Y-axis turns.",
+  "Board palette":
+    "Apply a pair of square colors. The individual color controls remain editable.",
+  "Player photo":
+    "Choose an image from your project. Transparent PNGs show the board around the player.",
+  "Player name": "Show this name below the photo.",
+  "Player photo size":
+    "Set the maximum photo size relative to the visible board area.",
+  "Player transition":
+    "Choose how the photo and name appear during the intro and then fade out.",
+  "Show player intro":
+    "Display the player’s photo and name on this opening board or position hold.",
   "Solid sides on turns":
     "Give illustrated pieces more visible depth when they tilt around the X or Y axis.",
   "Meme image":

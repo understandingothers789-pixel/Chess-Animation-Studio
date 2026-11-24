@@ -10,6 +10,20 @@ export function requiredAssetIds(p: Project, o: ExportOptions) {
     bg = p.layouts[o.format];
   if (bg.background === "image" && bg.image) ids.add(bg.image);
   for (const id of Object.values(p.badgeAssets)) if (id) ids.add(id);
+  if (p.playerIntro?.asset) {
+    const visible =
+      o.mode === "storyboard"
+        ? compileStoryboard(p).shots.some(
+            ({ shot, issue, start, end }) =>
+              !issue &&
+              shot.kind === "position-hold" &&
+              shot.showPlayerIntro &&
+              start < o.end &&
+              end >= o.start,
+          )
+        : p.playerIntro.enabled && p.lead > 0 && o.start < p.lead;
+    if (visible) ids.add(p.playerIntro.asset);
+  }
   if (p.moves.some((move) => move.effect.preMoveMeme)) {
     const source = compileTimeline(p).segments;
     const ranges =

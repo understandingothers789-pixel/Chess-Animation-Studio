@@ -2,6 +2,7 @@ import type { Project } from "../../core/project";
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources, radialTexture } from "../engine/resources";
+import { drawPlayerIntro, playerIntroFrame } from "../engine/playerIntro";
 import { clamp } from "../../core/timeline";
 const symbols: Record<string, string> = {
   book: "▤",
@@ -18,6 +19,7 @@ export class OverlaySystem {
   private overlayIndex = -2;
   private overlayIntro = false;
   private titlePhase = "";
+  private portrait?: HTMLImageElement;
   private badge: T.Sprite;
   private badgeGlow: T.Sprite;
   private badgeRing: T.Mesh;
@@ -33,6 +35,7 @@ export class OverlaySystem {
     private root: T.Group,
     private renderer: T.WebGLRenderer,
     private assetTextures: Map<string, T.Texture>,
+    private camera: T.Camera,
   ) {
     this.backgroundCamera.position.z = 2;
     this.badge = new T.Sprite(
@@ -198,25 +201,34 @@ export class OverlaySystem {
 
   post(c: RenderFrame) {
     const { p, e, time, w, h, game } = c;
-    if (p.evalBar || (p.introTitle.enabled && time < p.lead)) {
+    const player = playerIntroFrame(c);
+    const portrait: HTMLImageElement | undefined = player
+      ? this.assetTextures.get(player.asset)?.image
+      : undefined;
+    const intro = !portrait && p.introTitle.enabled && time < p.lead;
+    if (p.evalBar || intro || portrait) {
       const canvas = this.overlayCanvas;
-      const intro = p.introTitle.enabled && time < p.lead;
       // Once flight/impact/opacity settle the title pixels are constant.
-      const phase = intro
-        ? `${Math.min(1, time / Math.max(0.2, Math.min(p.lead * 0.82, 1.5)))}:${Math.min(1, time * 5, (p.lead - time) * 4)}`
-        : "";
+      const phase =
+        player && portrait
+          ? `player:${player.time}`
+          : intro
+            ? `${Math.min(1, time / Math.max(0.2, Math.min(p.lead * 0.82, 1.5)))}:${Math.min(1, time * 5, (p.lead - time) * 4)}`
+            : "";
       const dirty =
         this.overlayProject !== p ||
         this.overlayIndex !== e.index ||
         canvas.width !== w ||
         canvas.height !== h ||
         phase !== this.titlePhase ||
-        intro !== this.overlayIntro;
+        intro !== this.overlayIntro ||
+        portrait !== this.portrait;
       if (dirty) {
         this.overlayProject = p;
         this.overlayIndex = e.index;
         this.overlayIntro = intro;
         this.titlePhase = phase;
+        this.portrait = portrait;
         if (canvas.width !== w || canvas.height !== h) {
           if (c.mode === "storyboard") this.overlayTexture.dispose();
           canvas.width = w;
@@ -249,7 +261,7 @@ export class OverlaySystem {
           ctx.fillRect(x, y + bh * (1 - white), bw, bh * white);
           ctx.restore();
         }
-        if (p.introTitle.enabled && time < p.lead) {
+        if (intro) {
           const u = Math.min(
             1,
             time / Math.max(0.2, Math.min(p.lead * 0.82, 1.5)),
@@ -327,6 +339,8 @@ export class OverlaySystem {
           );
           ctx.restore();
         }
+        if (player && portrait)
+          drawPlayerIntro(ctx, c, this.camera, portrait, player);
         this.overlayTexture.needsUpdate = true;
       }
       this.renderer.setViewport(0, 0, w, h);

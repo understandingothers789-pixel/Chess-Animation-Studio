@@ -167,18 +167,34 @@ try {
           return scene.renderer.domElement.toDataURL();
         };
         const edge = capture(turning, turn.time);
+        const wide = {
+          ...turning,
+          style: { ...turning.style, pieceEdgeDepth: 1 },
+        };
+        const zero = {
+          ...turning,
+          style: { ...turning.style, pieceEdgeDepth: 0 },
+        };
         return {
           edgeChanged: edge !== capture(thin, turn.time),
           restMatches:
             capture(turning, clip.depart) === capture(thin, clip.depart),
           seekMatches: edge === capture(turning, turn.time),
+          depthChanges: edge !== capture(wide, turn.time),
+          zeroMatches: capture(zero, turn.time) === capture(thin, turn.time),
         };
       },
       { turning, turn, clip },
     );
     assert.deepEqual(
       rendered,
-      { edgeChanged: true, restMatches: true, seekMatches: true },
+      {
+        edgeChanged: true,
+        restMatches: true,
+        seekMatches: true,
+        depthChanges: true,
+        zeroMatches: true,
+      },
       `${preset} in ${set}`,
     );
   }

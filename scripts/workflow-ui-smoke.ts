@@ -97,8 +97,10 @@ try {
   await button("Close animation library").click();
   await expect(playhead).toHaveValue(before);
   await button("presets").click();
+  await page.locator(".animation-card").filter({ hasText: "Soft hop" }).click();
   await page.keyboard.press("Control+k");
   await expect(search).toBeFocused();
+  await expect(playhead).toHaveValue(before);
   await search.fill("Output format");
   await search.press("Enter");
   await expect(page.getByLabel("Output format", { exact: true })).toBeFocused();

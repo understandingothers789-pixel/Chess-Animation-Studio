@@ -237,14 +237,14 @@ export function App() {
     }
   }, [annotationFocus, annotationId, layout.hideRight, mode, shotId]);
   useEffect(() => localStorage.setItem("studio.category", tab), [tab]);
-  const activePreset =
-    tab === "presets" &&
-    !layout.hideLeft &&
+  const matchingPreset =
     mode === "source" &&
     presetDraft?.project === p &&
     presetDraft.moveId === p.moves[selected]?.id
       ? presetDraft
       : null;
+  const activePreset =
+    tab === "presets" && !layout.hideLeft ? matchingPreset : null;
   const previewProject = useMemo(() => {
     if (!activePreset || beforePreset) return p;
     const next = structuredClone(p);
@@ -308,28 +308,24 @@ export function App() {
     setAudition(null);
     audio.current?.stop();
   }, []);
-  const clearPresetPreview = () => {
-    const origin = presetOrigin.current;
-    presetOrigin.current = null;
-    setPresetDraft(null);
-    setBeforePreset(false);
-    stop();
-    if (origin !== null && activePreset) {
-      sourceClock.current = origin;
-      timeRef.current = origin;
-      setTime(origin);
-    }
-  };
-  useEffect(() => {
-    if (presetDraft && !activePreset) {
+  const clearPresetPreview = useCallback(
+    (restore = true) => {
+      const origin = presetOrigin.current;
       presetOrigin.current = null;
       setPresetDraft(null);
       setBeforePreset(false);
       stop();
-    } else if (activePreset && tab !== "presets") {
-      clearPresetPreview();
-    }
-  }, [presetDraft, activePreset, stop, tab]);
+      if (origin !== null && restore) {
+        sourceClock.current = origin;
+        timeRef.current = origin;
+        setTime(origin);
+      }
+    },
+    [stop],
+  );
+  useLayoutEffect(() => {
+    if (presetDraft && !activePreset) clearPresetPreview(!!matchingPreset);
+  }, [presetDraft, activePreset, matchingPreset, clearPresetPreview]);
   const seek = useCallback(
     (t: number) => {
       stop();
@@ -694,7 +690,10 @@ export function App() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         workspace.patch({ hideLeft: false });
-        if (modeRef.current === "source" && tab === "presets") setTab("game");
+        if (modeRef.current === "source" && tab === "presets") {
+          if (presetOrigin.current !== null) clearPresetPreview();
+          setTab("game");
+        }
         setSearchRequest((n) => n + 1);
         return;
       }
@@ -765,7 +764,17 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selected, loadingAudio, checked, p, fps, playing, audition, tab]);
+  }, [
+    selected,
+    loadingAudio,
+    checked,
+    p,
+    fps,
+    playing,
+    audition,
+    tab,
+    clearPresetPreview,
+  ]);
   function adopted(project: Project, file: string | null) {
     stop();
     replace(project);

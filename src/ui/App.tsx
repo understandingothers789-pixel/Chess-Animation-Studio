@@ -20,11 +20,7 @@ import {
 } from "../core/storyboard";
 import type { PlaybackMode } from "../core/project";
 import { focusSetting } from "./focusSetting";
-import {
-  applyPresetEffect,
-  pasteSettings,
-  type SettingsClipboard,
-} from "../core/editing";
+import { pasteSettings, type SettingsClipboard } from "../core/editing";
 import { Transport } from "./transport/Transport";
 import { ExportDialog } from "./export/ExportDialog";
 import { AnnotationEditor } from "./annotations/AnnotationEditor";
@@ -75,7 +71,6 @@ import {
   sizes,
   type Project,
   type Asset,
-  type Effect,
 } from "../core/project";
 import {
   sample,
@@ -158,8 +153,9 @@ export function App() {
   const annotationFrom = useRef<string | null>(null);
   const [presetDraft, setPresetDraft] = useState<{
     project: Project;
-    moveId: string;
-    effect: Effect;
+    anchorMoveId: string;
+    preview: Project;
+    index: number;
   } | null>(null);
   const presetOrigin = useRef<number | null>(null);
   const [beforePreset, setBeforePreset] = useState(false);
@@ -240,17 +236,13 @@ export function App() {
   const matchingPreset =
     mode === "source" &&
     presetDraft?.project === p &&
-    presetDraft.moveId === p.moves[selected]?.id
+    presetDraft.anchorMoveId === p.moves[selected]?.id
       ? presetDraft
       : null;
   const activePreset =
     tab === "presets" && !layout.hideLeft ? matchingPreset : null;
-  const previewProject = useMemo(() => {
-    if (!activePreset || beforePreset) return p;
-    const next = structuredClone(p);
-    next.moves[selected].effect = activePreset.effect;
-    return next;
-  }, [p, activePreset, beforePreset, selected]);
+  const previewProject =
+    activePreset && !beforePreset ? activePreset.preview : p;
   const previewProjectRef = useRef(previewProject);
   previewProjectRef.current = previewProject;
   const [audition, setAudition] = useState<{
@@ -1255,6 +1247,30 @@ export function App() {
     setChecked(new Set());
     seek(0);
   }
+  function playPreset(
+    draft: NonNullable<typeof presetDraft>,
+    original: boolean,
+  ) {
+    const window = movePreviewWindow(original ? p : draft.preview, draft.index);
+    if (!window) return;
+    presetOrigin.current ??= timeRef.current;
+    setIntroSelected(false);
+    setBeforePreset(original);
+    setAudition({
+      time: presetOrigin.current,
+      playing: false,
+      end: window.end,
+      loopStart: window.start,
+    });
+    timeRef.current = window.start;
+    setTime(window.start);
+    setPlaying(true);
+  }
+  function inspectMoveEffect(section: string) {
+    workspace.patch({ hideRight: false });
+    setIntroSelected(false);
+    setInspectorRequest({ section, version: Date.now() });
+  }
   function previewMove(index = selected, previewIntro = introSelected) {
     if (audition) {
       if (activePreset) {
@@ -1691,45 +1707,37 @@ export function App() {
                         onPausePreview={stop}
                         report={message}
                         before={beforePreset}
-                        onBefore={setBeforePreset}
-                        onPreview={(source, replaceAll, kind, preserveKeys) => {
-                          const move = p.moves[selected];
-                          if (!move || mode !== "source") return;
-                          const fx = applyPresetEffect(
-                            move.effect,
-                            source,
-                            p.format,
-                            replaceAll,
-                            kind,
-                            preserveKeys,
-                            false,
-                          );
+                        onBefore={(original) => {
+                          if (activePreset) playPreset(activePreset, original);
+                        }}
+                        onPreview={(effects, index) => {
+                          const anchorMoveId = p.moves[selected]?.id;
+                          if (!anchorMoveId || mode !== "source") return;
                           const draft = {
-                            ...p,
-                            moves: p.moves.map((m) =>
-                              m.id === move.id ? { ...m, effect: fx } : m,
-                            ),
-                          };
-                          const segment = movePreviewWindow(draft, selected);
-                          if (!segment) return;
-                          if (presetOrigin.current === null)
-                            presetOrigin.current = timeRef.current;
-                          setIntroSelected(false);
-                          setBeforePreset(false);
-                          setPresetDraft({
                             project: p,
-                            moveId: move.id,
-                            effect: fx,
-                          });
-                          setAudition({
-                            time: presetOrigin.current,
-                            playing: false,
-                            end: segment.end,
-                            loopStart: segment.start,
-                          });
-                          timeRef.current = segment.start;
-                          setTime(segment.start);
-                          setPlaying(true);
+                            anchorMoveId,
+                            index,
+                            preview: {
+                              ...p,
+                              moves: p.moves.map((m) => {
+                                const effect = effects.get(m.id);
+                                return effect ? { ...m, effect } : m;
+                              }),
+                            },
+                          };
+                          setPresetDraft(draft);
+                          playPreset(draft, false);
+                        }}
+                        onFineTune={(ids, index, kind) => {
+                          setSelected(index);
+                          selectionAnchor.current = index;
+                          setChecked(new Set(ids));
+                          setTab("game");
+                          inspectMoveEffect(
+                            kind === "movement" || kind === "everything"
+                              ? "move"
+                              : kind,
+                          );
                         }}
                         onCancel={clearPresetPreview}
                       />
@@ -2033,7 +2041,7 @@ export function App() {
                 {activePreset && (
                   <button
                     aria-pressed={beforePreset}
-                    onClick={() => setBeforePreset(!beforePreset)}
+                    onClick={() => playPreset(activePreset, !beforePreset)}
                   >
                     {beforePreset ? "Show edited" : "Show original"}
                   </button>
@@ -2042,7 +2050,8 @@ export function App() {
               {!introSelected && (
                 <MoveFrames
                   project={previewProject}
-                  index={selected}
+                  index={activePreset?.index ?? selected}
+                  onTune={activePreset ? undefined : inspectMoveEffect}
                   time={time}
                   playing={playing}
                   fps={fps}

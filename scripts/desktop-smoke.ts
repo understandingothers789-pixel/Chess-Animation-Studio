@@ -137,7 +137,7 @@ try {
     page.getByLabel("Size return span value", { exact: true }),
   ).toBeVisible();
   const moveFrames = page.locator(".move-frames");
-  await moveFrames.locator("summary").click();
+  await moveFrames.locator(":scope > summary").click();
   await expect(moveFrames.locator("img")).toHaveCount(4, { timeout: 15000 });
   await page
     .getByRole("button", { name: "View landing frame", exact: true })
@@ -145,7 +145,7 @@ try {
   await expect(
     page.getByRole("button", { name: "View landing frame", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await moveFrames.locator("summary").click();
+  await moveFrames.locator(":scope > summary").click();
   await page.getByTitle("Undo", { exact: true }).click();
   console.log(
     "PASS: packaged size controls and rendered move-frame navigation.",

@@ -4,6 +4,8 @@ import {
   afterEffectWindow,
   duration,
   memeWindow,
+  pieceSizeProfile,
+  spotlightStart,
   segments,
 } from "../core/timeline";
 
@@ -43,4 +45,56 @@ export function moveFrameStops(project: Project, index: number) {
       { label: "After-effect end", time: after.end },
     );
   return stops;
+}
+
+/** Authored effect windows on the same clock as the move preview. */
+export function moveEffectTiming(project: Project, index: number) {
+  const segment = segments(project)[index];
+  if (!segment) return null;
+  const { effect } = project.moves[index];
+  const rows: {
+    label: string;
+    section: string;
+    window: { start: number; end: number } | null;
+  }[] = [
+    {
+      label: "Starting-square meme",
+      section: "meme",
+      window: memeWindow(effect, segment),
+    },
+    {
+      label: "Main movement",
+      section: "move",
+      window: { start: segment.depart, end: segment.finish },
+    },
+    {
+      label: "Piece size",
+      section: "size",
+      window:
+        effect.keys.scale?.length || pieceSizeProfile(effect) !== "constant"
+          ? {
+              start: segment.depart,
+              end:
+                pieceSizeProfile(effect) === "smooth" &&
+                !effect.keys.scale?.length
+                  ? segment.land
+                  : segment.finish,
+            }
+          : null,
+    },
+    {
+      label: "After effect",
+      section: "after-effect",
+      window: afterEffectWindow(effect, segment),
+    },
+  ];
+  if (effect.jam.enabled) {
+    const start = spotlightStart(effect, segment);
+    rows.push({
+      label: "Beat zoom",
+      section: "spotlight",
+      window: { start, end: start + effect.jam.duration },
+    });
+  }
+  return { segment, rows };
 }

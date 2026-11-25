@@ -93,6 +93,10 @@ export function Inspector({
       badge: ["effects", "Move badge", "Badge override"],
       spotlight: ["effects", "Beat spotlight transition", "Beat spotlight"],
       meme: ["move", "Starting-square meme", "Meme image"],
+      size: ["move", "Piece size", "Size during move"],
+      "after-effect": ["move", "After effect", "After-effect type"],
+      timing: ["move", "Timing & landing", "Departure delay"],
+      light: ["effects", "Move light & flicker", "Move light wash"],
     };
     return targets[requestedTab!.section] ?? [requestedTab!.section, "", ""];
   };
@@ -413,6 +417,19 @@ export function Inspector({
                   </button>
                   <button onClick={onBrowsePresets}>
                     Open animation library
+                  </button>
+                  <button
+                    onClick={(event) =>
+                      focusSetting(
+                        event.currentTarget.closest(
+                          '[data-inspector-tab="move"]',
+                        ),
+                        undefined,
+                        "Preset name",
+                      )
+                    }
+                  >
+                    Save current settings as preset
                   </button>
                 </div>
                 {demoPreset && (

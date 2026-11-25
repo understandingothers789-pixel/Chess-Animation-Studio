@@ -237,7 +237,7 @@ try {
   await page.getByLabel("Size return span value", { exact: true }).fill("65");
   await page.setViewportSize({ width: 1366, height: 768 });
   const frameStrip = page.locator(".move-frames");
-  await frameStrip.locator("summary").click();
+  await frameStrip.locator(":scope > summary").click();
   await expect(frameStrip.locator("img")).toHaveCount(4, { timeout: 15000 });
   await page
     .getByRole("button", { name: "View mid-move frame", exact: true })
@@ -257,7 +257,7 @@ try {
   await page.screenshot({
     path: "test-results/customization/move-frames-laptop.png",
   });
-  await frameStrip.locator("summary").click();
+  await frameStrip.locator(":scope > summary").click();
   await page.setViewportSize({ width: 1440, height: 900 });
   await page
     .getByText("Align landing · active move e4", { exact: true })
@@ -308,7 +308,7 @@ try {
     duration: 0.6,
     strength: 0.6,
   });
-  await frameStrip.locator("summary").click();
+  await frameStrip.locator(":scope > summary").click();
   await expect(frameStrip.locator("img")).toHaveCount(6, { timeout: 20000 });
   const peak = frameStrip.getByRole("button", {
     name: "View after-effect peak frame",
@@ -324,7 +324,7 @@ try {
   await page.screenshot({
     path: "test-results/customization/sculpted-after-effect.png",
   });
-  await frameStrip.locator("summary").click();
+  await frameStrip.locator(":scope > summary").click();
   await page.getByLabel("Lock timing", { exact: true }).check();
   await expect(after).toBeDisabled();
   await expect(
@@ -489,7 +489,7 @@ try {
   await page
     .getByRole("button", { name: "Preview meme on board", exact: true })
     .click();
-  await frameStrip.locator("summary").click();
+  await frameStrip.locator(":scope > summary").click();
   await expect(frameStrip.locator("img")).toHaveCount(7, { timeout: 20000 });
   await frameStrip
     .getByRole("button", { name: "View meme frame", exact: true })

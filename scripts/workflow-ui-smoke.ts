@@ -105,6 +105,55 @@ try {
   await search.press("Enter");
   await expect(page.getByLabel("Output format", { exact: true })).toBeFocused();
 
+  const clips = (index: number) =>
+    page.locator(`.move-clip[data-move-index="${index}"] .clip-select`);
+  await clips(0).click();
+  await clips(1).click({ modifiers: ["Control"] });
+  const state = () => page.evaluate(() => (window as any).__workflow.project);
+  const original = (await state()).moves.map((move: any) => move.effect.preset);
+  await button("presets").click();
+  const scope = page.getByLabel("Preset target scope", { exact: true });
+  await scope.selectOption("group");
+  await page.locator(".animation-card").filter({ hasText: "Soft hop" }).click();
+  await expect(page.locator(".preset-selection")).toContainText("2 moves");
+  await button("Play original").click();
+  await expect(page.locator(".preset-selection")).toContainText("Original");
+  assert.deepEqual(
+    (await state()).moves.map((move: any) => move.effect.preset),
+    original,
+  );
+  await button("Play preset").click();
+  await expect(page.locator(".preset-selection")).toContainText("Preview");
+  await button("Apply & fine-tune").click();
+  await expect(page.getByLabel("Move preset", { exact: true })).toBeFocused();
+  assert.deepEqual(
+    (await state()).moves.slice(0, 3).map((move: any) => move.effect.preset),
+    ["hop", "hop", original[2]],
+  );
+  await page.getByTitle("Undo", { exact: true }).click();
+  assert.deepEqual(
+    (await state()).moves.map((move: any) => move.effect.preset),
+    original,
+  );
+  await clips(0).click();
+
+  const frames = page.locator(".move-frames");
+  await frames.locator(":scope > summary").click();
+  await frames.getByText("Effect timing", { exact: true }).click();
+  await button("Seek to main movement midpoint").click();
+  await button("Tune after effect").click();
+  const after = page.getByLabel("After-effect type", { exact: true });
+  await expect(after).toBeFocused();
+  await after.selectOption("size-pulse");
+  await expect(button("Seek to after effect midpoint")).toBeEnabled();
+  await button("Seek to after effect midpoint").click();
+  await expect(button("View after-effect peak frame")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await frames.locator(":scope > summary").click();
+  await page.getByTitle("Undo", { exact: true }).click();
+
   await button("effects").first().click();
   await button("Inspector").click();
   await button("Edit selected move’s capture impact →").click();
@@ -177,7 +226,7 @@ try {
   await expect(page.getByLabel("Game text", { exact: true })).toBeFocused();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: workspace restore, keyboard settings search, preview return, narrow tools, storyboard playback, export setup, and empty-project workflow.",
+    "PASS: workspace restore, keyboard settings search, scoped preset preview/apply/Undo, effect timing, narrow tools, storyboard playback, export setup, and empty-project workflow.",
   );
 } finally {
   await browser?.close();

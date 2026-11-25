@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/project";
 import { stepFrame } from "../../core/timeline";
-import { moveFrameStops } from "../movePreview";
+import { moveEffectTiming, moveFrameStops } from "../movePreview";
 import type { ThumbnailPort } from "../storyboard/thumbnails";
 
 export function MoveFrames({
@@ -13,6 +13,7 @@ export function MoveFrames({
   port,
   seek,
   revision,
+  onTune,
 }: {
   project: Project;
   index: number;
@@ -22,8 +23,13 @@ export function MoveFrames({
   port: ThumbnailPort;
   seek: (time: number) => void;
   revision: number;
+  onTune?: (section: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const timing = useMemo(
+    () => moveEffectTiming(project, index),
+    [project, index],
+  );
   const stops = useMemo(() => moveFrameStops(project, index), [project, index]);
   const [preview, setPreview] = useState<{
     stops: typeof stops;
@@ -153,6 +159,73 @@ export function MoveFrames({
             </button>
             <output>{(at - start).toFixed(3)} s</output>
           </div>
+          {timing && (
+            <details className="move-effect-timing">
+              <summary>Effect timing</summary>
+              <div className="move-effect-rows">
+                {timing.rows.map(({ label, section, window }) => {
+                  const { start, end } = timing.segment;
+                  const percent = (t: number) =>
+                    `${Math.min(100, Math.max(0, ((t - start) / (end - start)) * 100))}%`;
+                  const detail = window
+                    ? `${(window.start - start).toFixed(2)}–${(window.end - start).toFixed(2)} s`
+                    : section === "size"
+                      ? "Normal size"
+                      : "Off";
+                  return (
+                    <div className="move-effect-row" key={section}>
+                      <span>
+                        {label}
+                        <small>{detail}</small>
+                      </span>
+                      <button
+                        type="button"
+                        className="move-effect-track"
+                        disabled={!window}
+                        aria-label={`Seek to ${label.toLowerCase()} midpoint`}
+                        title={detail}
+                        onClick={() =>
+                          window && seek((window.start + window.end) / 2)
+                        }
+                      >
+                        {window && (
+                          <span
+                            className="move-effect-band"
+                            style={{
+                              left: percent(window.start),
+                              right: `calc(100% - ${percent(window.end)})`,
+                            }}
+                          />
+                        )}
+                        <span
+                          className="move-effect-cursor"
+                          style={{ left: percent(time) }}
+                        />
+                      </button>
+                      {onTune && (
+                        <button
+                          type="button"
+                          aria-label={`Tune ${label.toLowerCase()}`}
+                          onClick={() => onTune(section)}
+                        >
+                          Tune
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {onTune && (
+                  <button type="button" onClick={() => onTune("timing")}>
+                    Tune timing &amp; landing
+                  </button>
+                )}
+                <p className="hint">
+                  Times are relative to the start of this move. Tune opens the
+                  controls for your current selection.
+                </p>
+              </div>
+            </details>
+          )}
           {playing && !currentFrames.length && (
             <p>Pause playback to refresh the frame previews.</p>
           )}

@@ -617,8 +617,6 @@
   display: flex;
   flex-wrap: wrap;
   padding: 8px;
-  max-height: 230px;
-  overflow: auto;
   flex-shrink: 0;
   background: #18291e;
 }
@@ -626,15 +624,10 @@
   flex: 1 1 180px;
 }
 .preset-drawer .preset-actions > .button-row {
-  order: -1;
   flex: 1 0 100%;
-  position: sticky;
-  top: 0;
-  background: #18291e;
-  padding: 4px 0;
 }
-.preset-drawer .preset-actions .hint {
-  margin: 2px 0;
+.preset-drawer .preset-actions > .preset-apply {
+  order: -1;
 }
 .library:has(.preset-drawer) .library-tabs {
   display: flex;
@@ -848,4 +841,59 @@
   .viewport-status {
     display: none;
   }
+}
+.preset-actions > :is(.preset-selection, .preset-advanced) {
+  flex: 1 0 100%;
+}
+.preset-selection small {
+  display: block;
+  color: var(--muted);
+}
+.preset-advanced > label {
+  display: block;
+  margin: 6px 0;
+}
+.move-effect-rows {
+  max-height: 190px;
+  overflow: auto;
+  padding: 3px 3px 5px;
+}
+.move-effect-row {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) minmax(32px, 2fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.move-effect-row > span {
+  font-size: var(--text-meta);
+}
+.move-effect-row small {
+  display: block;
+  color: var(--muted);
+}
+.move-effect-track {
+  position: relative;
+  min-height: 22px;
+  overflow: hidden;
+}
+.move-effect-band {
+  position: absolute;
+  inset-block: 4px;
+  min-width: 3px;
+  border-radius: 3px;
+  background: #739d68;
+}
+.move-effect-row:nth-child(3) .move-effect-band {
+  background: #81a9c8;
+}
+.move-effect-row:nth-child(n + 4) .move-effect-band {
+  background: #c3a368;
+}
+.move-effect-cursor {
+  position: absolute;
+  inset-block: 0;
+  width: 2px;
+  background: #fff4cd;
+  transform: translateX(-1px);
 }

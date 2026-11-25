@@ -38,6 +38,7 @@ export function PresetBrowser({
   onPreview,
   onPausePreview,
   onCancel,
+  onFineTune,
   previewActive,
   before,
   onBefore,
@@ -47,12 +48,8 @@ export function PresetBrowser({
   index: number;
   checked: Set<string>;
   edit: Edit;
-  onPreview: (
-    e: Effect,
-    replaceAll: boolean,
-    kind?: SettingsKind,
-    preserveKeys?: boolean,
-  ) => void;
+  onPreview: (effects: ReadonlyMap<string, Effect>, index: number) => void;
+  onFineTune: (ids: string[], index: number, kind: SettingsKind) => void;
   previewActive: boolean;
   before: boolean;
   onBefore: (before: boolean) => void;
@@ -100,7 +97,67 @@ export function PresetBrowser({
         : p.moves[index]
           ? [p.moves[index]]
           : [];
+  const checkedCount = p.moves.filter((m) => checked.has(m.id)).length;
   const selected = items.find((v) => v.id === chosen);
+  const previewMove =
+    targets.find((m) => m.id === p.moves[index]?.id) ?? targets[0];
+  const previewIndex = p.moves.indexOf(previewMove);
+  const applyKind = replaceAll ? "everything" : kind;
+  const transform = (
+    target: Effect,
+    source: Effect,
+    category = kind,
+    replace = replaceAll,
+    keep = preserveKeys,
+  ) =>
+    applyPresetEffect(target, source, p.format, replace, category, keep, false);
+  const preview = (
+    source: Effect,
+    category = kind,
+    replace = replaceAll,
+    keep = preserveKeys,
+    moves = targets,
+  ) => {
+    const active = moves.find((m) => m.id === p.moves[index]?.id) ?? moves[0];
+    if (!active) {
+      onCancel();
+      return;
+    }
+    onPreview(
+      new Map(
+        moves.map((m) => [
+          m.id,
+          transform(m.effect, source, category, replace, keep),
+        ]),
+      ),
+      p.moves.indexOf(active),
+    );
+  };
+  function apply(tune: boolean) {
+    if (!selected || !previewMove) return;
+    const ids = new Set(targets.map((m) => m.id));
+    edit.begin();
+    try {
+      edit("Apply animation preset", (draft) => {
+        for (const move of draft.moves)
+          if (ids.has(move.id))
+            move.effect = transform(move.effect, selected.effect);
+      });
+    } finally {
+      edit.end();
+    }
+    const next = [
+      selected.id,
+      ...recent.filter((v) => v !== selected.id),
+    ].slice(0, 12);
+    setRecent(next);
+    localStorage.setItem("studio.presetRecent", JSON.stringify(next));
+    onCancel();
+    if (tune) onFineTune([...ids], previewIndex, applyKind);
+    report(
+      `${selected.name} applied to ${ids.size === 1 ? previewMove.san : ids.size + " moves"}.`,
+    );
+  }
   return (
     <section className="preset-browser">
       {demoPreset && (
@@ -137,25 +194,40 @@ export function PresetBrowser({
             title="Choose the active move, the checked group, or every move before applying an animation."
             aria-description="Choose the active move, the checked group, or every move before applying an animation."
             value={scope}
-            onChange={(e) => setScope(e.target.value)}
+            onChange={(event) => {
+              const next = event.target.value;
+              setScope(next);
+              if (selected && previewActive)
+                preview(
+                  selected.effect,
+                  kind,
+                  replaceAll,
+                  preserveKeys,
+                  next === "all"
+                    ? p.moves
+                    : next === "group"
+                      ? p.moves.filter((m) => checked.has(m.id))
+                      : p.moves.slice(index, index + 1),
+                );
+            }}
           >
             <option value="selected">Selected move</option>
-            <option value="group">Selected group</option>
+            <option value="group">Checked moves ({checkedCount})</option>
             <option value="all">All moves</option>
           </select>
         </label>
         <label>
-          Apply category{" "}
+          Settings to apply{" "}
           <select
             aria-label="Preset settings category"
             title="Choose the settings category to preview and apply to the target moves."
             aria-description="Choose the settings category to preview and apply to the target moves."
-            value={kind}
+            value={applyKind}
+            disabled={replaceAll}
             onChange={(event) => {
               const next = event.target.value as SettingsKind;
               setKind(next);
-              if (selected && previewActive)
-                onPreview(selected.effect, replaceAll, next, preserveKeys);
+              if (selected && previewActive) preview(selected.effect, next);
             }}
           >
             {settingsKinds.map((k) => (
@@ -165,64 +237,75 @@ export function PresetBrowser({
             ))}
           </select>
         </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={!replaceAll && preserveKeys}
-            title="Keep custom keyframes that may override the chosen preset channels."
-            aria-description="Keep custom keyframes that may override the chosen preset channels."
-            disabled={replaceAll}
-            onChange={(event) => {
-              setPreserveKeys(event.target.checked);
-              if (selected && previewActive)
-                onPreview(
-                  selected.effect,
-                  replaceAll,
-                  kind,
-                  event.target.checked,
-                );
-            }}
-          />{" "}
-          Keep existing custom curves
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            aria-label="Replace all settings"
-            title="Also apply the preset's camera, effects and unlocked timing."
-            aria-description="Also apply the preset's camera, effects and unlocked timing."
-            checked={replaceAll}
-            onChange={(event) => {
-              setReplaceAll(event.target.checked);
-              if (selected && previewActive)
-                onPreview(
-                  selected.effect,
-                  event.target.checked,
-                  kind,
-                  preserveKeys,
-                );
-            }}
-          />{" "}
-          Replace all settings
-        </label>
-        <p className="hint">
-          {replaceAll
-            ? "Replace animation, camera, effects, custom curves and unlocked timing."
-            : `Apply ${settingsLabel(kind).toLowerCase()}. ${preserveKeys ? "Existing custom curves are kept and may override the preset." : "Replace curves in this category."} Timing locks are respected.`}
-        </p>
-        {previewActive && selected && (
-          <>
-            <p role="status">
-              {before ? "Original" : "Previewing " + selected.name} on{" "}
-              {p.moves[index]?.san}
-            </p>
-            <button aria-pressed={before} onClick={() => onBefore(!before)}>
-              {before ? "Show preset" : "Show original"}
-            </button>
-          </>
+        <details className="preset-advanced">
+          <summary>Advanced apply options</summary>
+          <p className="hint">
+            Timing locks stay in effect. Custom curves can override the preset
+            on the channels they control.
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={!replaceAll && preserveKeys}
+              title="Keep custom keyframes that may override the chosen preset channels."
+              aria-description="Keep custom keyframes that may override the chosen preset channels."
+              disabled={replaceAll}
+              onChange={(event) => {
+                setPreserveKeys(event.target.checked);
+                if (selected && previewActive)
+                  preview(
+                    selected.effect,
+                    kind,
+                    replaceAll,
+                    event.target.checked,
+                  );
+              }}
+            />{" "}
+            Keep existing custom curves
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              aria-label="Replace all settings"
+              title="Also apply the preset's camera, effects and unlocked timing."
+              aria-description="Also apply the preset's camera, effects and unlocked timing."
+              checked={replaceAll}
+              onChange={(event) => {
+                setReplaceAll(event.target.checked);
+                if (selected && previewActive)
+                  preview(selected.effect, kind, event.target.checked);
+              }}
+            />{" "}
+            Replace all settings
+          </label>
+        </details>
+        {selected && (
+          <p className="preset-selection" role="status">
+            <strong>{selected.name}</strong>
+            {previewMove
+              ? ` · ${settingsLabel(applyKind)} · ${targets.length === 1 ? previewMove.san : targets.length + " moves"}`
+              : " · Check moves in the timeline to apply to a group."}
+            {previewActive && previewMove && (
+              <small>
+                {before ? "Original" : "Preview"} · {previewMove.san}
+              </small>
+            )}
+          </p>
         )}
-        <div className="button-row">
+        <div className="button-row preset-playback">
           <button
+            disabled={!selected || !previewMove}
+            onClick={() => selected && preview(selected.effect)}
+          >
+            {previewActive ? "Replay preset" : "Preview preset"}
+          </button>
+          {previewActive && (
+            <button aria-pressed={before} onClick={() => onBefore(!before)}>
+              {before ? "Play preset" : "Play original"}
+            </button>
+          )}
+          <button
+            disabled={!selected}
             onClick={() => {
               choose(null);
               onCancel();
@@ -230,36 +313,22 @@ export function PresetBrowser({
           >
             Cancel preview
           </button>
+        </div>
+        <div className="button-row preset-apply">
           <button
-            disabled={!selected || !targets.length}
-            onClick={() => {
-              if (!selected) return;
-              const ids = new Set(targets.map((m) => m.id));
-              edit("Apply animation preset", (p) => {
-                for (const m of p.moves)
-                  if (ids.has(m.id))
-                    m.effect = applyPresetEffect(
-                      m.effect,
-                      selected.effect,
-                      p.format,
-                      replaceAll,
-                      kind,
-                      preserveKeys,
-                      false,
-                    );
-              });
-              const next = [
-                selected.id,
-                ...recent.filter((v) => v !== selected.id),
-              ].slice(0, 12);
-              setRecent(next);
-              localStorage.setItem("studio.presetRecent", JSON.stringify(next));
-              onCancel();
-            }}
+            className="primary"
+            disabled={!selected || !previewMove}
+            onClick={() => apply(false)}
           >
-            {scope === "selected" && targets[0]
-              ? `Apply to ${targets[0].san}`
+            {scope === "selected" && previewMove
+              ? `Apply to ${previewMove.san}`
               : `Apply to ${targets.length} moves`}
+          </button>
+          <button
+            disabled={!selected || !previewMove}
+            onClick={() => apply(true)}
+          >
+            Apply &amp; fine-tune
           </button>
         </div>
       </div>
@@ -285,7 +354,7 @@ export function PresetBrowser({
                 onClick={() => {
                   choose(v.id);
                   setKind(v.kind);
-                  onPreview(v.effect, replaceAll, v.kind, preserveKeys);
+                  preview(v.effect, v.kind);
                 }}
               >
                 {v.custom < 0 && (

@@ -1,4 +1,6 @@
 import { requiredAssetIds } from "../../core/exportAssets";
+import { ExportPreview } from "./ExportPreview";
+import type { ThumbnailPort } from "../storyboard/thumbnails";
 import { ProductionChecks } from "./ProductionChecks";
 import { productionChecks } from "../../core/productionChecks";
 import { compileStoryboard } from "../../core/storyboard";
@@ -26,6 +28,8 @@ export function ExportDialog({
   cancel,
   chooseFFmpeg,
   relinkAssets,
+  previewPort,
+  graphicsRevision,
 }: {
   project: Project;
   index: number;
@@ -39,12 +43,25 @@ export function ExportDialog({
   render: (o: ExportOptions) => Promise<boolean>;
   chooseFFmpeg: () => Promise<void>;
   relinkAssets: () => void;
+  previewPort: ThumbnailPort;
+  graphicsRevision: number;
   cancel: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [picking, setPicking] = useState(false);
   const [status, setStatus] = useState("");
   const [failed, setFailed] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewTime, setPreviewTime] = useState<number>();
+  const inspect = (time: number) => {
+    setPreviewTime(time);
+    setPreviewOpen(true);
+    requestAnimationFrame(() =>
+      dialog.current
+        ?.querySelector(".export-preview-section")
+        ?.scrollIntoView({ block: "nearest" }),
+    );
+  };
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
@@ -254,7 +271,30 @@ export function ExportDialog({
         For a thumbnail, use Save PNG above the preview. PNG capture uses the
         full composition resolution.
       </p>
-      <ProductionChecks p={p} options={outputOptions} close={close} />
+      <button
+        type="button"
+        disabled={to <= from}
+        aria-expanded={previewOpen}
+        onClick={() => setPreviewOpen(!previewOpen)}
+      >
+        Preview selected export
+      </button>
+      {previewOpen && to > from && (
+        <ExportPreview
+          project={p}
+          options={outputOptions}
+          position={previewTime ?? from}
+          seek={setPreviewTime}
+          port={previewPort}
+          revision={graphicsRevision}
+        />
+      )}
+      <ProductionChecks
+        p={p}
+        options={outputOptions}
+        close={close}
+        inspect={inspect}
+      />
       {progress && (
         <div className="export-progress">
           <progress max={Math.max(1, progress.total)} value={progress.done} />

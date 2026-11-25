@@ -141,6 +141,22 @@ try {
   await frames.locator(":scope > summary").click();
   await frames.getByText("Effect timing", { exact: true }).click();
   await button("Seek to main movement midpoint").click();
+  await button("Adjust main movement timing").press("Enter");
+  const previousDuration = (await state()).moves[0].effect.duration;
+  await page.getByLabel("Movement length value", { exact: true }).fill("2.8");
+  await expect(page.locator(".timing-proposal [role=status]")).toContainText(
+    "Later moves shift",
+  );
+  assert.equal((await state()).moves[0].effect.duration, previousDuration);
+  await button("Apply timing").click();
+  await expect
+    .poll(async () => (await state()).moves[0].effect.duration)
+    .toBe(2.8);
+  await page.getByTitle("Undo", { exact: true }).click();
+  await expect
+    .poll(async () => (await state()).moves[0].effect.duration)
+    .toBe(previousDuration);
+
   await button("Tune after effect").click();
   const after = page.getByLabel("After-effect type", { exact: true });
   await expect(after).toBeFocused();
@@ -151,6 +167,30 @@ try {
     "aria-pressed",
     "true",
   );
+  const handle = button("Adjust after effect timing");
+  await handle.scrollIntoViewIfNeeded();
+  const handleBox = (await handle.boundingBox())!;
+  await page.mouse.move(
+    handleBox.x + handleBox.width / 2,
+    handleBox.y + handleBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    handleBox.x + handleBox.width / 2 + 22,
+    handleBox.y + handleBox.height / 2,
+    { steps: 4 },
+  );
+  await page.mouse.up();
+  await expect(button("Apply timing")).toBeEnabled();
+  const priorAfter = (await state()).moves[0].effect.after.duration;
+  await button("Apply timing").click();
+  await expect
+    .poll(async () => (await state()).moves[0].effect.after.duration)
+    .toBeGreaterThan(priorAfter);
+  await page.getByTitle("Undo", { exact: true }).click();
+  await expect
+    .poll(async () => (await state()).moves[0].effect.after.duration)
+    .toBe(priorAfter);
   await frames.locator(":scope > summary").click();
   await page.getByTitle("Undo", { exact: true }).click();
 
@@ -184,6 +224,13 @@ try {
   await page.setViewportSize({ width: 1440, height: 900 });
   await button("Storyboard mode").click();
   await button("Add 1 selected move").click();
+  await button("+ Opening shot").click();
+  await expect
+    .poll(async () =>
+      (await state()).storyboard.shots.map((shot: any) => shot.kind),
+    )
+    .toEqual(["opening", "move-range"]);
+
   await workspace.selectOption("Timeline");
   await expect(button("Storyboard mode")).toHaveAttribute(
     "aria-pressed",
@@ -209,6 +256,27 @@ try {
     exact: true,
   });
   await expect(render).toBeDisabled();
+  await exportDialog.getByLabel("Export resolution").selectOption("0.5");
+  await button("Preview selected export").click();
+  const output = page.getByRole("img", { name: "Selected export frame" });
+  await expect(output).toBeVisible({ timeout: 30000 });
+  await expect
+    .poll(() =>
+      output.evaluate((el: HTMLImageElement) => [
+        el.naturalWidth,
+        el.naturalHeight,
+      ]),
+    )
+    .toEqual([540, 960]);
+  await button("Caption safe area").click();
+  await expect(page.getByLabel("Export caption safe area")).toBeVisible();
+  await button("Ending").click();
+  const outputRange = page.getByLabel("Scrub selected export");
+  await expect(outputRange).toHaveValue(
+    (await outputRange.getAttribute("max"))!,
+  );
+  await button("Preview selected export").click();
+
   await exportDialog
     .getByRole("button", { name: "Choose FFmpeg…", exact: true })
     .click();
@@ -226,7 +294,7 @@ try {
   await expect(page.getByLabel("Game text", { exact: true })).toBeFocused();
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: workspace restore, keyboard settings search, scoped preset preview/apply/Undo, effect timing, narrow tools, storyboard playback, export setup, and empty-project workflow.",
+    "PASS: workspace restore, keyboard settings search, scoped preset preview/apply/Undo, editable effect timing, narrow tools, opening shots, exact export preview, and empty-project workflow.",
   );
 } finally {
   await browser?.close();

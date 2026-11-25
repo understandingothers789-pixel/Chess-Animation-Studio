@@ -10,6 +10,7 @@ import {
   reorderShot,
   resizeShot,
   titleShot,
+  openingShot,
   shotFromMove,
 } from "../../core/storyboard";
 import { clock } from "../controls";
@@ -63,7 +64,10 @@ export function StoryTimeline({
       report("A storyboard supports up to 200 shots.");
       return;
     }
-    action("Add storyboard shot", (d) => d.storyboard.shots.push(shot));
+    action("Add storyboard shot", (d) => {
+      if (shot.kind === "opening") d.storyboard.shots.unshift(shot);
+      else d.storyboard.shots.push(shot);
+    });
     select(shot.id);
   };
   const duplicate = (id: string) => {
@@ -106,6 +110,7 @@ export function StoryTimeline({
           Fit storyboard timeline
         </button>
         <button onClick={() => add(titleShot(p))}>+ Title card</button>
+        <button onClick={() => add(openingShot(p))}>+ Opening shot</button>
         <button
           onClick={() =>
             add(

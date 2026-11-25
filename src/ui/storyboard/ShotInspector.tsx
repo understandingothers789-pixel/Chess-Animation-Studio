@@ -466,7 +466,29 @@ export function ShotInspector({
           </button>
         </Section>
       )}
-      {s.kind !== "title-card" && (
+      {s.kind === "opening" && (
+        <Section title="Opening content">
+          <p>
+            This shot uses the shared opening from Full Game → Intro clip.
+            Change its duration above, or edit the video and player reveal in
+            the Intro inspector.
+          </p>
+          {p.squareIntro.asset &&
+            s.duration <
+              p.squareIntro.hold +
+                p.squareIntro.pullback +
+                (p.playerIntro.enabled ? 0.5 : 0) && (
+              <p className="hint">
+                Lengthen this shot to give the pullback and player reveal room
+                to finish.
+              </p>
+            )}
+          <button type="button" onClick={() => openSource(-1)}>
+            Edit shared intro
+          </button>
+        </Section>
+      )}
+      {s.kind !== "title-card" && s.kind !== "opening" && (
         <Section title="Shot presentation">
           <p>
             Animation ·{" "}

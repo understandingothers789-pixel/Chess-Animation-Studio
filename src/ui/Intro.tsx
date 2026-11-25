@@ -1,4 +1,6 @@
-import { blank, playerIntro, type Project } from "../core/project";
+import { useState } from "react";
+import { introFilm } from "../core/introVideo";
+import { blank, playerIntro, type Asset, type Project } from "../core/project";
 import { settingHelp } from "./help";
 import type { Edit } from "./state";
 import { Section, Select, Range, Toggle } from "./controls";
@@ -17,13 +19,25 @@ export function IntroInspector({
   images: Record<string, string>;
   missing: Set<string>;
   importPhoto: () => void;
-  importVideo: () => void;
+  importVideo: (trim: NonNullable<Asset["videoTrim"]>) => void;
   videoImporting: boolean;
   previewIntro: () => void;
 }) {
   const intro = p.playerIntro;
   const clip = p.squareIntro;
   const video = p.assets.find((item) => item.id === clip.asset);
+  const [trimDraft, setTrimDraft] = useState<{
+    project: string;
+    asset: string | null;
+    value: NonNullable<Asset["videoTrim"]>;
+  }>();
+  const trim =
+    trimDraft?.project === p.id && trimDraft.asset === clip.asset
+      ? trimDraft.value
+      : (video?.videoTrim ?? { start: 0, x: 0.5, y: 0.5 });
+  const setTrim = (value: NonNullable<Asset["videoTrim"]>) =>
+    setTrimDraft({ project: p.id, asset: clip.asset, value });
+  const prepared = clip.asset ? images[clip.asset] : undefined;
   const videoTime = clip.hold + clip.pullback;
   const minIntro = clip.asset ? videoTime + (intro.enabled ? 0.5 : 0) : 0.2;
   const squares = Array.from({ length: 64 }, (_, i) => {
@@ -189,7 +203,7 @@ export function IntroInspector({
           <div className="button-row">
             <button
               type="button"
-              onClick={importVideo}
+              onClick={() => importVideo(trim)}
               disabled={videoImporting}
             >
               {videoImporting
@@ -218,6 +232,52 @@ export function IntroInspector({
               </button>
             )}
           </div>
+          <details
+            className="intro-video-source"
+            open={!clip.asset ? true : undefined}
+          >
+            <summary>Source in-point and crop</summary>
+            <Range
+              label="Video source start"
+              value={trim.start}
+              min={0}
+              max={7200}
+              step={0.05}
+              unit="s"
+              onChange={(start) => setTrim({ ...trim, start })}
+            />
+            <Range
+              label="Video crop horizontal"
+              value={trim.x * 100}
+              min={0}
+              max={100}
+              unit="%"
+              onChange={(x) => setTrim({ ...trim, x: x / 100 })}
+            />
+            <Range
+              label="Video crop vertical"
+              value={trim.y * 100}
+              min={0}
+              max={100}
+              unit="%"
+              onChange={(y) => setTrim({ ...trim, y: y / 100 })}
+            />
+            <p className="hint">
+              Set these values, then import or replace the video. The crop
+              preview shows the first frame of the prepared clip.
+            </p>
+          </details>
+          {prepared && (
+            <div
+              className="intro-crop-preview"
+              role="img"
+              aria-label="Prepared video crop preview"
+              style={{
+                backgroundImage: `url("${prepared}")`,
+                backgroundSize: `${introFilm.columns * 100}% ${introFilm.rows * 100}%`,
+              }}
+            />
+          )}
           {clip.asset && (!video || missing.has(clip.asset)) && (
             <p className="danger">
               Relink the intro video in Files or import a replacement.
@@ -272,9 +332,9 @@ export function IntroInspector({
             </>
           )}
           <p className="hint">
-            Uses the first 3 seconds without audio and holds the final frame if
-            needed. The video pulls back into the chosen square. An enabled
-            player photo appears next.
+            Uses up to 3 seconds from the chosen in-point without audio and
+            holds the final frame if needed. The video pulls back into the
+            chosen square. An enabled player photo appears next.
           </p>
         </Section>
         <Section title="Animated title">

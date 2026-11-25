@@ -52,7 +52,7 @@ export const ShotThumbnail = memo(function ShotThumbnail({
   }, [p, shot.id, visible, playing, service, graphicsRevision]);
   const c = compileStoryboard(p).shots.find((e) => e.shot.id === shot.id),
     board =
-      shot.kind === "position-hold"
+      shot.kind === "position-hold" || shot.kind === "opening"
         ? c?.game.initial
         : c?.game.steps[0]?.before;
   return (

@@ -220,6 +220,7 @@ export const effectSchema = z.object({
       attack: n(0.01, 1).default(0.09),
       release: n(0.01, 2).default(0.28),
       clock: z.enum(["auto", "bpm"]),
+      beat: str.nullable().optional(),
       bpm: n(40, 300),
       offset: n(-1, 1),
       zoom: n(0, 2),
@@ -465,6 +466,7 @@ const assetSchema = z.object({
   kind: z.enum(["audio", "image", "filmstrip"]),
   path: z.string().max(4096),
   source: z.string().max(3000),
+  videoTrim: z.object({ start: n(0, 7200), x: n(0, 1), y: n(0, 1) }).optional(),
   guidance: z.string().max(6000),
 });
 export type Asset = z.infer<typeof assetSchema>;
@@ -611,7 +613,7 @@ export const storyboardShotSchema = z
   .object({
     id: z.string().min(1).max(100),
     name: z.string().min(1).max(120),
-    kind: z.enum(["move-range", "position-hold", "title-card"]),
+    kind: z.enum(["move-range", "position-hold", "title-card", "opening"]),
     source: z
       .object({
         startMoveId: str,
@@ -638,7 +640,7 @@ export const storyboardShotSchema = z
         code: "custom",
         message: "Incoming transition must fit inside its destination shot.",
       });
-    if (shot.kind !== "title-card" && !shot.source)
+    if (["move-range", "position-hold"].includes(shot.kind) && !shot.source)
       ctx.addIssue({
         code: "custom",
         message: "Shot requires source move references.",

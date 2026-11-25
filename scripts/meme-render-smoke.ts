@@ -6,7 +6,7 @@ import path from "node:path";
 import { appendMove, importFen } from "../src/core/chess";
 import { blank, boardPalettes, camera } from "../src/core/project";
 import { duration, segments } from "../src/core/timeline";
-import { shotFromMove } from "../src/core/storyboard";
+import { openingShot, shotFromMove } from "../src/core/storyboard";
 import { VideoJob } from "../desktop/export";
 import { prepareIntroVideo } from "../desktop/introVideo";
 import { dataUrl } from "../desktop/files";
@@ -238,6 +238,7 @@ try {
   assert.equal(pink(decodedFrame(Math.ceil(depart * 24)), 1.2, -3.7), false);
   const input = path.join(dir, "square-opener-source.mp4");
   const film = path.join(dir, "square-opener-film.jpg");
+  const trimmedFilm = path.join(dir, "square-opener-trim.jpg");
   execFileSync("ffmpeg", [
     "-v",
     "error",
@@ -259,6 +260,11 @@ try {
     input,
   ]);
   await prepareIntroVideo("ffmpeg", input, film);
+  await prepareIntroVideo("ffmpeg", input, trimmedFilm, {
+    start: 0.55,
+    x: 1,
+    y: 0,
+  });
   const filmAsset = {
     ...p.assets[0],
     id: "opening-video",
@@ -273,6 +279,7 @@ try {
     pullback: 0.65,
   };
   p.lead = 2.45;
+  p.storyboard.shots = [openingShot(p), shot];
   p.playerIntro.transition = "spotlight";
   p.playerIntro.caption = "World Chess Champion";
   p.moves[0].effect.preMoveMeme = {
@@ -294,6 +301,7 @@ try {
         reaction: await dataUrl(p.assets[0]),
         portrait: await dataUrl(p.assets[1]),
         [filmAsset.id]: await dataUrl(filmAsset),
+        trimmed: await dataUrl({ ...filmAsset, path: trimmedFilm }),
       },
     },
   );
@@ -324,6 +332,32 @@ try {
     "Backward seeking restores the video frame",
   );
 
+  assert.ok(
+    isYellow(center(await frame(0.15, "storyboard"))),
+    "The opening shot keeps its video",
+  );
+  assert.ok(
+    blueCenter(await frame(1.9, "storyboard")),
+    "The Storyboard opening keeps the player reveal",
+  );
+  await page.evaluate(() => {
+    const w = window as any;
+    w.project = {
+      ...w.project,
+      squareIntro: { ...w.project.squareIntro, asset: "trimmed" },
+    };
+  });
+  assert.ok(
+    isMagenta(center(await frame(0.05))),
+    "The prepared clip starts at the selected in-point",
+  );
+  await page.evaluate(() => {
+    const w = window as any;
+    w.project = {
+      ...w.project,
+      squareIntro: { ...w.project.squareIntro, asset: "opening-video" },
+    };
+  });
   const newMeme = await frame(p.lead + 0.2);
   const [col, row] = boardPixel(1.3, -3.7);
   const offset = (row * size + col) * 4;
@@ -336,7 +370,7 @@ try {
     p,
     {
       format: "square",
-      mode: "source",
+      mode: "storyboard",
       start: 0,
       end: p.lead,
       width: size,
@@ -351,7 +385,7 @@ try {
   await video.start();
   try {
     for (let i = 0; i < video.frames; i++)
-      await video.frame(await frame(i / 24), i);
+      await video.frame(await frame(i / 24, "storyboard"), i);
     await video.finish();
   } catch (error) {
     await video.cancel();

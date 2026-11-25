@@ -827,7 +827,7 @@ export function spotlightPeaks(p: Project, e: Effect, start: number) {
   const j = e.jam;
   if (!j.enabled) return [];
   const markers = spotlightMarkerTimes(p, e, start);
-  if (markers.length >= (j.rhythm === "swell" ? 1 : 2))
+  if (markers.length >= (j.beat || j.rhythm === "swell" ? 1 : 2))
     return markers.map((time) => ({ time, clock: "Music marker" }));
   const interval = 60 / j.bpm;
   const first =
@@ -839,18 +839,18 @@ export function spotlightPeaks(p: Project, e: Effect, start: number) {
 }
 
 function spotlightMarkerTimes(p: Project, effect: Effect, start: number) {
-  return effect.jam.clock === "auto"
-    ? p.beats
-        .filter(
-          (b) =>
-            b.enabled &&
-            b.time >= start &&
-            b.time < start + effect.jam.duration,
-        )
-        .map((b) => b.time)
-        .sort((a, b) => a - b)
-        .filter((t, i, a) => !i || t - a[i - 1] > 0.001)
-    : [];
+  if (effect.jam.clock !== "auto") return [];
+  const markers = p.beats
+    .filter(
+      (b) =>
+        b.enabled && b.time >= start && b.time < start + effect.jam.duration,
+    )
+    .sort((a, b) => a.time - b.time);
+  const anchor = markers.find((b) => b.id === effect.jam.beat);
+  return markers
+    .filter((b) => !anchor || b.time >= anchor.time)
+    .map((b) => b.time)
+    .filter((t, i, a) => !i || t - a[i - 1] > 0.001);
 }
 
 /** Reconstruct the hold-based spotlight directly from corrected marker times or a tempo grid. */
@@ -879,7 +879,9 @@ export function evaluateBeatSpotlight(
     until = Infinity,
     interval = 60 / j.bpm;
   const clock =
-    times.length >= (j.rhythm === "swell" ? 1 : 2) ? "markers" : "bpm";
+    times.length >= (j.beat || j.rhythm === "swell" ? 1 : 2)
+      ? "markers"
+      : "bpm";
   if (clock === "markers") {
     let last = -1;
     for (let i = 0; i < times.length && times[i] <= time + 1e-9; i++) last = i;

@@ -9,6 +9,7 @@ export type ProductionIssue = {
   severity: "error" | "warning" | "info";
   message: string;
   shotId?: string;
+  time?: number;
 };
 export function productionChecks(
   p: Project,
@@ -31,15 +32,19 @@ export function productionChecks(
     end = o.mode === "storyboard" ? story.duration : o.end;
   const collections =
     o.mode === "storyboard"
-      ? story.shots.map((e) => ({
-          annotations: e.shot.annotations,
-          duration: e.shot.duration,
-          shotId: e.shot.id,
-          name: e.shot.name,
-        }))
+      ? story.shots
+          .filter((e) => e.start < o.end && e.end > o.start)
+          .map((e) => ({
+            annotations: e.project.annotations,
+            start: e.start,
+            duration: e.shot.duration,
+            shotId: e.shot.id,
+            name: e.shot.name,
+          }))
       : [
           {
             annotations: p.annotations,
+            start: 0,
             duration: o.end,
             shotId: undefined,
             name: "Full game",
@@ -47,12 +52,21 @@ export function productionChecks(
         ];
   for (const group of collections)
     for (const a of group.annotations) {
-      if (a.hidden) continue;
+      if (
+        a.hidden ||
+        a.end <= o.start - group.start ||
+        a.start >= o.end - group.start
+      )
+        continue;
       if (a.kind !== "caption" && a.kind !== "text") continue;
       const warn = (message: string) =>
         issues.push({
           severity: "warning",
           shotId: group.shotId,
+          time: Math.max(
+            o.start,
+            group.start + Math.min(group.duration, a.start),
+          ),
           message: `${group.name}: ${message}`,
         });
       if (a.end > group.duration)

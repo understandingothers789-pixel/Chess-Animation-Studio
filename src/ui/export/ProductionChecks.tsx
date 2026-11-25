@@ -5,10 +5,12 @@ export function ProductionChecks({
   p,
   options,
   close,
+  inspect,
 }: {
   p: Project;
   options: ExportOptions;
   close: () => void;
+  inspect?: (time: number) => void;
 }) {
   const ctx = document.createElement("canvas").getContext("2d")!;
   const issues = productionChecks(p, options, (text, size, font, weight) => {
@@ -26,6 +28,11 @@ export function ProductionChecks({
         issues.map((i, n) => (
           <p key={n} className={i.severity === "error" ? "danger" : "hint"}>
             <strong>{i.severity}</strong> · {i.message}
+            {i.time !== undefined && inspect && (
+              <button type="button" onClick={() => inspect(i.time!)}>
+                Preview at {i.time.toFixed(2)} s
+              </button>
+            )}
             {i.shotId && (
               <button
                 onClick={() => {

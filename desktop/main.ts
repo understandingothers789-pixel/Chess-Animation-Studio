@@ -405,55 +405,60 @@ app.whenReady().then(async () => {
     if ((await fs.stat(f)).size > 2e6) throw Error("Text file exceeds 2 MB.");
     return fs.readFile(f, "utf8");
   });
-  handle("importAsset", async (kind: Asset["kind"]) => {
-    if (kind === "filmstrip") {
-      if (!preferences.ffmpeg)
-        throw Error("Choose FFmpeg before importing an intro video.");
-      const input = await chooseFile([
+  handle(
+    "importAsset",
+    async (kind: Asset["kind"], trim?: Asset["videoTrim"]) => {
+      if (kind === "filmstrip") {
+        if (!preferences.ffmpeg)
+          throw Error("Choose FFmpeg before importing an intro video.");
+        const input = await chooseFile([
+          {
+            name: "Intro video",
+            extensions: ["mp4", "mov", "webm", "mkv", "m4v"],
+          },
+        ]);
+        if (!input) return null;
+        const id = randomUUID();
+        const output = store(path.join("intro-media", id + ".jpg"));
+        await prepareIntroVideo(preferences.ffmpeg, input, output, trim);
+        const a: Asset = {
+          id,
+          kind,
+          name: path.basename(input),
+          path: output,
+          source: "Intro video",
+          videoTrim: trim,
+          guidance:
+            "Prepared as a silent 3-second clip. Relink by choosing the source video.",
+        };
+        allowed.set(a.id, path.resolve(output));
+        return a;
+      }
+      if (!["audio", "image"].includes(kind))
+        throw Error("Invalid asset type.");
+      const f = await chooseFile([
         {
-          name: "Intro video",
-          extensions: ["mp4", "mov", "webm", "mkv", "m4v"],
+          name: kind === "audio" ? "Music or sound" : "Image",
+          extensions:
+            kind === "audio"
+              ? ["mp3", "wav", "ogg", "m4a", "flac", "aac"]
+              : ["png", "jpg", "jpeg", "webp", "svg"],
         },
       ]);
-      if (!input) return null;
-      const id = randomUUID();
-      const output = store(path.join("intro-media", id + ".jpg"));
-      await prepareIntroVideo(preferences.ffmpeg, input, output);
+      if (!f) return null;
       const a: Asset = {
-        id,
+        id: randomUUID(),
+        name: path.basename(f),
         kind,
-        name: path.basename(input),
-        path: output,
-        source: "Intro video",
-        guidance:
-          "Prepared from the first 3 seconds. Relink by choosing the source video.",
+        path: f,
+        source: "Local import",
+        guidance: "",
       };
-      allowed.set(a.id, path.resolve(output));
+      await validAsset(a);
+      allowed.set(a.id, path.resolve(f));
       return a;
-    }
-    if (!["audio", "image"].includes(kind)) throw Error("Invalid asset type.");
-    const f = await chooseFile([
-      {
-        name: kind === "audio" ? "Music or sound" : "Image",
-        extensions:
-          kind === "audio"
-            ? ["mp3", "wav", "ogg", "m4a", "flac", "aac"]
-            : ["png", "jpg", "jpeg", "webp", "svg"],
-      },
-    ]);
-    if (!f) return null;
-    const a: Asset = {
-      id: randomUUID(),
-      name: path.basename(f),
-      kind,
-      path: f,
-      source: "Local import",
-      guidance: "",
-    };
-    await validAsset(a);
-    allowed.set(a.id, path.resolve(f));
-    return a;
-  });
+    },
+  );
   handle("assetData", async (a: Asset) => {
     ensureAsset(a);
     try {

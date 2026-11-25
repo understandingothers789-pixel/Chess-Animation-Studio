@@ -40,7 +40,8 @@ export class CameraSystem {
       y = (crop ? crop.y : e.camera.y + (square ? 0 : bg.y)) * sign,
       tilt = (e.camera.tilt * Math.PI) / 180,
       rotation = e.camera.rotation;
-    const clip = c.mode === "source" && squareVideoFrame(p, time);
+    const clip =
+      (c.mode === "source" || c.shot?.opening) && squareVideoFrame(p, time);
     if (clip && this.assets.has(clip.asset)) {
       const [sx, sy] = xy(clip.square);
       const { progress } = clip;

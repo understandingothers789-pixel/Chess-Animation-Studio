@@ -39,7 +39,8 @@ export class StartingSquareMeme {
     this.tile.visible = false;
     if (frame.titleCard) return;
     const opener =
-      frame.mode === "source" && squareVideoFrame(frame.p, frame.time);
+      (frame.mode === "source" || frame.shot?.opening) &&
+      squareVideoFrame(frame.p, frame.time);
     if (opener) {
       const texture = this.assets.get(opener.asset);
       if (!texture) return;

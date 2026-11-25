@@ -858,9 +858,10 @@ export function App() {
       | "player intro"
       | "square intro",
     badgeKind?: string,
+    videoTrim?: Asset["videoTrim"],
   ) {
     const projectId = latest.current.id;
-    const a = await window.studio.importAsset(kind);
+    const a = await window.studio.importAsset(kind, videoTrim);
     if (!a || latest.current.id !== projectId) return;
     stop();
     edit("Import " + use, (p) => {
@@ -1145,6 +1146,11 @@ export function App() {
     message("Position hold added to storyboard.");
   }
   function openSource(index: number, play = false) {
+    if (index === -1) {
+      switchMode("source");
+      selectIntro();
+      return;
+    }
     if (!p.moves[index]) return;
     switchMode("source");
     setSelected(index);
@@ -2077,6 +2083,7 @@ export function App() {
                   project={previewProject}
                   index={activePreset?.index ?? selected}
                   onTune={activePreset ? undefined : inspectMoveEffect}
+                  edit={edit}
                   time={time}
                   playing={playing}
                   fps={fps}
@@ -2273,7 +2280,7 @@ export function App() {
                     run(() => importAsset("image", "player intro"))
                   }
                   videoImporting={videoImporting}
-                  importVideo={() =>
+                  importVideo={(trim) =>
                     run(async () => {
                       if (videoImporting) return;
                       setVideoImporting(true);
@@ -2283,7 +2290,12 @@ export function App() {
                           setSettings(next);
                           if (!next.ffmpeg) return;
                         }
-                        await importAsset("filmstrip", "square intro");
+                        await importAsset(
+                          "filmstrip",
+                          "square intro",
+                          undefined,
+                          trim,
+                        );
                       } finally {
                         setVideoImporting(false);
                       }
@@ -2413,6 +2425,8 @@ export function App() {
             workspace.patch({ hideLeft: false });
             setTab("files");
           }}
+          previewPort={thumbnailPort}
+          graphicsRevision={graphicsRevision}
           render={(options) => window.studio.export(p, options)}
         />
       )}

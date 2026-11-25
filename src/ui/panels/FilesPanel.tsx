@@ -204,7 +204,10 @@ export function FilesPanel(q: PanelProps) {
               <button
                 onClick={() =>
                   q.run(async () => {
-                    const replacement = await window.studio.importAsset(a.kind);
+                    const replacement = await window.studio.importAsset(
+                      a.kind,
+                      a.videoTrim,
+                    );
                     if (replacement)
                       q.edit("Relink asset", (p) => {
                         const old = p.assets.find((v) => v.id === a.id)!;

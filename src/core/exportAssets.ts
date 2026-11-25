@@ -11,6 +11,20 @@ export function requiredAssetIds(p: Project, o: ExportOptions) {
     bg = p.layouts[o.format];
   if (bg.background === "image" && bg.image) ids.add(bg.image);
   for (const id of Object.values(p.badgeAssets)) if (id) ids.add(id);
+  const openingRanges =
+    o.mode === "storyboard"
+      ? compileStoryboard(p).shots.filter(
+          ({ shot, start, end }) =>
+            shot.kind === "opening" && start < o.end && end > o.start,
+        )
+      : [];
+  if (
+    openingRanges.some(
+      ({ project, start }) => o.start < start + squareVideoEnd(project),
+    ) &&
+    p.squareIntro?.asset
+  )
+    ids.add(p.squareIntro.asset);
   if (
     o.mode !== "storyboard" &&
     p.squareIntro?.asset &&
@@ -32,7 +46,16 @@ export function requiredAssetIds(p: Project, o: ExportOptions) {
           p.lead > squareVideoEnd(p) &&
           o.end > squareVideoEnd(p) &&
           o.start < p.lead;
-    if (visible) ids.add(p.playerIntro.asset);
+    if (
+      visible ||
+      (p.playerIntro.enabled &&
+        openingRanges.some(
+          ({ project, start }) =>
+            project.lead > squareVideoEnd(project) &&
+            o.end > start + squareVideoEnd(project),
+        ))
+    )
+      ids.add(p.playerIntro.asset);
   }
   if (p.moves.some((move) => move.effect.preMoveMeme)) {
     const source = compileTimeline(p).segments;

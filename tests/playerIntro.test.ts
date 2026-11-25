@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { blank, parseProject } from "../src/core/project";
 import { requiredAssetIds } from "../src/core/exportAssets";
-import { shotFromMove } from "../src/core/storyboard";
+import { openingShot, shotFromMove } from "../src/core/storyboard";
 import { evaluatePresentationFrame } from "../src/render/engine/presentation";
 import { playerIntroFrame } from "../src/render/engine/playerIntro";
 
@@ -46,4 +46,30 @@ it("includes the photo only in exports that use it", () => {
   expect(evaluate(0)?.opacity).toBe(0);
   expect(evaluate(1)?.opacity).toBe(1);
   expect(evaluate(shot.duration)).toBeNull();
+});
+
+it("renders the linked opening and requests only the media its export range uses", () => {
+  const p = blank();
+  p.lead = 4;
+  p.playerIntro = { ...p.playerIntro, enabled: true, asset: "photo" };
+  p.squareIntro.asset = "video";
+  p.storyboard.shots = [openingShot(p)];
+  const loaded = parseProject(p);
+  const frame = evaluatePresentationFrame(
+    loaded,
+    3,
+    320,
+    568,
+    "vertical",
+    "storyboard",
+  );
+  expect(frame.shot?.opening).toBe(true);
+  expect(playerIntroFrame(frame)?.asset).toBe("photo");
+  const options = { format: "vertical", mode: "storyboard" } as const;
+  expect([
+    ...requiredAssetIds(loaded, { ...options, start: 0, end: 1 }),
+  ]).toEqual(["video"]);
+  expect([
+    ...requiredAssetIds(loaded, { ...options, start: 3, end: 4 }),
+  ]).toEqual(["photo"]);
 });

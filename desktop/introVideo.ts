@@ -9,7 +9,15 @@ export async function prepareIntroVideo(
   ffmpeg: string,
   input: string,
   output: string,
+  trim = { start: 0, x: 0.5, y: 0.5 },
 ) {
+  if (
+    !Number.isFinite(trim.start) ||
+    trim.start < 0 ||
+    trim.start > 7200 ||
+    ![trim.x, trim.y].every((v) => Number.isFinite(v) && v >= 0 && v <= 1)
+  )
+    throw Error("Choose a valid video in-point and crop.");
   const stat = await fs.stat(input);
   if (
     !stat.isFile() ||
@@ -21,7 +29,7 @@ export async function prepareIntroVideo(
   const filter = [
     `fps=${film.fps}`,
     `scale=${film.cell}:${film.cell}:force_original_aspect_ratio=increase:force_divisible_by=2`,
-    `crop=${film.cell}:${film.cell}`,
+    `crop=${film.cell}:${film.cell}:(iw-ow)*${trim.x}:(ih-oh)*${trim.y}`,
     "setsar=1",
     `tpad=stop_mode=clone:stop_duration=${film.seconds}`,
     `trim=end_frame=${frames}`,
@@ -41,6 +49,8 @@ export async function prepareIntroVideo(
         "2",
         "-filter_threads",
         "2",
+        "-ss",
+        String(trim.start),
         "-t",
         String(film.seconds),
         "-i",

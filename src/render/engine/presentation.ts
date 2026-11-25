@@ -91,6 +91,7 @@ export function evaluatePresentationFrame(
     index: r.index,
     localTime: r.localTime,
     sourceTime: r.sourceTime,
+    ...(r.shot.kind === "opening" ? { opening: true } : {}),
   };
   c.titleCard = r.shot.kind === "title-card";
   if (r.shot.kind === "position-hold" && !camera) {

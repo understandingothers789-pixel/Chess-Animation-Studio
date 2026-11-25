@@ -105,6 +105,7 @@ export function evaluateRenderFrame(
       index: number;
       localTime: number;
       sourceTime: number;
+      opening?: boolean;
     } | null,
     p,
     e,

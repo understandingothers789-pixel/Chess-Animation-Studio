@@ -94,8 +94,9 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       shot.kind === "position-hold" &&
       shot.source?.startMoveId === "@start" &&
       shot.source?.endMoveId === "@start";
+    const opening = shot.kind === "opening";
     let issue: string | null = null;
-    if (shot.kind !== "title-card" && !starting && (i < 0 || j < 0))
+    if (shot.kind !== "title-card" && !opening && !starting && (i < 0 || j < 0))
       issue = "Source move is missing. Relink or remove this shot.";
     else if (shot.kind === "move-range" && j < i)
       issue = "The source end must follow its start.";
@@ -109,8 +110,8 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       issue = "Trims remove the entire source range.";
     let projection: Project = {
       ...p,
-      boardFX: { ...p.boardFX, intro: false },
-      introTitle: { ...p.introTitle, enabled: false },
+      boardFX: { ...p.boardFX, intro: opening && p.boardFX.intro },
+      introTitle: { ...p.introTitle, enabled: opening && p.introTitle.enabled },
       annotations: shot.annotations,
       evalBar: shot.kind === "title-card" ? false : p.evalBar,
     };
@@ -225,8 +226,8 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
         ...projection,
         fen,
         moves: [],
-        lead: 0,
-        tail: shot.duration,
+        lead: opening ? shot.duration : 0,
+        tail: opening ? 0 : shot.duration,
       };
       shotGame = {
         initial: step ? (after ? step.after : step.before) : game.initial,
@@ -275,7 +276,7 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       start,
       end: at,
       sourceStart: a + shot.trimStart,
-      sourceEnd: b - shot.trimEnd,
+      sourceEnd: opening ? shot.duration : b - shot.trimEnd,
       startIndex: i,
       endIndex: j,
       issue,
@@ -322,9 +323,11 @@ export function resolveStoryboardFrame(p: Project, outputTime: number) {
   const sourceTime =
     s.kind === "move-range"
       ? entry.sourceStart + (entry.sourceEnd - entry.sourceStart) * ratio
-      : s.source?.position === "after"
-        ? (compiled.source.segments[entry.startIndex]?.finish ?? 0)
-        : (compiled.source.segments[entry.startIndex]?.start ?? 0);
+      : s.kind === "opening"
+        ? localTime
+        : s.source?.position === "after"
+          ? (compiled.source.segments[entry.startIndex]?.finish ?? 0)
+          : (compiled.source.segments[entry.startIndex]?.start ?? 0);
   return {
     ...entry,
     outputTime: t,
@@ -345,6 +348,10 @@ export function sourceToStoryboard(p: Project, sourceTime: number) {
   const c = compileStoryboard(p);
   return c.shots.flatMap<{ id: string; time: number; end?: number }>((e) => {
     if (e.issue || e.shot.kind === "title-card") return [];
+    if (e.shot.kind === "opening")
+      return sourceTime >= 0 && sourceTime < e.shot.duration
+        ? [{ id: e.shot.id, time: e.start + sourceTime }]
+        : [];
     if (e.shot.kind === "position-hold") {
       const held =
         e.shot.source?.position === "after"
@@ -406,6 +413,14 @@ export function shotFromMove(
     inheritAnnotations: false,
     musicDucking: musicDucking(),
     transition: transition(),
+    annotations: [],
+  };
+}
+export function openingShot(p: Project): StoryboardShot {
+  return {
+    ...titleShot(p, "Opening", Math.max(0.2, p.lead)),
+    kind: "opening",
+    camera: null,
     annotations: [],
   };
 }

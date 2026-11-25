@@ -8,7 +8,7 @@ export function playerIntroFrame(c: RenderFrame) {
   if (!settings?.asset || c.titleCard) return null;
   const shot = c.shot && c.authoring.storyboard.shots[c.shot.index];
   const end =
-    c.mode === "source"
+    c.mode === "source" || c.shot?.opening
       ? settings.enabled
         ? c.p.lead
         : 0
@@ -16,7 +16,8 @@ export function playerIntroFrame(c: RenderFrame) {
         ? shot.duration
         : 0;
   const time = c.mode === "source" ? c.time : (c.shot?.localTime ?? 0);
-  const start = c.mode === "source" ? squareVideoEnd(c.p) : 0;
+  const start =
+    c.mode === "source" || c.shot?.opening ? squareVideoEnd(c.p) : 0;
   if (time >= end || time < start) return null;
   const fade = Math.min(settings.fade ?? 0.45, (end - start) / 3);
   const entry = ease((time - start) / fade);

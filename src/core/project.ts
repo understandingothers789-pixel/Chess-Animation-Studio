@@ -672,6 +672,7 @@ export const storyboardSchema = z
           time: n(0, 86400),
           enabled: z.boolean(),
           accent: z.boolean(),
+          strength: n(0, 1).optional(),
         }),
       )
       .max(10000),
@@ -901,10 +902,15 @@ export const projectSchema = z.object({
         accent: z.boolean(),
         enabled: z.boolean(),
         sourceTime: n(0, 7200).optional(),
+        strength: n(0, 1).optional(),
+        corrected: z.boolean().optional(),
+        detectedAt: n(0, 7200).optional(),
       }),
     )
     .max(30000),
-  waveform: z.array(n(0, 1)).max(3000),
+  waveform: z.array(n(0, 1)).max(12000),
+  waveformRms: z.array(n(0, 1)).max(12000).default([]),
+  ignoredMusicHits: z.array(n(0, 7200)).max(30000).default([]),
   cues: z
     .array(
       z.object({
@@ -1081,6 +1087,8 @@ export function blank(): Project {
     beatsLocked: false,
     beats: [],
     waveform: [],
+    waveformRms: [],
+    ignoredMusicHits: [],
     cues: [],
     audio: {
       chess: 0.4,

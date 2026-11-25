@@ -1,3 +1,4 @@
+import { activeBeats, strongestBeat } from "../../core/beatMarkers";
 import { useRef, useState, useMemo, useEffect } from "react";
 import type { Project } from "../../core/project";
 import { compileStoryboard, resizeShot } from "../../core/storyboard";
@@ -67,17 +68,20 @@ export function StoryboardWaveform({
           host.current!.scrollLeft) /
           px,
       ),
-    bins = useMemo(
+    [bins, rms] = useMemo(
       () =>
-        waveformBins(
-          p.waveform,
-          p.music.sourceDuration,
-          musicAt(p, scroll / px),
-          musicAt(p, (scroll + width) / px),
-          Math.ceil(width / 2),
+        [p.waveform, p.waveformRms].map((wave) =>
+          waveformBins(
+            wave,
+            p.music.sourceDuration,
+            musicAt(p, scroll / px),
+            musicAt(p, (scroll + width) / px),
+            Math.ceil(width / 2),
+          ),
         ),
       [
         p.waveform,
+        p.waveformRms,
         p.music.sourceDuration,
         p.music.offset,
         p.music.trimStart,
@@ -240,20 +244,36 @@ export function StoryboardWaveform({
   );
   const selectedEntry = c.shots.find((e) => e.shot.id === selected),
     beat = beats.find((b) => b.id === activeBeat);
-  const alignEnd = () => {
+  const eligible = selectedEntry
+    ? beats.filter(
+        (b) =>
+          b.enabled &&
+          b.time > selectedEntry.start + 0.1 &&
+          b.time <= selectedEntry.start + 600,
+      )
+    : [];
+  const nearStrong = selectedEntry
+    ? strongestBeat(
+        eligible.filter(
+          (b) => b.accent && Math.abs(b.time - selectedEntry.end) <= 1.2,
+        ),
+        selectedEntry.end,
+      )
+    : undefined;
+  const alignEnd = (strong = false) => {
     if (!selectedEntry) return;
-    const nearest = beats
-      .filter((b) => b.enabled && b.time > selectedEntry.start + 0.1)
-      .sort(
-        (a, b) =>
-          Math.abs(a.time - selectedEntry.end) -
-          Math.abs(b.time - selectedEntry.end),
-      )[0];
-    if (nearest && nearest.time - selectedEntry.start <= 600)
+    const hit = strong
+      ? nearStrong
+      : [...eligible].sort(
+          (a, b) =>
+            Math.abs(a.time - selectedEntry.end) -
+            Math.abs(b.time - selectedEntry.end),
+        )[0];
+    if (hit)
       edit("Align shot end to beat", (p) =>
         resizeShot(
           p.storyboard.shots[selectedEntry.index],
-          nearest.time - selectedEntry.start,
+          hit.time - selectedEntry.start,
         ),
       );
   };
@@ -309,14 +329,17 @@ export function StoryboardWaveform({
         </button>
         <button
           disabled={!selectedEntry || !beats.some((b) => b.enabled)}
-          onClick={alignEnd}
+          onClick={() => alignEnd()}
         >
           Align shot end to beat
+        </button>
+        <button disabled={!nearStrong} onClick={() => alignEnd(true)}>
+          Align shot end to strong hit
         </button>
         <button
           onClick={() =>
             edit("Add output beat", (p) => {
-              if (p.storyboard.beats.length < 30000)
+              if (p.storyboard.beats.length < 10000)
                 p.storyboard.beats.push({
                   id: crypto.randomUUID(),
                   time,
@@ -439,26 +462,26 @@ export function StoryboardWaveform({
             onPointerCancel={end}
             onLostPointerCapture={end}
           />
-          <path
-            pointerEvents="none"
-            stroke="#8eaf86"
-            d={bins
-              .map((v, i) => {
-                const x = scroll + i * 2,
-                  t = x / px;
-                return t >= win.start && t < win.end
-                  ? `M${x},${89 - v * 28}v${v * 56}`
-                  : "";
-              })
-              .join(" ")}
-          />
+          {[bins, rms].map((wave, level) => (
+            <path
+              key={level}
+              pointerEvents="none"
+              stroke="#8eaf86"
+              opacity={rms.length && !level ? 0.46 : 1}
+              d={wave
+                .map((v, i) => {
+                  const x = scroll + i * 2;
+                  return x / px >= win.start && x / px < win.end
+                    ? `M${x},${89 - v * 28}v${v * 56}`
+                    : "";
+                })
+                .join(" ")}
+            />
+          ))}
           <path pointerEvents="none" stroke="#e5c47c" fill="none" d={curve} />
-          {p.beats
+          {activeBeats(p)
             .filter(
-              (b) =>
-                b.enabled &&
-                b.time * px >= scroll &&
-                b.time * px <= scroll + width,
+              (b) => b.time * px >= scroll && b.time * px <= scroll + width,
             )
             .map((b) => (
               <line
@@ -467,7 +490,7 @@ export function StoryboardWaveform({
                 x2={b.time * px}
                 y1={49}
                 y2={130}
-                stroke="#8eaf8644"
+                stroke={b.accent ? "#edc47799" : "#8eaf8644"}
                 pointerEvents="none"
               />
             ))}

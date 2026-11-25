@@ -608,9 +608,90 @@ try {
     composed.lead > composed.squareIntro.hold + composed.squareIntro.pullback,
   );
   assert.equal(composed.playerIntro.caption, "World Chess Champion");
+  await page.evaluate(() => {
+    const rate = 16000,
+      frames = rate * 6;
+    const bytes = new Uint8Array(44 + frames * 4),
+      view = new DataView(bytes.buffer);
+    const text = (at: number, word: string) =>
+      bytes.set(new TextEncoder().encode(word), at);
+    text(0, "RIFF");
+    view.setUint32(4, bytes.length - 8, true);
+    text(8, "WAVE");
+    text(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 2, true);
+    view.setUint32(24, rate, true);
+    view.setUint32(28, rate * 4, true);
+    view.setUint16(32, 4, true);
+    view.setUint16(34, 16, true);
+    text(36, "data");
+    view.setUint32(40, frames * 4, true);
+    for (const [at, level] of [
+      [0.6, 0.82],
+      [1.2, 0.3],
+      [3.2, 0.55],
+    ]) {
+      for (let i = 0; i < rate * 0.13; i++)
+        view.setInt16(
+          46 + (Math.round(at * rate) + i) * 4,
+          Math.round(
+            32767 *
+              level *
+              Math.sin((i * Math.PI * 170) / rate) *
+              Math.exp(-i / 380),
+          ),
+          true,
+        );
+    }
+    let encoded = "";
+    for (let at = 0; at < bytes.length; at += 8192)
+      encoded += String.fromCharCode(...bytes.subarray(at, at + 8192));
+    const w = window as any;
+    w.studio.importAsset = async () => ({
+      id: "stereo-fixture",
+      name: "Stereo hits.wav",
+      path: "/fixtures/stereo.wav",
+      kind: "audio",
+      source: "Fixture",
+      guidance: "",
+    });
+    w.studio.assetData = async () => "data:audio/wav;base64," + btoa(encoded);
+  });
+  await page.getByRole("button", { name: "music", exact: true }).click();
+  await page
+    .getByRole("button", { name: "+ Import music", exact: true })
+    .click();
+  await expect
+    .poll(async () => (await state()).waveformRms.length)
+    .toBeGreaterThan(100);
+  const analyzed = await state();
+  for (const at of [0.6, 1.2, 3.2])
+    assert.ok(
+      analyzed.beats.some((b: any) => Math.abs(b.time - at) < 0.024),
+      "Detect its right-channel hit",
+    );
+  assert.ok(
+    analyzed.beats.some((b: any) => b.accent && Math.abs(b.time - 0.6) < 0.024),
+  );
+  await expect(page.getByLabel("Use markers", { exact: true })).toHaveValue(
+    "strong",
+  );
+  await page
+    .getByRole("button", {
+      name: "Analyze waveform & likely beats",
+      exact: true,
+    })
+    .click();
+  await expect(page.getByText(/Waveform ready/)).toBeVisible();
+  assert.deepEqual(
+    (await state()).beats.map((b: any) => b.id),
+    analyzed.beats.map((b: any) => b.id),
+  );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: preset tooltips and live pop-up, explicit apply, reduced motion, landing alignment, preview controls, edge depth, board palette, meme crop, player reveal, and video pullback.",
+    "PASS: preset tooltips and live pop-up, explicit apply, reduced motion, landing alignment, preview controls, edge depth, board palette, meme crop, player reveal, video pullback, stereo waveform, and stable reanalysis.",
   );
 } finally {
   await browser.close();

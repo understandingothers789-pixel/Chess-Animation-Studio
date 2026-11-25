@@ -224,8 +224,12 @@ export function FilesPanel(q: PanelProps) {
                           p.squareIntro.asset = replacement.id;
                         if (p.playerIntro.asset === a.id)
                           p.playerIntro.asset = replacement.id;
-                        if (p.music.asset === a.id)
+                        if (p.music.asset === a.id) {
                           p.music.asset = replacement.id;
+                          p.music.sourceDuration = 0;
+                          p.waveform = [];
+                          p.waveformRms = [];
+                        }
                         for (const c of p.cues)
                           if (c.asset === a.id) c.asset = replacement.id;
                         for (const key of Object.keys(p.badgeAssets))
@@ -253,7 +257,11 @@ export function FilesPanel(q: PanelProps) {
                       p.squareIntro.asset = null;
                     if (p.playerIntro.asset === a.id)
                       p.playerIntro.asset = null;
-                    if (p.music.asset === a.id) p.music.asset = null;
+                    if (p.music.asset === a.id) {
+                      p.music.asset = null;
+                      p.waveform = [];
+                      p.waveformRms = [];
+                    }
                     p.cues = p.cues.filter((c) => c.asset !== a.id);
                     for (const key of Object.keys(p.badgeAssets))
                       if (p.badgeAssets[key] === a.id)

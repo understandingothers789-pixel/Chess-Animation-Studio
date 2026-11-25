@@ -60,7 +60,9 @@ p.beats = seq.map((s, i) => ({
   accent: i % 4 === 0,
   enabled: true,
 }));
-p.waveform = analyze(samples, rate).waveform;
+const { waveform, waveformRms } = analyze(samples, rate);
+p.waveform = waveform;
+p.waveformRms = waveformRms;
 p.pulse.enabled = true;
 await fs.mkdir("samples", { recursive: true });
 await fs.writeFile("samples/Opera-original.wav", wav);

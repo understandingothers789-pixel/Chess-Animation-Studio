@@ -1,3 +1,5 @@
+import { activeBeats } from "../../core/beatMarkers";
+import { compileStoryboard } from "../../core/storyboard";
 import { normalizeMusicRange } from "../../core/audio/timing";
 import { syncMarkers } from "../../core/audio";
 import type { Project } from "../../core/project";
@@ -8,12 +10,29 @@ export function StoryMusic({
   edit,
   time,
   importMusic,
+  analyze,
 }: {
   p: Project;
   edit: Edit;
   time: number;
   importMusic: () => void;
+  analyze: () => void;
 }) {
+  const duration = compileStoryboard(p).duration;
+  const hits = activeBeats(p).filter((b) => !duration || b.time < duration);
+  const copyHits = (accentsOnly: boolean) =>
+    edit("Use detected soundtrack beats", (d) => {
+      d.storyboard.beats = hits
+        .filter((b) => !accentsOnly || b.accent)
+        .slice(0, 10000)
+        .map(({ id, time, enabled, accent, strength }) => ({
+          id,
+          time,
+          enabled,
+          accent,
+          strength,
+        }));
+    });
   return (
     <details className="story-music">
       <summary>Soundtrack & output beats</summary>
@@ -83,21 +102,20 @@ export function StoryMusic({
           })
         }
       />
-      <button
-        disabled={!p.beats.length}
-        onClick={() =>
-          edit("Use detected soundtrack beats", (d) => {
-            d.storyboard.beats = d.beats.map((b) => ({
-              id: crypto.randomUUID(),
-              time: b.time,
-              enabled: b.enabled,
-              accent: b.accent,
-            }));
-          })
-        }
-      >
-        Replace output beats with detected music beats
-      </button>
+      <div className="button-row">
+        <button disabled={!p.music.asset} onClick={analyze}>
+          Analyze soundtrack hits
+        </button>
+        <button disabled={!hits.length} onClick={() => copyHits(false)}>
+          Replace output beats with detected music beats
+        </button>
+        <button
+          disabled={!hits.some((b) => b.accent)}
+          onClick={() => copyHits(true)}
+        >
+          Use only strong hits for output beats
+        </button>
+      </div>
       <p className="hint">
         Detected music markers keep their soundtrack timestamps. Source move
         timing is unchanged.

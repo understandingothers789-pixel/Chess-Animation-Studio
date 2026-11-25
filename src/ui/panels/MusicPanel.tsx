@@ -1,3 +1,10 @@
+import {
+  activeBeats,
+  beatInMusic,
+  describeHit,
+  removeMusicBeat,
+  setBeatTime,
+} from "../../core/beatMarkers";
 import { RainbowControls } from "./RainbowControls";
 import { settingHelp } from "../help";
 import { useState } from "react";
@@ -35,12 +42,13 @@ export function MusicPanel(q: PanelProps) {
     edit = q.edit;
   const [preview, setPreview] = useState<{
       project: Project;
+      source: Project;
       aligned: number;
       skipped: number;
     } | null>(null),
-    [mode, setMode] = useState<"all" | "alternate" | "fourth" | "accents">(
-      "all",
-    ),
+    [mode, setMode] = useState<
+      "all" | "alternate" | "fourth" | "accents" | "strong"
+    >("strong"),
     [soundId, setSoundId] = useState("");
   const changeMusic = (key: keyof Project["music"], value: unknown) =>
     edit("Music " + key, (p) => {
@@ -155,14 +163,15 @@ export function MusicPanel(q: PanelProps) {
         ))}
         <button
           className="wide"
-          disabled={!p.music.asset || p.beatsLocked}
+          disabled={!p.music.asset}
           onClick={() => q.run(q.analyzeMusic)}
         >
           Analyze waveform & likely beats
         </button>
         <p className="hint">
-          Beat detection follows audio transients. Correct markers manually for
-          syncopated or quiet music.
+          Analyzes both channels and separates bass attacks from higher
+          percussion. Strong hits are highlighted in gold. Reanalysis keeps
+          corrected markers and linked timings.
         </p>
       </Section>
       <Section
@@ -227,17 +236,21 @@ export function MusicPanel(q: PanelProps) {
           label="Use markers"
           value={mode}
           options={[
-            ["all", "All enabled markers"],
+            ["strong", "Prefer strong hits"],
+            ["all", "Nearest enabled markers"],
             ["alternate", "Every second marker"],
             ["fourth", "Every fourth marker"],
             ["accents", "Strong accents only"],
           ]}
           onChange={setMode}
         />
-        <button className="wide" onClick={() => setPreview(align(p, mode))}>
+        <button
+          className="wide"
+          onClick={() => setPreview({ ...align(p, mode), source: p })}
+        >
           Preview timing arrangement
         </button>
-        {preview && (
+        {preview?.source === p && (
           <div className="notice">
             <p>
               {preview.aligned} landings aligned; {preview.skipped} locked or
@@ -258,8 +271,8 @@ export function MusicPanel(q: PanelProps) {
           </div>
         )}
         <p className="hint">
-          Uses 0.5–5 second move durations. Timing locks are respected. Changes
-          are undoable.
+          Uses 0.5–5 second move durations. Locked moves and existing beat
+          assignments are preserved.
         </p>
       </Section>
       <Section title="Beat markers">
@@ -272,6 +285,10 @@ export function MusicPanel(q: PanelProps) {
             })
           }
         />
+        <p className="hint">
+          {activeBeats(p).length} enabled markers in range ·{" "}
+          {activeBeats(p).filter((b) => b.accent).length} strong hits
+        </p>
         <fieldset
           disabled={p.beatsLocked}
           style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
@@ -294,7 +311,11 @@ export function MusicPanel(q: PanelProps) {
           </button>
           <div className="marker-list">
             {p.beats.map((b) => (
-              <div className="marker-row" key={b.id}>
+              <div
+                className="marker-row"
+                key={b.id}
+                title={`${describeHit(b)}${beatInMusic(p, b) ? "" : " · outside audio trim"}`}
+              >
                 <input
                   title={settingHelp("Enable beat")}
                   aria-description={settingHelp("Enable beat")}
@@ -303,8 +324,9 @@ export function MusicPanel(q: PanelProps) {
                   checked={b.enabled}
                   onChange={(e) =>
                     edit("Enable beat", (p) => {
-                      p.beats.find((v) => v.id === b.id)!.enabled =
-                        e.target.checked;
+                      const marker = p.beats.find((v) => v.id === b.id)!;
+                      marker.enabled = e.target.checked;
+                      marker.corrected = true;
                     })
                   }
                 />
@@ -319,10 +341,7 @@ export function MusicPanel(q: PanelProps) {
                   onValueChange={(time) =>
                     edit("Beat time", (p) => {
                       const v = p.beats.find((v) => v.id === b.id)!;
-                      v.time = time;
-                      if (v.sourceTime !== undefined)
-                        v.sourceTime =
-                          time + p.music.trimStart - p.music.offset;
+                      setBeatTime(p, v, time);
                     })
                   }
                 />
@@ -334,6 +353,7 @@ export function MusicPanel(q: PanelProps) {
                     edit("Beat accent", (p) => {
                       const v = p.beats.find((v) => v.id === b.id)!;
                       v.accent = !v.accent;
+                      v.corrected = true;
                     })
                   }
                 >
@@ -343,7 +363,7 @@ export function MusicPanel(q: PanelProps) {
                   aria-label="Delete beat"
                   onClick={() =>
                     edit("Delete beat", (p) => {
-                      p.beats = p.beats.filter((v) => v.id !== b.id);
+                      removeMusicBeat(p, b.id);
                     })
                   }
                 >

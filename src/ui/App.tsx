@@ -1,3 +1,4 @@
+import { normalizeMusicRange } from "../core/audio/timing";
 import { MoveFrames } from "./preview/MoveFrames";
 import { TranscriptPanel } from "./captions/TranscriptPanel";
 import { quickCaption } from "../core/transcripts";
@@ -80,7 +81,9 @@ import {
   selectLine,
 } from "../core/chess";
 import { duration, segments, stepFrame } from "../core/timeline";
-import { detectedMarkers } from "../core/audio";
+import { activeBeats, updateMusicAnalysis } from "../core/beatMarkers";
+import { syncMarkers } from "../core/audio";
+import { analyzeMusicBuffer } from "./audio/analyzeMusic";
 import { AudioPlayer } from "./audio";
 import { StartingSquareMeme } from "./StartingSquareMeme";
 import { Preview } from "./Preview";
@@ -500,42 +503,19 @@ export function App() {
               latest.current.music.asset === a.id &&
               latest.current.music.sourceDuration === 0
             ) {
-              const samples = buffer.getChannelData(0).slice();
-              const worker = new Worker(
-                new URL("../workers/audio.ts", import.meta.url),
-                { type: "module" },
-              );
-              await new Promise<void>((resolve, reject) => {
-                worker.onerror = () => {
-                  worker.terminate();
-                  reject(Error("Music beat analysis failed."));
-                };
-                worker.onmessage = (e) => {
-                  worker.terminate();
-                  if (e.data.error) {
-                    reject(Error("Music beat analysis failed."));
-                    return;
-                  }
-                  const current = latest.current;
-                  if (
-                    assetKeys.current.get(a.id) === request &&
-                    current.assets.some(
-                      (asset) => asset.id === a.id && asset.path === a.path,
-                    ) &&
-                    current.music.asset === a.id &&
-                    current.music.sourceDuration === 0
-                  )
-                    edit("Analyze imported music", (p) => {
-                      p.music.sourceDuration = buffer.duration;
-                      p.waveform = e.data.waveform;
-                      p.beats = detectedMarkers(p, e.data.peaks);
-                    });
-                  resolve();
-                };
-                worker.postMessage({ samples, rate: buffer.sampleRate }, [
-                  samples.buffer,
-                ]);
-              });
+              const analysis = await analyzeMusicBuffer(buffer);
+              const current = latest.current;
+              if (
+                assetKeys.current.get(a.id) === request &&
+                current.music.asset === a.id &&
+                current.music.sourceDuration === 0
+              )
+                edit("Analyze imported music", (p) => {
+                  p.music.sourceDuration = buffer.duration;
+                  normalizeMusicRange(p.music);
+                  updateMusicAnalysis(p, analysis);
+                  p.beats = syncMarkers(p).beats;
+                });
             }
           }
         } finally {
@@ -910,6 +890,8 @@ export function App() {
           fadeOut: 0,
         };
         p.waveform = [];
+        p.waveformRms = [];
+        p.ignoredMusicHits = [];
         p.beats = [];
         p.storyboard.beats = [];
       }
@@ -926,40 +908,25 @@ export function App() {
       id = snapshot.music.asset,
       buffer = audio.current?.buffers.get(id ?? "");
     if (!buffer) throw Error("Wait for the music file to finish loading.");
-    if (buffer.duration > 3600)
-      throw Error("Music analysis supports up to one hour.");
-    message("Analyzing waveform and transients…");
-    const samples = buffer.getChannelData(0).slice();
-    const worker = new Worker(new URL("../workers/audio.ts", import.meta.url), {
-      type: "module",
+    message("Analyzing stereo waveform and music hits…");
+    const analysis = await analyzeMusicBuffer(buffer);
+    if (
+      latest.current.id !== snapshot.id ||
+      latest.current.music.asset !== id ||
+      audio.current?.buffers.get(id ?? "") !== buffer
+    )
+      return;
+    let count: ReturnType<typeof activeBeats> = [];
+    edit("Audio analysis", (p) => {
+      p.music.sourceDuration = buffer.duration;
+      normalizeMusicRange(p.music);
+      updateMusicAnalysis(p, analysis);
+      p.beats = syncMarkers(p).beats;
+      count = activeBeats(p);
     });
-    await new Promise<void>((resolve, reject) => {
-      worker.onerror = () => {
-        worker.terminate();
-        reject(Error("Audio analysis failed."));
-      };
-      worker.onmessage = (e) => {
-        worker.terminate();
-        if (e.data.error) {
-          reject(Error(e.data.error));
-          return;
-        }
-        if (latest.current.music.asset !== id) {
-          resolve();
-          return;
-        }
-        edit("Audio analysis", (p) => {
-          p.waveform = e.data.waveform;
-          p.music.sourceDuration = buffer.duration;
-          p.beats = detectedMarkers(p, e.data.peaks);
-        });
-        message("Waveform ready; review and correct the suggested markers.");
-        resolve();
-      };
-      worker.postMessage({ samples, rate: buffer.sampleRate }, [
-        samples.buffer,
-      ]);
-    });
+    message(
+      `Waveform ready. ${count.length} markers in range, including ${count.filter((b) => b.accent).length} strong hits.`,
+    );
   }
   function showLine(next: Project, index: number, time: number) {
     stop();
@@ -1343,9 +1310,7 @@ export function App() {
   };
   const misalignedMoves = useMemo(() => {
     const seq = segments(p);
-    const beats = new Map(
-      p.beats.filter((b) => b.enabled).map((b) => [b.id, b.time]),
-    );
+    const beats = new Map(activeBeats(p).map((b) => [b.id, b.time]));
     return p.moves.flatMap((m, i) =>
       m.effect.landingBeat &&
       (!beats.has(m.effect.landingBeat) ||
@@ -1554,6 +1519,7 @@ export function App() {
                   edit={storyEdit}
                   time={time}
                   importMusic={() => run(() => importAsset("audio", "music"))}
+                  analyze={() => run(analyzeMusic)}
                 />
               }
             />

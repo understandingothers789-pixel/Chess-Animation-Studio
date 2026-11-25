@@ -1,3 +1,9 @@
+import {
+  activeBeats,
+  beatInMusic,
+  describeHit,
+  setBeatTime,
+} from "../core/beatMarkers";
 import { BulkEditPanel } from "./timeline/BulkEditPanel";
 import type { AnnotationStyle } from "./commands/annotationCommands";
 import {
@@ -182,10 +188,10 @@ export function Timeline({
       p.lead,
       length,
       ...seq.flatMap((segment) => [segment.start, segment.end, segment.land]),
-      ...p.beats.filter((beat) => beat.enabled).map((beat) => beat.time),
+      ...activeBeats(p).map((beat) => beat.time),
       ...cues.map((cue) => cue.time),
     ],
-    [cues, length, p.beats, p.lead, seq],
+    [cues, length, p, seq],
   );
   const dragged = useRef<string | null>(null);
   const pointer = (e: React.PointerEvent) => {
@@ -201,9 +207,7 @@ export function Timeline({
       const beatTime = snap && !e.altKey ? Math.round(t * 20) / 20 : t;
       edit("Drag beat", (p) => {
         const b = p.beats.find((b) => b.id === id)!;
-        b.time = beatTime;
-        if (b.sourceTime !== undefined)
-          b.sourceTime = beatTime + p.music.trimStart - p.music.offset;
+        setBeatTime(p, b, beatTime);
       });
     } else {
       const nearest = boundaries.reduce(
@@ -228,18 +232,20 @@ export function Timeline({
           p.moves.findIndex((m) => checked.has(m.id)),
         )
       : selected;
-  const waveformPath = useMemo(() => {
+  const [waveformPath, rmsPath] = useMemo(() => {
     const sourceLength = p.music.sourceDuration || length;
     const trimEnd = p.music.trimEnd || Infinity;
-    return p.waveform
-      .map((value, i) => {
-        const source = (i / p.waveform.length) * sourceLength;
-        if (source < p.music.trimStart || source >= trimEnd) return "";
-        const x = (source - p.music.trimStart + p.music.offset) * pixels;
-        return `M${x},${22 - value * 18}L${x},${22 + value * 18}`;
-      })
-      .join("");
-  }, [length, p.music, p.waveform, pixels]);
+    return [p.waveform, p.waveformRms].map((bins) =>
+      bins
+        .map((value, i) => {
+          const source = ((i + 0.5) / bins.length) * sourceLength;
+          if (source < p.music.trimStart || source >= trimEnd) return "";
+          const x = (source - p.music.trimStart + p.music.offset) * pixels;
+          return `M${x},${22 - value * 18}L${x},${22 + value * 18}`;
+        })
+        .join(""),
+    );
+  }, [length, p.music, p.waveform, p.waveformRms, pixels]);
   const openMenu = (e: React.MouseEvent, trackOverride?: string) => {
     e.preventDefault();
     const target = e.target as HTMLElement;
@@ -750,54 +756,63 @@ export function Timeline({
                   stroke="currentColor"
                   fill="none"
                   strokeWidth="1.1"
+                  opacity={rmsPath ? 0.55 : 1}
                 />
+                {rmsPath && (
+                  <path
+                    d={rmsPath}
+                    stroke="currentColor"
+                    fill="none"
+                    strokeWidth="1.25"
+                  />
+                )}
               </svg>
-              {p.beats.map((b) => (
-                <div
-                  data-beat-id={b.id}
-                  role="slider"
-                  title="Drag this beat marker to correct its project time. Arrow keys move it by 0.01 seconds."
-                  aria-label={"Beat " + b.time.toFixed(2)}
-                  aria-valuenow={b.time}
-                  tabIndex={0}
-                  key={b.id}
-                  className={
-                    "beat " +
-                    (b.accent ? "accent" : "") +
-                    (b.enabled ? "" : " disabled")
-                  }
-                  style={{ left: x(b.time) }}
-                  onPointerDown={(e) => {
-                    if (e.button !== 0) return;
-                    e.stopPropagation();
-                    if (p.beatsLocked) return;
-                    edit.begin();
-                    dragged.current = b.id;
-                    (
-                      e.currentTarget.parentElement!
-                        .parentElement as HTMLElement
-                    ).setPointerCapture(e.pointerId);
-                  }}
-                  onKeyDown={(e) => {
-                    if (p.beatsLocked) return;
-                    if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
-                      e.preventDefault();
-                      edit("Move beat", (p) => {
-                        const v = p.beats.find((v) => v.id === b.id)!;
-                        v.time = Math.max(
-                          0,
-                          v.time + (e.key === "ArrowRight" ? 0.01 : -0.01),
-                        );
-                        if (v.sourceTime !== undefined)
-                          v.sourceTime =
-                            v.time + p.music.trimStart - p.music.offset;
-                      });
+              {p.beats
+                .filter((b) => beatInMusic(p, b))
+                .map((b) => (
+                  <div
+                    data-beat-id={b.id}
+                    role="slider"
+                    title={`${describeHit(b)}${b.strength === undefined ? "" : ` · strength ${Math.round(b.strength * 100)}%`}. Drag or use arrow keys to adjust.`}
+                    aria-label={"Beat " + b.time.toFixed(2)}
+                    aria-valuenow={b.time}
+                    tabIndex={0}
+                    key={b.id}
+                    className={
+                      "beat " +
+                      (b.accent ? "accent" : "") +
+                      (b.enabled ? "" : " disabled")
                     }
-                  }}
-                >
-                  <span>◆</span>
-                </div>
-              ))}
+                    style={{ left: x(b.time) }}
+                    onPointerDown={(e) => {
+                      if (e.button !== 0) return;
+                      e.stopPropagation();
+                      if (p.beatsLocked) return;
+                      edit.begin();
+                      dragged.current = b.id;
+                      (
+                        e.currentTarget.parentElement!
+                          .parentElement as HTMLElement
+                      ).setPointerCapture(e.pointerId);
+                    }}
+                    onKeyDown={(e) => {
+                      if (p.beatsLocked) return;
+                      if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
+                        e.preventDefault();
+                        edit("Move beat", (p) => {
+                          const v = p.beats.find((v) => v.id === b.id)!;
+                          setBeatTime(
+                            p,
+                            v,
+                            v.time + (e.key === "ArrowRight" ? 0.01 : -0.01),
+                          );
+                        });
+                      }
+                    }}
+                  >
+                    <span>◆</span>
+                  </div>
+                ))}
             </div>
             <div className="playhead" style={{ left: x(time) }}>
               <span />

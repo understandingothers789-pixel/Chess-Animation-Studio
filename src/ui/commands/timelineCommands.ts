@@ -1,3 +1,4 @@
+import { removeMusicBeat, setBeatTime } from "../../core/beatMarkers";
 import { moveCommands } from "./moveCommands";
 import { annotationCommands, type AnnotationStyle } from "./annotationCommands";
 import type { SettingsClipboard, SettingsKind } from "../../core/editing";
@@ -205,9 +206,7 @@ export function timelineCommands({
             () =>
               edit("Move beat", (p) => {
                 const b = p.beats.find((b) => b.id === menu.id)!;
-                b.time = time;
-                if (b.sourceTime !== undefined)
-                  b.sourceTime = time + p.music.trimStart - p.music.offset;
+                setBeatTime(p, b, time);
               }),
             p.beatsLocked,
           );
@@ -219,6 +218,7 @@ export function timelineCommands({
               edit("Toggle beat", (p) => {
                 const b = p.beats.find((b) => b.id === menu.id)!;
                 b.enabled = !b.enabled;
+                b.corrected = true;
               }),
           });
         }
@@ -229,7 +229,10 @@ export function timelineCommands({
           () =>
             edit("Toggle beat accent", (p) => {
               const b = p.beats.find((b) => b.id === menu.id);
-              if (b) b.accent = !b.accent;
+              if (b) {
+                b.accent = !b.accent;
+                b.corrected = true;
+              }
             }),
           p.beatsLocked,
         );
@@ -237,7 +240,7 @@ export function timelineCommands({
           "Delete beat",
           () =>
             edit("Delete beat", (p) => {
-              p.beats = p.beats.filter((b) => b.id !== menu.id);
+              if (menu.id) removeMusicBeat(p, menu.id);
             }),
           p.beatsLocked,
           true,

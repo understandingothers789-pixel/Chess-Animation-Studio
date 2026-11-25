@@ -1,3 +1,4 @@
+import { activeBeats } from "../core/beatMarkers";
 import { landingDuration } from "../core/audio";
 import { memeTiming, type Effect, type Project } from "../core/project";
 import { compileTimeline, moveLead, spotlightStart } from "../core/timeline";
@@ -41,9 +42,7 @@ export function proposeTiming(
   if (field === "afterDuration") effect.after.duration = value;
   if (field === "spotlight") effect.jam.duration = value;
   const departure = old.start + moveLead(effect);
-  const marker = project.beats.find(
-    (beat) => beat.enabled && beat.id === landing,
-  );
+  const marker = activeBeats(project).find((beat) => beat.id === landing);
   effect.landingBeat = landing;
   if (
     marker &&
@@ -70,9 +69,7 @@ export function proposeTiming(
     land,
     finish: departure + effect.duration,
   });
-  const zoomMarker = project.beats.find(
-    (beat) => beat.enabled && beat.id === zoomBeat,
-  );
+  const zoomMarker = activeBeats(project).find((beat) => beat.id === zoomBeat);
   if (
     zoomMarker &&
     (zoomMarker.time < start || zoomMarker.time >= start + effect.jam.duration)

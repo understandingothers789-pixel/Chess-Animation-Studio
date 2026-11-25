@@ -1,3 +1,4 @@
+import { activeBeats, describeHit, strongestBeat } from "../core/beatMarkers";
 import { useState } from "react";
 import type { Project } from "../core/project";
 import { landingDuration } from "../core/audio";
@@ -17,9 +18,7 @@ export function BeatAlignment({
   const move = p.moves[index],
     segment = segments(p)[index];
   if (!move || !segment) return null;
-  const beats = p.beats
-    .filter((b) => b.enabled)
-    .sort((a, b) => a.time - b.time);
+  const beats = activeBeats(p).sort((a, b) => a.time - b.time);
   const reachable = beats.filter(
     (b) =>
       landingDuration(move.effect, segment.depart, b.time + offset) !== null,
@@ -27,6 +26,10 @@ export function BeatAlignment({
   const nearest = [...reachable].sort(
     (a, b) => Math.abs(a.time - segment.land) - Math.abs(b.time - segment.land),
   )[0];
+  const strongest = strongestBeat(
+    reachable.filter((b) => Math.abs(b.time + offset - segment.land) <= 1.2),
+    segment.land - offset,
+  );
   const beat = reachable.find((b) => b.id === choice);
   const duration = beat
     ? landingDuration(move.effect, segment.depart, beat.time + offset)
@@ -80,6 +83,12 @@ export function BeatAlignment({
           onClick={() => setChoice(nearest.id)}
         >
           Nearest beat
+        </button>
+        <button
+          disabled={!strongest || move.effect.locked}
+          onClick={() => setChoice(strongest!.id)}
+        >
+          Strongest nearby hit
         </button>
         <button
           disabled={

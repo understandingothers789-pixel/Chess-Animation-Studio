@@ -1,3 +1,4 @@
+import { activeBeats } from "../core/beatMarkers";
 import { StartingSquareMeme } from "./StartingSquareMeme";
 import { AfterEffect } from "./AfterEffect";
 import { settingsLabel } from "./commands/bulkEditing";
@@ -657,22 +658,18 @@ export function Inspector({
                   value={move.effect.landingBeat ?? ""}
                   options={[
                     ["", "Automatic / none"],
-                    ...project.beats
-                      .filter((b) => b.enabled)
-                      .map(
-                        (b) =>
-                          [
-                            b.id,
-                            `${b.time.toFixed(2)}s${b.accent ? " · accent" : ""}`,
-                          ] as [string, string],
-                      ),
+                    ...activeBeats(project).map(
+                      (b) =>
+                        [
+                          b.id,
+                          `${b.time.toFixed(2)}s${b.accent ? " · accent" : ""}`,
+                        ] as [string, string],
+                    ),
                   ]}
                   disabled={move.effect.locked}
                   onChange={(v) => {
                     const segment = segments(project)[index];
-                    const marker = project.beats.find(
-                      (b) => b.id === v && b.enabled,
-                    );
+                    const marker = activeBeats(project).find((b) => b.id === v);
                     const duration = marker
                       ? landingDuration(
                           move.effect,

@@ -1,3 +1,4 @@
+import { beatInMusic } from "./beatMarkers";
 import {
   camera,
   type Project,
@@ -524,7 +525,12 @@ export function evaluate(
   let pulse = 0;
   if (p.pulse.enabled)
     for (const b of p.beats) {
-      if (!b.enabled || (p.pulse.accentsOnly && !b.accent)) continue;
+      if (
+        !b.enabled ||
+        !beatInMusic(p, b) ||
+        (p.pulse.accentsOnly && !b.accent)
+      )
+        continue;
       const dt = time - b.time;
       if (dt >= -p.pulse.attack && dt <= p.pulse.decay)
         pulse = Math.max(

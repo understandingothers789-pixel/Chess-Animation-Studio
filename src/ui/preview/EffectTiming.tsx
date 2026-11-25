@@ -1,3 +1,8 @@
+import {
+  activeBeats,
+  describeHit,
+  strongestBeat,
+} from "../../core/beatMarkers";
 import { useRef, useState } from "react";
 import type { Project } from "../../core/project";
 import { moveEffectTiming } from "../movePreview";
@@ -57,6 +62,32 @@ export function EffectTiming({
     landing: effect.landingBeat,
     zoomBeat: effect.jam.beat ?? null,
   });
+  const beats = activeBeats(project);
+  const nearbyLanding = strongestBeat(
+    beats.filter((b) => {
+      const duration = (b.time - timing.segment.depart) / effect.landing;
+      return (
+        duration >= 0.2 &&
+        duration <= 30 &&
+        Math.abs(b.time - timing.segment.land) <= 1.2
+      );
+    }),
+    timing.segment.land,
+  );
+  const zoomWindow = timing.rows.find(
+    (row) => row.section === "spotlight",
+  )?.window;
+  const zoomHits = zoomWindow
+    ? beats.filter((b) => b.time >= zoomWindow.start && b.time < zoomWindow.end)
+    : [];
+  const zoomHit = strongestBeat(
+    zoomHits.filter(
+      (b) =>
+        b.time >= (zoomWindow?.start ?? 0) + 0.08 &&
+        b.time <= (zoomWindow?.end ?? 0) - 0.12,
+    ),
+    timing.segment.land,
+  );
   const fieldFor: Partial<Record<string, TimingField>> = {
     meme: "meme",
     move: "move",
@@ -223,13 +254,11 @@ export function EffectTiming({
                 }
               >
                 <option value="">No assignment</option>
-                {project.beats
-                  .filter((b) => b.enabled)
-                  .map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.time.toFixed(3)} s
-                    </option>
-                  ))}
+                {beats.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.time.toFixed(3)} s · {describeHit(b)}
+                  </option>
+                ))}
               </select>
             </label>
             {effect.jam.enabled && (
@@ -246,18 +275,37 @@ export function EffectTiming({
                   }
                 >
                   <option value="">Use beat zoom clock</option>
-                  {project.beats
-                    .filter(
-                      (b) => b.enabled && b.time >= start && b.time <= end,
-                    )
-                    .map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.time.toFixed(3)} s
-                      </option>
-                    ))}
+                  {zoomHits.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.time.toFixed(3)} s · {describeHit(b)}
+                    </option>
+                  ))}
                 </select>
               </label>
             )}
+            <div className="button-row">
+              <button
+                type="button"
+                disabled={!nearbyLanding}
+                onClick={() =>
+                  nearbyLanding &&
+                  setDraft({ ...active, landing: nearbyLanding.id })
+                }
+              >
+                Land on strongest nearby hit
+              </button>
+              {effect.jam.enabled && (
+                <button
+                  type="button"
+                  disabled={!zoomHit}
+                  onClick={() =>
+                    zoomHit && setDraft({ ...active, zoomBeat: zoomHit.id })
+                  }
+                >
+                  Zoom on strongest hit
+                </button>
+              )}
+            </div>
             <p role="status">
               {propose
                 ? `Later moves shift ${propose.shift >= 0 ? "+" : ""}${propose.shift.toFixed(3)} s.`

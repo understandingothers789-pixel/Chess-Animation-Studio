@@ -55,11 +55,14 @@ export function StoryboardWaveform({
     total = Math.max(width, c.duration * px),
     win = soundtrackWindow(p, c.duration),
     beats = p.storyboard.beats,
-    targets = [
-      ...beats.filter((b) => b.enabled).map((b) => b.time),
-      ...c.shots.map((s) => s.start),
-      c.duration,
-    ],
+    targets = useMemo(
+      () => [
+        ...beats.filter((b) => b.enabled).map((b) => b.time),
+        ...c.shots.map((s) => s.start),
+        c.duration,
+      ],
+      [beats, c],
+    ),
     bounded = (n: number) => Math.max(0, Math.min(c.duration, n)),
     at = (client: number) =>
       bounded(
@@ -90,6 +93,21 @@ export function StoryboardWaveform({
         px,
       ],
     );
+  const waveformPaths = useMemo(
+    () =>
+      [bins, rms].map((wave) =>
+        wave
+          .map((v, i) => {
+            const x = scroll + i * 2;
+            return x / px >= win.start && x / px < win.end
+              ? `M${x},${89 - v * 28}v${v * 56}`
+              : "";
+          })
+          .join(" "),
+      ),
+    [bins, rms, scroll, px, win.start, win.end],
+  );
+  const sourceBeats = useMemo(() => activeBeats(p), [p]);
   const patch = (fn: (p: Project) => void) =>
     edit("Soundtrack timing", (p) => {
       fn(p);
@@ -153,7 +171,6 @@ export function StoryboardWaveform({
           m.fadeIn = Math.max(0, Math.min(30, t - m.offset));
         if (d.kind === "fadeOut")
           m.fadeOut = Math.max(0, Math.min(30, win.end - t));
-        p.beats = syncMarkers(p).beats;
       });
   };
   const end = () => {
@@ -462,24 +479,17 @@ export function StoryboardWaveform({
             onPointerCancel={end}
             onLostPointerCapture={end}
           />
-          {[bins, rms].map((wave, level) => (
+          {waveformPaths.map((path, level) => (
             <path
               key={level}
               pointerEvents="none"
               stroke="#8eaf86"
               opacity={rms.length && !level ? 0.46 : 1}
-              d={wave
-                .map((v, i) => {
-                  const x = scroll + i * 2;
-                  return x / px >= win.start && x / px < win.end
-                    ? `M${x},${89 - v * 28}v${v * 56}`
-                    : "";
-                })
-                .join(" ")}
+              d={path}
             />
           ))}
           <path pointerEvents="none" stroke="#e5c47c" fill="none" d={curve} />
-          {activeBeats(p)
+          {sourceBeats
             .filter(
               (b) => b.time * px >= scroll && b.time * px <= scroll + width,
             )

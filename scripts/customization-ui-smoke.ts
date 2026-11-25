@@ -1,3 +1,4 @@
+import { segments } from "../src/core/timeline";
 /** Browser UI regression checks. Native services are exercised by test:desktop. */
 import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
@@ -262,6 +263,18 @@ try {
   await page
     .getByText("Align landing · active move e4", { exact: true })
     .click();
+  const landing = segments(await state())[0].land;
+  const offset = landing - 3.91;
+  const offsetInput = page.getByLabel("Landing offset seconds");
+  await offsetInput.fill(offset.toFixed(3));
+  await page.getByRole("button", { name: "Nearest beat", exact: true }).click();
+  await expect(
+    page.getByText(
+      `Proposed landing ${(4 + Number(offset.toFixed(3))).toFixed(3)} s`,
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await offsetInput.fill("0");
   const before = (await state()).moves[0].effect.duration;
   await page.getByRole("button", { name: "Nearest beat", exact: true }).click();
   assert.equal((await state()).moves[0].effect.duration, before);

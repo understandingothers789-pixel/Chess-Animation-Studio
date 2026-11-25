@@ -1,4 +1,4 @@
-import { activeBeats, describeHit, strongestBeat } from "../core/beatMarkers";
+import { activeBeats, strongestBeat } from "../core/beatMarkers";
 import { useState } from "react";
 import type { Project } from "../core/project";
 import { landingDuration } from "../core/audio";
@@ -23,14 +23,26 @@ export function BeatAlignment({
     (b) =>
       landingDuration(move.effect, segment.depart, b.time + offset) !== null,
   );
-  const nearest = [...reachable].sort(
-    (a, b) => Math.abs(a.time - segment.land) - Math.abs(b.time - segment.land),
-  )[0];
+  const target = segment.land - offset;
+  const nearest = reachable.reduce<(typeof reachable)[number] | undefined>(
+    (best, candidate) =>
+      !best || Math.abs(candidate.time - target) < Math.abs(best.time - target)
+        ? candidate
+        : best,
+    undefined,
+  );
   const strongest = strongestBeat(
-    reachable.filter((b) => Math.abs(b.time + offset - segment.land) <= 1.2),
-    segment.land - offset,
+    reachable.filter((b) => Math.abs(b.time - target) <= 1.2),
+    target,
   );
   const beat = reachable.find((b) => b.id === choice);
+  const anchor = beat?.time ?? target;
+  let previous: (typeof reachable)[number] | undefined;
+  for (const candidate of reachable) {
+    if (candidate.time >= anchor - 0.001) break;
+    previous = candidate;
+  }
+  const next = reachable.find((b) => b.time > anchor + 0.001);
   const duration = beat
     ? landingDuration(move.effect, segment.depart, beat.time + offset)
     : null;
@@ -80,7 +92,7 @@ export function BeatAlignment({
       <div className="button-row">
         <button
           disabled={!nearest || move.effect.locked}
-          onClick={() => setChoice(nearest.id)}
+          onClick={() => nearest && setChoice(nearest.id)}
         >
           Nearest beat
         </button>
@@ -91,36 +103,14 @@ export function BeatAlignment({
           Strongest nearby hit
         </button>
         <button
-          disabled={
-            move.effect.locked ||
-            !reachable.some(
-              (b) => b.time < (beat?.time ?? segment.land) - 0.001,
-            )
-          }
-          onClick={() =>
-            setChoice(
-              reachable
-                .filter((b) => b.time < (beat?.time ?? segment.land) - 0.001)
-                .at(-1)!.id,
-            )
-          }
+          disabled={move.effect.locked || !previous}
+          onClick={() => previous && setChoice(previous.id)}
         >
           Previous beat
         </button>
         <button
-          disabled={
-            move.effect.locked ||
-            !reachable.some(
-              (b) => b.time > (beat?.time ?? segment.land) + 0.001,
-            )
-          }
-          onClick={() =>
-            setChoice(
-              reachable.find(
-                (b) => b.time > (beat?.time ?? segment.land) + 0.001,
-              )!.id,
-            )
-          }
+          disabled={move.effect.locked || !next}
+          onClick={() => next && setChoice(next.id)}
         >
           Next beat
         </button>

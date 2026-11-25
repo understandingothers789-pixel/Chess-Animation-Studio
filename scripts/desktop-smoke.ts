@@ -936,16 +936,21 @@ try {
   await expect(
     page.getByLabel("Seek storyboard", { exact: true }),
   ).not.toHaveValue("0");
-  // Short playback may finish between two browser round trips. Click the current
-  // pause button in one renderer task, or accept already completed playback.
-  await page
-    .getByLabel("Pause storyboard", { exact: true })
-    .evaluateAll((buttons) => {
-      (buttons[0] as HTMLButtonElement | undefined)?.click();
-    });
-  await expect(
-    page.getByLabel("Play storyboard", { exact: true }),
-  ).toBeVisible();
+  // Use a real transport interaction once playback is advancing.
+  // A short sequence can also reach the end before the next click.
+  await expect
+    .poll(
+      async () => {
+        const play = page.getByLabel("Play storyboard", { exact: true });
+        if (await play.isVisible()) return true;
+        const pause = page.getByLabel("Pause storyboard", { exact: true });
+        if (await pause.isVisible())
+          await pause.click({ timeout: 750 }).catch(() => {});
+        return play.isVisible();
+      },
+      { timeout: 10000 },
+    )
+    .toBe(true);
   await page.screenshot({ path: path.join(dir, "packaged-storyboard.png") });
   const storyFile = path.join(dir, "packaged-storyboard.mp4");
   await launch.evaluate((_, file) => {

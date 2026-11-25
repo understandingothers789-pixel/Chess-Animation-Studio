@@ -39,11 +39,15 @@ jobs:
       - name: Install export validation tool
         shell: pwsh
         run: |
-          # The Windows 9.1 essentials build hangs during the audio mix test.
-          choco install ffmpeg --version=9.0.2 -y --no-progress
-          if ($LASTEXITCODE -ne 0) { throw 'Pinned FFmpeg installation failed' }
-          $ffmpeg = (Get-Command ffmpeg.exe -ErrorAction Stop).Source
-          $ffprobe = (Get-Command ffprobe.exe -ErrorAction Stop).Source
+          # Keep the export validator pinned to the last verified release.
+          $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg-9.0.2.zip'
+          $destination = Join-Path $env:RUNNER_TEMP 'ffmpeg-9.0.2'
+          Invoke-WebRequest 'https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip' -OutFile $zip
+          $digest = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($digest -ne '60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba') { throw 'FFmpeg ZIP checksum mismatch' }
+          Expand-Archive -LiteralPath $zip -DestinationPath $destination
+          $ffmpeg = Join-Path $destination 'ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe'
+          $ffprobe = Join-Path $destination 'ffmpeg-9.0.2-essentials_build/bin/ffprobe.exe'
           $ffmpegVersion = & $ffmpeg -version | Select-Object -First 1
           if ($ffmpegVersion -notmatch '^ffmpeg version 9\.0\.2(?:[-\s]|$)') {
             throw "Expected FFmpeg 9.0.2, got: $ffmpegVersion"
@@ -81,8 +85,6 @@ jobs:
           $fresh = Join-Path $env:RUNNER_TEMP 'Portable launch with spaces'
           Expand-Archive -LiteralPath 'release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable.zip' -DestinationPath $fresh
           $env:STUDIO_PACKAGED_EXE = (Join-Path $fresh 'Chess Animation Studio.exe')
-          $env:FFMPEG_PATH = (Get-Command ffmpeg).Source
-          $env:FFPROBE_PATH = (Get-Command ffprobe).Source
           $desktopLog = Join-Path $env:RUNNER_TEMP 'desktop-validation.log'
           $desktopStatus = 1
           try {

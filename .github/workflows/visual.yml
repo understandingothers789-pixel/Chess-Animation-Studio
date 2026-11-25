@@ -34,6 +34,7 @@ jobs:
           git worktree add --detach "$RUNNER_TEMP/visual-reference" 9fcf3f54913ac1a27560a61e0db8e80abb998dd5
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
           node --import tsx scripts/customization-ui-smoke.ts
+          node --import tsx scripts/workflow-ui-smoke.ts
           node --import tsx scripts/customization-render-smoke.ts
           node --import tsx scripts/meme-render-smoke.ts
           npm run test:timeline

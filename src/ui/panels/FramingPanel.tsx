@@ -6,7 +6,6 @@ import {
   rainbowDefaults,
   blank,
   presets,
-  formats,
   badgeNames,
   type Project,
   type Asset,
@@ -35,16 +34,6 @@ export function FramingPanel(q: PanelProps) {
   const layout = p.layouts[p.format];
   return (
     <>
-      <Select
-        label="Output format"
-        value={p.format}
-        options={formats}
-        onChange={(v) =>
-          edit("Output format", (p) => {
-            p.format = v;
-          })
-        }
-      />
       <Color
         label="Background color"
         value={p.style.background}

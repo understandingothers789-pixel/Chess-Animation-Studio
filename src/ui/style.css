@@ -791,18 +791,14 @@ audio {
   font-size: var(--text-meta);
   min-height: 26px;
 }
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
+.export-dialog::backdrop {
   background: #080e0bbd;
   backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
 }
 .export-dialog {
-  width: 450px;
+  width: min(450px, calc(100vw - 30px));
+  box-sizing: border-box;
+  color: var(--text, #e8efe3);
   background: #1d2c20;
   border: 1px solid #60784a;
   border-radius: 12px;

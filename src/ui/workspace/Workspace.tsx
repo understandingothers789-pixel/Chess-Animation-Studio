@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 export type Layout = {
   left: number;
   right: number;
@@ -47,55 +47,88 @@ const modes: Record<string, Partial<Layout>> = {
     timeline: 380,
   },
 };
+function readLayout(value: unknown, mode: string): Layout {
+  const base = { ...defaults, ...modes[mode], mode };
+  if (!value || typeof value !== "object") return base;
+  const v = value as Partial<Layout>;
+  const number = (
+    key: "left" | "right" | "timeline",
+    min: number,
+    max: number,
+  ) =>
+    typeof v[key] === "number" && Number.isFinite(v[key])
+      ? Math.min(max, Math.max(min, v[key]))
+      : base[key];
+  return {
+    left: number("left", 220, 500),
+    right: number("right", 240, 540),
+    timeline: number("timeline", 120, 520),
+    hideLeft: typeof v.hideLeft === "boolean" ? v.hideLeft : base.hideLeft,
+    hideRight: typeof v.hideRight === "boolean" ? v.hideRight : base.hideRight,
+    hideTimeline:
+      typeof v.hideTimeline === "boolean" ? v.hideTimeline : base.hideTimeline,
+    compact: v.compact !== false,
+    scale: v.scale && [100, 110, 125, 150].includes(v.scale) ? v.scale : 100,
+    mode,
+  };
+}
+
 export function useWorkspace() {
-  const [layout, setLayout] = useState<Layout>(() => {
+  const [{ layout, saved, returnMode }, set] = useState<{
+    layout: Layout;
+    saved: Partial<Record<string, Layout>>;
+    returnMode: string;
+  }>(() => {
     try {
-      const v = JSON.parse(localStorage.getItem("studio.workspace") ?? "null");
-      if (!v || typeof v !== "object") return defaults;
-      const number = (
-        key: "left" | "right" | "timeline",
-        min: number,
-        max: number,
-      ) =>
-        typeof v[key] === "number" && Number.isFinite(v[key])
-          ? Math.min(max, Math.max(min, v[key]))
-          : defaults[key];
-      return {
-        left: number("left", 220, 500),
-        right: number("right", 240, 540),
-        timeline: number("timeline", 120, 520),
-        hideLeft: v.hideLeft === true,
-        hideRight: v.hideRight === true,
-        hideTimeline: v.hideTimeline === true,
-        compact: v.compact !== false,
-        scale: [100, 110, 125, 150].includes(v.scale) ? v.scale : 100,
-        mode: Object.hasOwn(modes, v.mode) ? v.mode : "Editing",
-      };
+      const current = JSON.parse(
+        localStorage.getItem("studio.workspace") ?? "null",
+      );
+      const stored = JSON.parse(
+        localStorage.getItem("studio.workspace.layouts") ?? "null",
+      );
+      const layout = readLayout(
+        current,
+        Object.hasOwn(modes, current?.mode) ? current.mode : "Editing",
+      );
+      const saved = Object.fromEntries(
+        Object.keys(modes)
+          .filter((mode) => stored?.saved?.[mode])
+          .map((mode) => [mode, readLayout(stored.saved[mode], mode)]),
+      );
+      const returnMode =
+        Object.hasOwn(modes, stored?.returnMode) &&
+        stored.returnMode !== "Preview"
+          ? stored.returnMode
+          : "Editing";
+      return { layout, saved, returnMode };
     } catch {
-      return defaults;
+      return { layout: defaults, saved: {}, returnMode: "Editing" };
     }
   });
   useEffect(() => {
     localStorage.setItem("studio.workspace", JSON.stringify(layout));
-  }, [layout]);
-  const previousLayout = useRef<Layout>(defaults);
-  const patch = (v: Partial<Layout>) => setLayout((p) => ({ ...p, ...v }));
-  return {
-    layout,
-    patch,
-    restore: () => setLayout(previousLayout.current),
-    preset: (mode: string) => {
-      if (mode === "Preview" && layout.mode !== "Preview")
-        previousLayout.current = layout;
-      patch({
-        ...defaults,
-        ...modes[mode],
-        mode,
-        compact: layout.compact,
-        scale: layout.scale,
-      });
-    },
-  };
+    localStorage.setItem(
+      "studio.workspace.layouts",
+      JSON.stringify({ saved, returnMode }),
+    );
+  }, [layout, saved, returnMode]);
+  const patch = (v: Partial<Layout>) =>
+    set((state) => ({ ...state, layout: { ...state.layout, ...v } }));
+  const preset = (mode: string) =>
+    set((state) => {
+      const current = state.layout;
+      if (!Object.hasOwn(modes, mode) || mode === current.mode) return state;
+      return {
+        saved: { ...state.saved, [current.mode]: current },
+        returnMode: mode === "Preview" ? current.mode : state.returnMode,
+        layout: {
+          ...(state.saved[mode] ?? readLayout(null, mode)),
+          compact: current.compact,
+          scale: current.scale,
+        },
+      };
+    });
+  return { layout, patch, preset, restore: () => preset(returnMode) };
 }
 export function Splitter({
   label,
@@ -136,8 +169,16 @@ export function Splitter({
           } as Record<string, number>
         )[e.key];
         if (delta) {
+          const relevant = vertical
+            ? ["ArrowUp", "ArrowDown"]
+            : ["ArrowLeft", "ArrowRight"];
+          if (!relevant.includes(e.key)) return;
           e.preventDefault();
-          onChange(clamp(value + delta));
+          onChange(
+            clamp(
+              value + delta * (label.includes("Right") || vertical ? -1 : 1),
+            ),
+          );
         }
       }}
       onPointerDown={(e) => {

@@ -133,6 +133,7 @@ export function App() {
     section: string;
     version: number;
   } | null>(null);
+  const [searchRequest, setSearchRequest] = useState(0);
   const [settingsRequest, setSettingsRequest] = useState<{
     category: string;
     section?: string;
@@ -160,6 +161,7 @@ export function App() {
     moveId: string;
     effect: Effect;
   } | null>(null);
+  const presetOrigin = useRef<number | null>(null);
   const [beforePreset, setBeforePreset] = useState(false);
   const [loopPreview, setLoopPreview] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -202,8 +204,6 @@ export function App() {
     } | null>(null),
     [exportOpen, setExportOpen] = useState(false),
     [exportProgress, setExportProgress] = useState<ExportProgress | null>(null),
-    [rangeStart, setRangeStart] = useState(0),
-    [rangeEnd, setRangeEnd] = useState(0),
     [loadingAudio, setLoadingAudio] = useState(0);
   useLayoutEffect(() => {
     if (settingsRequest && tab === settingsRequest.category && !layout.hideLeft)
@@ -309,17 +309,27 @@ export function App() {
     audio.current?.stop();
   }, []);
   const clearPresetPreview = () => {
+    const origin = presetOrigin.current;
+    presetOrigin.current = null;
     setPresetDraft(null);
     setBeforePreset(false);
     stop();
+    if (origin !== null && activePreset) {
+      sourceClock.current = origin;
+      timeRef.current = origin;
+      setTime(origin);
+    }
   };
   useEffect(() => {
     if (presetDraft && !activePreset) {
+      presetOrigin.current = null;
       setPresetDraft(null);
       setBeforePreset(false);
       stop();
+    } else if (activePreset && tab !== "presets") {
+      clearPresetPreview();
     }
-  }, [presetDraft, activePreset, stop]);
+  }, [presetDraft, activePreset, stop, tab]);
   const seek = useCallback(
     (t: number) => {
       stop();
@@ -340,6 +350,22 @@ export function App() {
     },
     [stop],
   );
+  function togglePlayback() {
+    if (playing) {
+      setPlaying(false);
+      return;
+    }
+    if (
+      loadingAudio ||
+      presentationDuration(previewProjectRef.current, modeRef.current) <= 0
+    )
+      return;
+    const end =
+      audition?.end ??
+      presentationDuration(previewProjectRef.current, modeRef.current);
+    if (timeRef.current >= end - 0.001) seek(audition?.loopStart ?? 0);
+    setPlaying(true);
+  }
   const selectionAnchor = useRef(0);
   const select = useCallback(
     (
@@ -665,6 +691,13 @@ export function App() {
         return;
       }
 
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        workspace.patch({ hideLeft: false });
+        if (modeRef.current === "source" && tab === "presets") setTab("game");
+        setSearchRequest((n) => n + 1);
+        return;
+      }
       if (
         (e.target as HTMLElement).closest(
           "input,textarea,select,[contenteditable]",
@@ -681,22 +714,13 @@ export function App() {
       );
       if (e.code === "Space" && !buttonFocus) {
         e.preventDefault();
-        if (!loadingAudio) {
-          if (modeRef.current === "storyboard") setAudition(null);
-          setPlaying((v) => !v);
-        }
+        togglePlayback();
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         stop();
         setPicked(null);
         e.shiftKey ? redo() : undo();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        document
-          .querySelector<HTMLInputElement>('[aria-label="Search settings"]')
-          ?.focus();
       }
       if (
         e.shiftKey &&
@@ -741,7 +765,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selected, loadingAudio, checked, p, fps]);
+  }, [selected, loadingAudio, checked, p, fps, playing, audition, tab]);
   function adopted(project: Project, file: string | null) {
     stop();
     replace(project);
@@ -972,13 +996,14 @@ export function App() {
     }
   }
   function switchMode(next: PlaybackMode, applyLayout = true) {
-    stop();
-    setPresetDraft(null);
+    if (next === modeRef.current) return;
+    clearPresetPreview();
     setDrawing(null);
     annotationFrom.current = null;
     if (modeRef.current === "source") sourceClock.current = timeRef.current;
     else storyClock.current = timeRef.current;
     modeRef.current = next;
+    setSearchRequest(0);
     setMode(next);
     if (applyLayout)
       workspace.preset(next === "storyboard" ? "Storyboard" : "Editing");
@@ -1218,23 +1243,38 @@ export function App() {
     chooseLine,
   };
   function selectIntro() {
+    workspace.patch({ hideRight: false });
     setIntroSelected(true);
     setChecked(new Set());
     seek(0);
   }
-  function previewMove(index = selected) {
+  function previewMove(index = selected, previewIntro = introSelected) {
     if (audition) {
+      if (activePreset) {
+        clearPresetPreview();
+        return;
+      }
+      timeRef.current = audition.time;
+      sourceClock.current = audition.time;
       setTime(audition.time);
       setPlaying(audition.playing);
       setAudition(null);
       return;
     }
-    const segment = movePreviewWindow(previewProject, index);
+    const segment =
+      previewIntro && p.lead > 0
+        ? { start: 0, end: p.lead }
+        : movePreviewWindow(previewProject, index);
     if (!segment) return;
     setAudition({ time, playing, end: segment.end, loopStart: segment.start });
     setTime(segment.start);
     timeRef.current = segment.start;
     setPlaying(true);
+  }
+  function openExport() {
+    clearPresetPreview();
+    if (!progressBusy) setExportProgress(null);
+    setExportOpen(true);
   }
   const panels: Record<string, React.ComponentType<PanelProps> | null> = {
     game: GamePanel,
@@ -1369,15 +1409,7 @@ export function App() {
           <button onClick={() => run(() => window.studio.presentation())}>
             <Monitor size={15} /> Present
           </button>
-          <button
-            className="primary"
-            onClick={() => {
-              stop();
-              setRangeStart(0);
-              setRangeEnd(end);
-              setExportOpen(true);
-            }}
-          >
+          <button className="primary" onClick={openExport}>
             <Download size={15} /> Export MP4
           </button>
         </div>
@@ -1404,8 +1436,8 @@ export function App() {
       <WorkspaceBar
         workspace={workspace}
         onPreset={(name) => {
-          if (name !== "Preview")
-            switchMode(name === "Storyboard" ? "storyboard" : "source", false);
+          if (name === "Storyboard") switchMode("storyboard", false);
+          if (name === "Editing") switchMode("source", false);
         }}
       />
       <div className="composition-modebar">
@@ -1443,6 +1475,15 @@ export function App() {
         }
       >
         <aside className="library">
+          {mode === "storyboard" && (
+            <SettingsSearch
+              mode={mode}
+              focusRequest={searchRequest}
+              navigate={setTab}
+              revealInspector={() => workspace.patch({ hideRight: false })}
+              selectIntro={selectIntro}
+            />
+          )}
           {mode === "storyboard" && (
             <StorySourcePanel
               p={p}
@@ -1517,7 +1558,23 @@ export function App() {
             ))}
           </nav>
           {mode !== "storyboard" && (
-            <SettingsSearch navigate={setTab} selectIntro={selectIntro} />
+            <SettingsSearch
+              mode={mode}
+              focusRequest={searchRequest}
+              navigate={setTab}
+              revealInspector={(target) => {
+                workspace.patch({ hideRight: false });
+                if (target) {
+                  setIntroSelected(false);
+                  document
+                    .querySelector<HTMLButtonElement>(
+                      `.inspector .tabs button[data-tab="${target}"]`,
+                    )
+                    ?.click();
+                }
+              }}
+              selectIntro={selectIntro}
+            />
           )}
           <div
             className={
@@ -1593,13 +1650,14 @@ export function App() {
                       </p>
                       <button
                         className="wide"
+                        disabled={!p.moves[selected]}
                         onClick={() => {
+                          workspace.patch({ hideRight: false });
                           setIntroSelected(false);
-                          document
-                            .querySelector<HTMLButtonElement>(
-                              '.inspector .tabs [data-tab="effects"]',
-                            )
-                            ?.click();
+                          setInspectorRequest({
+                            section: "effects",
+                            version: Date.now(),
+                          });
                         }}
                       >
                         Edit selected move’s capture impact →
@@ -1647,6 +1705,9 @@ export function App() {
                           };
                           const segment = movePreviewWindow(draft, selected);
                           if (!segment) return;
+                          if (presetOrigin.current === null)
+                            presetOrigin.current = timeRef.current;
+                          setIntroSelected(false);
                           setBeforePreset(false);
                           setPresetDraft({
                             project: p,
@@ -1654,7 +1715,7 @@ export function App() {
                             effect: fx,
                           });
                           setAudition({
-                            time: segment.start,
+                            time: presetOrigin.current,
                             playing: false,
                             end: segment.end,
                             loopStart: segment.start,
@@ -1761,10 +1822,7 @@ export function App() {
                 setAnnotationFocus((n) => n + 1);
               }}
               playing={playing}
-              onToggle={() => {
-                if (modeRef.current === "storyboard") setAudition(null);
-                setPlaying((v) => !v);
-              }}
+              onToggle={togglePlayback}
               project={previewProject}
               time={time}
               assets={previewAssets}
@@ -1870,16 +1928,36 @@ export function App() {
               </span>
             </div>
           </div>
+          {mode === "source" && !p.moves.length && (
+            <div className="source-empty">
+              <span>
+                Import a game, or click a piece and its destination to enter the
+                first move.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  workspace.patch({ hideLeft: false });
+                  setTab("game");
+                  requestAnimationFrame(() =>
+                    focusSetting(
+                      document.querySelector('[data-category="game"]'),
+                      "Import a game",
+                      "Game text",
+                    ),
+                  );
+                }}
+              >
+                Import PGN or FEN
+              </button>
+            </div>
+          )}
           {mode === "storyboard" ? (
             <StoryTransport
               p={p}
               time={time}
               playing={playing}
-              toggle={() => {
-                setAudition(null);
-                if (time >= end) seek(0);
-                setPlaying((v) => !v);
-              }}
+              toggle={togglePlayback}
               seek={seek}
               loading={loadingAudio}
             />
@@ -1906,10 +1984,17 @@ export function App() {
                   </button>
                 )}
                 <button
-                  disabled={loadingAudio > 0}
+                  disabled={
+                    loadingAudio > 0 ||
+                    (!p.moves.length && !(introSelected && p.lead))
+                  }
                   onClick={() => previewMove()}
                 >
-                  {audition ? "Restore timeline" : "Preview this move"}
+                  {audition
+                    ? "Restore timeline"
+                    : introSelected
+                      ? "Preview intro"
+                      : "Preview this move"}
                 </button>
                 <label>
                   <input
@@ -1923,7 +2008,7 @@ export function App() {
                   Loop
                 </label>
                 <label>
-                  Playback speed{" "}
+                  Speed{" "}
                   <select
                     aria-label="Playback speed"
                     title="Change preview video and audio speed together. Export uses project timing."
@@ -1968,10 +2053,7 @@ export function App() {
                 loadingAudio={loadingAudio}
                 select={select}
                 seek={seek}
-                toggle={() => {
-                  if (time >= end) setTime(0);
-                  setPlaying((v) => !v);
-                }}
+                toggle={togglePlayback}
               />
             </>
           )}
@@ -1995,7 +2077,7 @@ export function App() {
               }}
               seek={seek}
               openSource={openSource}
-              exportStory={() => setExportOpen(true)}
+              exportStory={openExport}
               sourceIds={
                 checked.size
                   ? p.moves.filter((m) => checked.has(m.id)).map((m) => m.id)
@@ -2018,7 +2100,8 @@ export function App() {
               report={message}
               preview={(index) => {
                 setSelected(index);
-                previewMove(index);
+                setIntroSelected(false);
+                previewMove(index, false);
               }}
               navigate={(category, section, control) => {
                 setTab(category);
@@ -2245,10 +2328,7 @@ export function App() {
           settings={settings}
           setSettings={setSettings}
           seek={seek}
-          toggle={() => {
-            setAudition(null);
-            setPlaying((v) => !v);
-          }}
+          toggle={togglePlayback}
           addCaption={addQuickCaption}
           importAudio={() => importAsset("audio", "music")}
           close={() => setTranscriptOpen(false)}
@@ -2266,12 +2346,16 @@ export function App() {
           setFps={setFps}
           close={() => setExportOpen(false)}
           cancel={() => run(() => window.studio.cancelExport())}
-          render={(options) =>
-            run(async () => {
-              const started = await window.studio.export(p, options);
-              if (!started) message("Export file selection cancelled.");
-            })
+          chooseFFmpeg={async () =>
+            setSettings(await window.studio.tool("ffmpeg"))
           }
+          relinkAssets={() => {
+            setExportOpen(false);
+            switchMode("source");
+            workspace.patch({ hideLeft: false });
+            setTab("files");
+          }}
+          render={(options) => window.studio.export(p, options)}
         />
       )}
     </div>

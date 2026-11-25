@@ -351,15 +351,13 @@ export function App() {
       setPlaying(false);
       return;
     }
-    if (
-      loadingAudio ||
-      presentationDuration(previewProjectRef.current, modeRef.current) <= 0
-    )
-      return;
-    const end =
-      audition?.end ??
-      presentationDuration(previewProjectRef.current, modeRef.current);
-    if (timeRef.current >= end - 0.001) seek(audition?.loopStart ?? 0);
+    const mode = modeRef.current;
+    const length = presentationDuration(previewProjectRef.current, mode);
+    if (loadingAudio || length <= 0) return;
+    const moveAudition = mode === "source" ? audition : null;
+    if (mode === "storyboard") setAudition(null);
+    if (timeRef.current >= (moveAudition?.end ?? length) - 0.001)
+      seek(moveAudition?.loopStart ?? 0);
     setPlaying(true);
   }
   const selectionAnchor = useRef(0);

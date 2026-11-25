@@ -815,7 +815,10 @@
   font-size: var(--text-meta);
   border-top: 1px solid var(--line);
 }
-@container preview-shell (max-width: 520px) {
+.workspace:has(.preset-drawer):not(.left-hidden) .preview-shell {
+  --compact-preview-tools: true;
+}
+@container preview-shell (max-width: 520px) or style(--compact-preview-tools: true) {
   .viewport-extras .timeline-group-toggle {
     display: inline-flex !important;
   }

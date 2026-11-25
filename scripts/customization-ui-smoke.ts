@@ -406,6 +406,16 @@ try {
         box && box.y < size.height - 60,
         "Preset choices must be visible above the fold",
       );
+      if (size.width === 1366 && scale === "150") {
+        const canvasHost = await page.locator(".preview-host").boundingBox();
+        assert.ok(
+          canvasHost && canvasHost.height >= 150,
+          "Keep the board visible while browsing presets on a laptop",
+        );
+        await expect(
+          page.getByRole("button", { name: /^Tools/ }),
+        ).toBeVisible();
+      }
       await page.screenshot({
         path: `test-results/customization/library-${size.width}-${scale}.png`,
       });

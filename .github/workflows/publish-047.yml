@@ -16,7 +16,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SOURCE: bac0f4d5f52360dac497581874f1b44e46ab63cd
+          SOURCE: 1f62c0240039d7e0538035a73e86057dde77f4da
         run: |
           set -euo pipefail
           for attempt in {1..20}; do

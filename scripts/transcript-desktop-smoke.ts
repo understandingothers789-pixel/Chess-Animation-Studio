@@ -71,9 +71,14 @@ try {
     });
   }, file);
   await page.getByTitle("Open composition", { exact: true }).click();
-  await page
-    .getByRole("button", { name: "Captions & transcript", exact: true })
-    .click();
+  const captions = page.getByRole("button", {
+    name: "Captions & transcript",
+    exact: true,
+  });
+  const tools = page.getByRole("group", { name: "Preview tools menu" });
+  if (await tools.getByRole("button", { name: /^Tools/ }).isVisible())
+    await tools.getByRole("button", { name: /^Tools/ }).click();
+  await captions.click();
   await page
     .getByText("Automatic transcription · local Whisper (optional)", {
       exact: true,

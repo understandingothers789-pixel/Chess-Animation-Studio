@@ -748,8 +748,17 @@
   display: block;
   width: 74px;
   height: 74px;
-  object-fit: cover;
+  overflow: hidden;
   border: 1px solid var(--line);
+}
+.starting-square-meme-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.meme-crop-settings summary {
+  cursor: pointer;
 }
 .move-frame-stop {
   display: grid;

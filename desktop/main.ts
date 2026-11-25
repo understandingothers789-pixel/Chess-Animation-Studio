@@ -1,3 +1,4 @@
+import { prepareIntroVideo } from "./introVideo";
 import { installWhisper } from "./whisperSetup";
 import { transcribeLocal } from "./transcription";
 import { requiredAssetIds } from "../src/core/exportAssets";
@@ -404,7 +405,32 @@ app.whenReady().then(async () => {
     if ((await fs.stat(f)).size > 2e6) throw Error("Text file exceeds 2 MB.");
     return fs.readFile(f, "utf8");
   });
-  handle("importAsset", async (kind: "audio" | "image") => {
+  handle("importAsset", async (kind: Asset["kind"]) => {
+    if (kind === "filmstrip") {
+      if (!preferences.ffmpeg)
+        throw Error("Choose FFmpeg before importing an intro video.");
+      const input = await chooseFile([
+        {
+          name: "Intro video",
+          extensions: ["mp4", "mov", "webm", "mkv", "m4v"],
+        },
+      ]);
+      if (!input) return null;
+      const id = randomUUID();
+      const output = store(path.join("intro-media", id + ".jpg"));
+      await prepareIntroVideo(preferences.ffmpeg, input, output);
+      const a: Asset = {
+        id,
+        kind,
+        name: path.basename(input),
+        path: output,
+        source: "Intro video",
+        guidance:
+          "Prepared from the first 3 seconds. Relink by choosing the source video.",
+      };
+      allowed.set(a.id, path.resolve(output));
+      return a;
+    }
     if (!["audio", "image"].includes(kind)) throw Error("Invalid asset type.");
     const f = await chooseFile([
       {
@@ -588,7 +614,7 @@ app.whenReady().then(async () => {
       await active.start();
       const assets: Record<string, string> = {};
       for (const a of p.assets)
-        if (a.kind === "image" && needed.has(a.id))
+        if (a.kind !== "audio" && needed.has(a.id))
           assets[a.id] = await dataUrl(a);
       if (job !== active) {
         await active.clean();

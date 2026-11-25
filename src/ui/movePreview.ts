@@ -37,7 +37,13 @@ export function moveFrameStops(project: Project, index: number) {
     { label: "Settled", time: segment.finish },
   ];
   const meme = memeWindow(project.moves[index].effect, segment);
-  if (meme) stops.unshift({ label: "Meme", time: meme.start });
+  if (meme)
+    stops.unshift({
+      label: "Meme",
+      time: project.moves[index].effect.preMoveMeme?.fade
+        ? (meme.start + meme.end) / 2
+        : meme.start,
+    });
   const after = afterEffectWindow(project.moves[index].effect, segment);
   if (after)
     stops.push(

@@ -100,7 +100,7 @@ export class Scene {
     r.autoClear = false;
     r.setClearColor("#111918");
     this.world.add(this.root);
-    this.cameras = new CameraSystem(this.root);
+    this.cameras = new CameraSystem(this.root, this.assets);
     const camera = this.cameras.camera;
     const lighting = new LightingSystem(this.world);
     const spotlight = new SpotlightSystem(this.root, r, camera);

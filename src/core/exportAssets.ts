@@ -2,6 +2,7 @@ import type { Project } from "./project";
 import type { ExportOptions } from "../bridge";
 import { audioEvents } from "./audioEvents";
 import { compileStoryboard } from "./storyboard";
+import { squareVideoEnd } from "./introVideo";
 import { compileTimeline, memeWindow } from "./timeline";
 /** Conservative badge dependencies, exact selected-format background and output audio.
  * Unreferenced library files are never read by the export worker. */
@@ -10,6 +11,12 @@ export function requiredAssetIds(p: Project, o: ExportOptions) {
     bg = p.layouts[o.format];
   if (bg.background === "image" && bg.image) ids.add(bg.image);
   for (const id of Object.values(p.badgeAssets)) if (id) ids.add(id);
+  if (
+    o.mode !== "storyboard" &&
+    p.squareIntro?.asset &&
+    o.start < squareVideoEnd(p)
+  )
+    ids.add(p.squareIntro.asset);
   if (p.playerIntro?.asset) {
     const visible =
       o.mode === "storyboard"
@@ -21,7 +28,10 @@ export function requiredAssetIds(p: Project, o: ExportOptions) {
               start < o.end &&
               end >= o.start,
           )
-        : p.playerIntro.enabled && p.lead > 0 && o.start < p.lead;
+        : p.playerIntro.enabled &&
+          p.lead > squareVideoEnd(p) &&
+          o.end > squareVideoEnd(p) &&
+          o.start < p.lead;
     if (visible) ids.add(p.playerIntro.asset);
   }
   if (p.moves.some((move) => move.effect.preMoveMeme)) {

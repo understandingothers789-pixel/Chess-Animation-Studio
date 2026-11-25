@@ -217,6 +217,8 @@ export function FilesPanel(q: PanelProps) {
                         for (const fx of storedEffects(p))
                           if (fx.preMoveMeme?.asset === a.id)
                             fx.preMoveMeme.asset = replacement.id;
+                        if (p.squareIntro.asset === a.id)
+                          p.squareIntro.asset = replacement.id;
                         if (p.playerIntro.asset === a.id)
                           p.playerIntro.asset = replacement.id;
                         if (p.music.asset === a.id)
@@ -244,6 +246,8 @@ export function FilesPanel(q: PanelProps) {
                         if (fx.locked) fx.delay = moveLead(fx);
                         fx.preMoveMeme = null;
                       }
+                    if (p.squareIntro.asset === a.id)
+                      p.squareIntro.asset = null;
                     if (p.playerIntro.asset === a.id)
                       p.playerIntro.asset = null;
                     if (p.music.asset === a.id) p.music.asset = null;

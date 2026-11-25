@@ -205,7 +205,11 @@ export class OverlaySystem {
     const portrait: HTMLImageElement | undefined = player
       ? this.assetTextures.get(player.asset)?.image
       : undefined;
-    const intro = !portrait && p.introTitle.enabled && time < p.lead;
+    const intro =
+      !p.squareIntro?.asset &&
+      !portrait &&
+      p.introTitle.enabled &&
+      time < p.lead;
     if (p.evalBar || intro || portrait) {
       const canvas = this.overlayCanvas;
       // Once flight/impact/opacity settle the title pixels are constant.

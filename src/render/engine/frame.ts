@@ -1,3 +1,4 @@
+import { squareVideoEnd } from "../../core/introVideo";
 import { captureImpact } from "./impact";
 import {
   evaluate,
@@ -35,7 +36,12 @@ export function evaluateRenderFrame(
     p.moves[e.index]?.effect.cameras[format]?.mode === "game" && time >= p.lead;
   const short = format === "vertical" && (p.shorts.enabled || gameFraming);
   let boardLevel = 0;
-  if (fx.intro && fx.introPreset !== "still" && time < p.lead) {
+  if (
+    !squareVideoEnd(p) &&
+    fx.intro &&
+    fx.introPreset !== "still" &&
+    time < p.lead
+  ) {
     const u = Math.min(1, time / Math.min(p.lead, fx.introDuration)),
       k = u * u * (3 - 2 * u);
     if (fx.introPreset === "board-level") {

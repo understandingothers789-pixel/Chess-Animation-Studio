@@ -41,6 +41,7 @@ export function StartingSquareMeme({
     if (!id) fx.preMoveMeme = null;
     else if (canAdd(fx))
       fx.preMoveMeme = {
+        ...fx.preMoveMeme,
         asset: id,
         duration:
           fx.preMoveMeme?.duration ??
@@ -49,6 +50,12 @@ export function StartingSquareMeme({
             : memeTiming.default),
       };
   };
+
+  const crop = (field: "zoom" | "x" | "y" | "fade", value: number) =>
+    edit("Meme " + field, (draft) => {
+      for (const { effect } of group(draft))
+        if (effect.preMoveMeme) effect.preMoveMeme[field] = value;
+    });
 
   const controls = (
     <>
@@ -108,11 +115,22 @@ export function StartingSquareMeme({
         }
       />
       {meme && images[meme.asset] && (
-        <img
-          className="starting-square-meme-image"
-          src={images[meme.asset]}
-          alt="Meme preview cropped to a square"
-        />
+        <div className="starting-square-meme-image">
+          <img
+            src={images[meme.asset]}
+            alt="Meme preview cropped to a square"
+            style={{
+              objectPosition: `${(meme.x ?? 0.5) * 100}% ${(meme.y ?? 0.5) * 100}%`,
+              transformOrigin: `${(meme.x ?? 0.5) * 100}% ${(meme.y ?? 0.5) * 100}%`,
+              transform: `scale(${meme.zoom ?? 1})`,
+            }}
+          />
+        </div>
+      )}
+      {meme && !asset && (
+        <p className="danger">
+          Relink the meme image in Files or choose a replacement.
+        </p>
       )}
       {meme && (
         <Range
@@ -134,6 +152,51 @@ export function StartingSquareMeme({
             })
           }
         />
+      )}
+      {meme && (
+        <details className="meme-crop-settings">
+          <summary>Crop and transition</summary>
+          <Range
+            label="Meme crop zoom"
+            value={(meme.zoom ?? 1) * 100}
+            min={100}
+            max={300}
+            step={1}
+            unit="%"
+            resetValue={100}
+            onChange={(value) => crop("zoom", value / 100)}
+          />
+          <Range
+            label="Meme crop horizontal"
+            value={(meme.x ?? 0.5) * 100}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            resetValue={50}
+            onChange={(value) => crop("x", value / 100)}
+          />
+          <Range
+            label="Meme crop vertical"
+            value={(meme.y ?? 0.5) * 100}
+            min={0}
+            max={100}
+            step={1}
+            unit="%"
+            resetValue={50}
+            onChange={(value) => crop("y", value / 100)}
+          />
+          <Range
+            label="Meme fade time"
+            value={meme.fade ?? 0}
+            min={0}
+            max={0.25}
+            step={0.01}
+            unit="s"
+            resetValue={0}
+            onChange={(value) => crop("fade", value)}
+          />
+        </details>
       )}
       <p className="hint">
         Fills the moving piece’s square until departure. A longer meme adds time

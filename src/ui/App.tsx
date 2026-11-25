@@ -167,6 +167,7 @@ export function App() {
   });
   useEffect(() => localStorage.setItem("studio.exportFps", String(fps)), [fps]);
 
+  const [videoImporting, setVideoImporting] = useState(false);
   const [introSelected, setIntroSelected] = useState(false);
   const [selected, setSelected] = useState(0),
     [tab, setTab] = useState(
@@ -272,7 +273,7 @@ export function App() {
     () =>
       Object.fromEntries(
         p.assets
-          .filter((asset) => asset.kind === "image" && assets[asset.id])
+          .filter((asset) => asset.kind !== "audio" && assets[asset.id])
           .map((asset) => [asset.id, assets[asset.id]]),
       ),
     [p.assets, assets],
@@ -848,8 +849,14 @@ export function App() {
     worker.postMessage({ project: snapshot, text, kind, preserve });
   }
   async function importAsset(
-    kind: "audio" | "image",
-    use: "music" | "sound" | "background" | "badge" | "player intro",
+    kind: Asset["kind"],
+    use:
+      | "music"
+      | "sound"
+      | "background"
+      | "badge"
+      | "player intro"
+      | "square intro",
     badgeKind?: string,
   ) {
     const projectId = latest.current.id;
@@ -857,6 +864,19 @@ export function App() {
     if (!a || latest.current.id !== projectId) return;
     stop();
     edit("Import " + use, (p) => {
+      if (use === "square intro") {
+        if (p.assets.length >= 150)
+          throw Error("This project already has 150 local assets.");
+        p.assets.push(a);
+        p.squareIntro.asset = a.id;
+        p.lead = Math.max(
+          p.lead,
+          p.squareIntro.hold +
+            p.squareIntro.pullback +
+            (p.playerIntro.enabled ? 2 : 0.25),
+        );
+        return;
+      }
       if (use === "player intro") {
         const existing = p.assets.find(
           (asset) => asset.kind === a.kind && asset.path === a.path,
@@ -866,7 +886,12 @@ export function App() {
         if (!existing) p.assets.push(a);
         p.playerIntro.asset = (existing ?? a).id;
         p.playerIntro.enabled = true;
-        if (p.lead === 0) p.lead = 2;
+        if (p.squareIntro.asset)
+          p.lead = Math.max(
+            p.lead,
+            p.squareIntro.hold + p.squareIntro.pullback + 2,
+          );
+        else if (p.lead === 0) p.lead = 2;
         return;
       }
       p.assets.push(a);
@@ -2246,6 +2271,23 @@ export function App() {
                   missing={missing}
                   importPhoto={() =>
                     run(() => importAsset("image", "player intro"))
+                  }
+                  videoImporting={videoImporting}
+                  importVideo={() =>
+                    run(async () => {
+                      if (videoImporting) return;
+                      setVideoImporting(true);
+                      try {
+                        if (!settings.ffmpeg) {
+                          const next = await window.studio.tool("ffmpeg");
+                          setSettings(next);
+                          if (!next.ffmpeg) return;
+                        }
+                        await importAsset("filmstrip", "square intro");
+                      } finally {
+                        setVideoImporting(false);
+                      }
+                    })
                   }
                   previewIntro={() => {
                     seek(0);

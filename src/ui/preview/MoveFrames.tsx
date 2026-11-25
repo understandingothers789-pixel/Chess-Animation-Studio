@@ -91,7 +91,7 @@ export function MoveFrames({
     preview?.stops === stops && preview.revision === revision
       ? preview.frames
       : [];
-  const start = stops[0].time,
+  const start = timing?.segment.start ?? stops[0].time,
     end = stops[stops.length - 1].time;
   const at = Math.max(start, Math.min(end, time));
   const endTime = Math.ceil((end - start) * 1000);

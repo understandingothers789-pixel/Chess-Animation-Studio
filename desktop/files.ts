@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { parseProject, type Project, type Asset } from "../src/core/project";
 export const extensions = {
   audio: new Set([".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"]),
+  filmstrip: new Set([".jpg"]),
   image: new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]),
 };
 export async function atomic(file: string, data: string | Uint8Array) {
@@ -51,7 +52,7 @@ export async function dataUrl(a: Asset) {
     mime =
       ext === "svg"
         ? "image/svg+xml"
-        : a.kind === "image"
+        : a.kind !== "audio"
           ? `image/${ext === "jpg" ? "jpeg" : ext}`
           : `audio/${ext === "mp3" ? "mpeg" : ext === "m4a" ? "mp4" : ext}`;
   return `data:${mime};base64,${(await fs.readFile(a.path)).toString("base64")}`;

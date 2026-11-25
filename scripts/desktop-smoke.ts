@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
-import { blank, VERSION } from "../src/core/project";
+import { blank, parseProject, VERSION } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
 import { shotCaption, shotFromMove, titleShot } from "../src/core/storyboard";
 import { duration, segments } from "../src/core/timeline";
@@ -1016,6 +1016,61 @@ try {
   );
   console.log(
     "PASS: packaged storyboard creation, shot editing, native save/reopen, preview, nonconsecutive H.264/AAC export, cancellation, new project.",
+  );
+  const introInput = path.join(dir, "native-intro-source.mp4");
+  execFileSync(process.env.FFMPEG_PATH ?? "ffmpeg", [
+    "-v",
+    "error",
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    "testsrc2=s=160x120:r=24:d=0.8",
+    "-an",
+    "-threads",
+    "2",
+    introInput,
+  ]);
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__openPath = file;
+  }, introInput);
+  await page.getByRole("button", { name: "framing", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edit intro clip →", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Import intro video", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Preview video pullback", exact: true }),
+  ).toBeEnabled({ timeout: 55000 });
+  await page.getByLabel("Video square", { exact: true }).selectOption("b1");
+  const openerPath = path.join(dir, "native-intro.castudio");
+  await launch.evaluate((_, file) => {
+    (globalThis as any).__savePath = file;
+  }, openerPath);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect
+    .poll(async () =>
+      fs.stat(openerPath).then(
+        () => true,
+        () => false,
+      ),
+    )
+    .toBe(true);
+  const opener = parseProject(
+    JSON.parse(await fs.readFile(openerPath, "utf8")),
+  );
+  assert.equal(opener.squareIntro.square, "b1");
+  const prepared = opener.assets.find(
+    (asset) => asset.id === opener.squareIntro.asset,
+  );
+  assert.equal(prepared?.kind, "filmstrip");
+  assert.ok(
+    prepared && (await fs.stat(path.resolve(dir, prepared.path))).size > 0,
+  );
+  console.log(
+    "PASS: packaged video picker, FFmpeg preparation, square controls and preview.",
   );
   assert.deepEqual(errors, []);
   await fs.writeFile(

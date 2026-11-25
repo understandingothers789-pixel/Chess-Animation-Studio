@@ -510,6 +510,12 @@ try {
   await page.screenshot({
     path: "test-results/customization/starting-square-meme.png",
   });
+  await page.getByText("Crop and transition", { exact: true }).click();
+  await page.getByLabel("Meme crop zoom value", { exact: true }).fill("190");
+  await page.getByLabel("Meme fade time value", { exact: true }).fill("0.09");
+  await expect
+    .poll(async () => (await state()).moves[0].effect.preMoveMeme)
+    .toMatchObject({ zoom: 1.9, fade: 0.09 });
   await page.getByLabel("Meme image", { exact: true }).selectOption("");
   await expect
     .poll(async () => (await state()).moves[0].effect.preMoveMeme)
@@ -564,9 +570,47 @@ try {
   await expect(
     page.getByRole("button", { name: "Play", exact: true }),
   ).toBeVisible({ timeout: 15000 });
+  await page
+    .getByLabel("Player subtitle", { exact: true })
+    .fill("World Chess Champion");
+  await page
+    .getByLabel("Player transition", { exact: true })
+    .selectOption("spotlight");
+  await page.evaluate(() => {
+    const w = window as any;
+    w.studio.importAsset = async (kind: string) => {
+      if (kind !== "filmstrip") throw Error("Expected a video import");
+      return {
+        id: "intro-film",
+        name: "Opening.mp4",
+        path: "/fixtures/opening.jpg",
+        kind,
+        source: "Fixture",
+        guidance: "",
+      };
+    };
+  });
+  await page
+    .getByRole("button", { name: "Import intro video", exact: true })
+    .click();
+  await page.getByLabel("Video square", { exact: true }).selectOption("b1");
+  await page
+    .getByLabel("Board pullback time value", { exact: true })
+    .fill("1.4");
+  await expect
+    .poll(async () => (await state()).squareIntro)
+    .toMatchObject({ asset: "intro-film", square: "b1", pullback: 1.4 });
+  await expect(
+    page.getByRole("button", { name: "Preview video pullback", exact: true }),
+  ).toBeEnabled();
+  const composed = await state();
+  assert.ok(
+    composed.lead > composed.squareIntro.hold + composed.squareIntro.pullback,
+  );
+  assert.equal(composed.playerIntro.caption, "World Chess Champion");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: preset tooltips and live pop-up, explicit apply, reduced motion, landing alignment, preview controls, edge depth, board palette, and player intro.",
+    "PASS: preset tooltips and live pop-up, explicit apply, reduced motion, landing alignment, preview controls, edge depth, board palette, meme crop, player reveal, and video pullback.",
   );
 } finally {
   await browser.close();

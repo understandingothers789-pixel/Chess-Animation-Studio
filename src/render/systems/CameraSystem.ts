@@ -1,10 +1,16 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
+import { xy } from "../../core/chess";
+import { mix } from "../../core/timeline";
+import { squareVideoFrame } from "../../core/introVideo";
 import { Resources } from "../engine/resources";
 export class CameraSystem {
   private resources = new Resources();
   readonly camera = new T.OrthographicCamera();
-  constructor(private root: T.Group) {}
+  constructor(
+    private root: T.Group,
+    private assets: ReadonlyMap<string, T.Texture>,
+  ) {}
   update(c: RenderFrame) {
     const { p, e, time, w, format, short, square, viewH, sign, boardLevel } = c;
     this.root.rotation.z = p.style.orientation === "white" ? 0 : Math.PI;
@@ -30,13 +36,29 @@ export class CameraSystem {
     );
     this.camera.near = 0.1;
     this.camera.far = 100;
-    const x = (crop ? crop.x : e.camera.x + bg.x) * sign,
+    let x = (crop ? crop.x : e.camera.x + bg.x) * sign,
       y = (crop ? crop.y : e.camera.y + (square ? 0 : bg.y)) * sign,
-      tilt = (e.camera.tilt * Math.PI) / 180;
+      tilt = (e.camera.tilt * Math.PI) / 180,
+      rotation = e.camera.rotation;
+    const clip = c.mode === "source" && squareVideoFrame(p, time);
+    if (clip && this.assets.has(clip.asset)) {
+      const [sx, sy] = xy(clip.square);
+      const { progress } = clip;
+      x = mix(sx * sign, x, progress);
+      y = mix(sy * sign, y, progress);
+      const initialX = 0.49 * Math.min(1, aspect);
+      const initialY = initialX / aspect;
+      this.camera.right = initialX * (this.camera.right / initialX) ** progress;
+      this.camera.left = -this.camera.right;
+      this.camera.top = initialY * (this.camera.top / initialY) ** progress;
+      this.camera.bottom = -this.camera.top;
+      tilt *= progress;
+      rotation *= progress;
+    }
     this.camera.position.set(x, y + Math.sin(tilt) * 25, Math.cos(tilt) * 25);
     this.camera.up.set(0, 1, 0);
     this.camera.lookAt(x, y, 0);
-    this.camera.rotateZ((e.camera.rotation * Math.PI) / 180);
+    this.camera.rotateZ((rotation * Math.PI) / 180);
     this.camera.updateProjectionMatrix();
     if (boardLevel > 0) {
       // Match the perspective projection to the orthographic camera at the board center.

@@ -8,6 +8,8 @@ export function IntroInspector({
   images,
   missing,
   importPhoto,
+  importVideo,
+  videoImporting,
   previewIntro,
 }: {
   project: Project;
@@ -15,9 +17,19 @@ export function IntroInspector({
   images: Record<string, string>;
   missing: Set<string>;
   importPhoto: () => void;
+  importVideo: () => void;
+  videoImporting: boolean;
   previewIntro: () => void;
 }) {
   const intro = p.playerIntro;
+  const clip = p.squareIntro;
+  const video = p.assets.find((item) => item.id === clip.asset);
+  const videoTime = clip.hold + clip.pullback;
+  const minIntro = clip.asset ? videoTime + (intro.enabled ? 0.5 : 0) : 0.2;
+  const squares = Array.from({ length: 64 }, (_, i) => {
+    const square = "abcdefgh"[i % 8] + (8 - Math.floor(i / 8));
+    return [square, square] as const;
+  });
   const photos = p.assets.filter((asset) => asset.kind === "image");
   const photo = photos.find((asset) => asset.id === intro.asset);
   const lostPhoto = !!intro.asset && (!photo || missing.has(intro.asset));
@@ -39,7 +51,9 @@ export function IntroInspector({
             onChange={(enabled) =>
               edit("Player intro", (p) => {
                 p.playerIntro.enabled = enabled;
-                if (enabled && p.lead === 0) p.lead = 2;
+                if (enabled && clip.asset)
+                  p.lead = Math.max(p.lead, videoTime + 2);
+                else if (enabled && p.lead === 0) p.lead = 2;
               })
             }
           />
@@ -76,7 +90,8 @@ export function IntroInspector({
                 p.playerIntro.asset = id || null;
                 if (id) {
                   p.playerIntro.enabled = true;
-                  if (p.lead === 0) p.lead = 2;
+                  if (clip.asset) p.lead = Math.max(p.lead, videoTime + 2);
+                  else if (p.lead === 0) p.lead = 2;
                 }
               })
             }
@@ -105,6 +120,20 @@ export function IntroInspector({
               }
             />
           </label>
+          <label className="text-field">
+            Player subtitle
+            <input
+              aria-label="Player subtitle"
+              placeholder="Optional title or match details"
+              value={intro.caption ?? ""}
+              maxLength={80}
+              onChange={(event) =>
+                edit("Player subtitle", (draft) => {
+                  draft.playerIntro.caption = event.target.value;
+                })
+              }
+            />
+          </label>
           <Select
             label="Player transition"
             value={intro.transition}
@@ -112,6 +141,7 @@ export function IntroInspector({
               ["rise", "Fade and rise"],
               ["zoom", "Gentle zoom"],
               ["fade", "Crossfade"],
+              ["spotlight", "Spotlight reveal"],
             ]}
             onChange={(transition) =>
               edit("Player transition", (p) => {
@@ -133,9 +163,118 @@ export function IntroInspector({
               })
             }
           />
+          <Range
+            label="Player transition time"
+            value={intro.fade ?? 0.45}
+            min={0.1}
+            max={1}
+            step={0.05}
+            unit="s"
+            resetValue={0.45}
+            onChange={(fade) =>
+              edit("Player transition time", (draft) => {
+                draft.playerIntro.fade = fade;
+              })
+            }
+          />
           <p className="hint">
             A transparent PNG keeps the board visible around the player. Set the
             display time with Intro clip length.
+          </p>
+        </Section>
+        <Section
+          title="Video pullback"
+          status={video?.name ?? (clip.asset ? "Missing video" : "Off")}
+        >
+          <div className="button-row">
+            <button
+              type="button"
+              onClick={importVideo}
+              disabled={videoImporting}
+            >
+              {videoImporting
+                ? "Preparing video…"
+                : clip.asset
+                  ? "Replace intro video"
+                  : "Import intro video"}
+            </button>
+            <button
+              type="button"
+              disabled={!clip.asset || !images[clip.asset]}
+              onClick={previewIntro}
+            >
+              Preview video pullback
+            </button>
+            {clip.asset && (
+              <button
+                type="button"
+                onClick={() =>
+                  edit("Clear intro video", (draft) => {
+                    draft.squareIntro.asset = null;
+                  })
+                }
+              >
+                Clear video
+              </button>
+            )}
+          </div>
+          {clip.asset && (!video || missing.has(clip.asset)) && (
+            <p className="danger">
+              Relink the intro video in Files or import a replacement.
+            </p>
+          )}
+          {clip.asset && (
+            <>
+              <Select
+                label="Video square"
+                value={clip.square}
+                options={squares}
+                onChange={(square) =>
+                  edit("Video square", (draft) => {
+                    draft.squareIntro.square = square;
+                  })
+                }
+              />
+              <Range
+                label="Video close-up time"
+                value={clip.hold}
+                min={0}
+                max={3}
+                step={0.05}
+                unit="s"
+                onChange={(hold) =>
+                  edit("Video close-up time", (draft) => {
+                    draft.squareIntro.hold = hold;
+                    draft.lead = Math.max(
+                      draft.lead,
+                      hold + clip.pullback + (intro.enabled ? 0.5 : 0),
+                    );
+                  })
+                }
+              />
+              <Range
+                label="Board pullback time"
+                value={clip.pullback}
+                min={0.25}
+                max={3}
+                step={0.05}
+                unit="s"
+                onChange={(pullback) =>
+                  edit("Board pullback time", (draft) => {
+                    draft.squareIntro.pullback = pullback;
+                    draft.lead = Math.max(
+                      draft.lead,
+                      clip.hold + pullback + (intro.enabled ? 0.5 : 0),
+                    );
+                  })
+                }
+              />
+            </>
+          )}
+          <p className="hint">
+            Uses the first 3 seconds without audio and holds the final frame if
+            needed. The video pulls back into the chosen square. An enabled
+            player photo appears next.
           </p>
         </Section>
         <Section title="Animated title">
@@ -186,7 +325,7 @@ export function IntroInspector({
           onReset={() =>
             edit("Reset opener", (p) => {
               const d = blank();
-              p.lead = d.lead;
+              p.lead = Math.max(d.lead, minIntro);
               for (const k of [
                 "intro",
                 "introPreset",
@@ -227,8 +366,8 @@ export function IntroInspector({
           <Range
             label="Intro clip length"
             value={p.lead}
-            resetValue={blank().lead}
-            min={0.2}
+            resetValue={Math.max(blank().lead, minIntro)}
+            min={minIntro}
             max={8}
             step={0.1}
             unit="s"
@@ -280,6 +419,9 @@ export function IntroInspector({
               })
             }
           />
+          {clip.asset && (
+            <p className="hint">Video pullback uses its own camera move.</p>
+          )}
           <p className="hint">
             Any time left after the animation holds the board still. Snow is
             configurable in Atmosphere → Snow particles.

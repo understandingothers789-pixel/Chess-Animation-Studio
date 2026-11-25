@@ -196,6 +196,10 @@ export const effectSchema = z.object({
     .object({
       asset: str,
       duration: n(memeTiming.min, memeTiming.max),
+      zoom: n(1, 3).optional(),
+      x: n(0, 1).optional(),
+      y: n(0, 1).optional(),
+      fade: n(0, 0.25).optional(),
     })
     .nullable()
     .default(null),
@@ -458,7 +462,7 @@ export function effect(preset: Preset = "slide"): Effect {
 const assetSchema = z.object({
   id: str,
   name: str,
-  kind: z.enum(["audio", "image"]),
+  kind: z.enum(["audio", "image", "filmstrip"]),
   path: z.string().max(4096),
   source: z.string().max(3000),
   guidance: z.string().max(6000),
@@ -587,9 +591,21 @@ const playerIntroSchema = z.object({
   asset: str.nullable().default(null),
   name: z.string().max(80).default(""),
   size: n(0.18, 0.72).default(0.42),
-  transition: z.enum(["rise", "zoom", "fade"]).default("rise"),
+  transition: z.enum(["rise", "zoom", "fade", "spotlight"]).default("rise"),
+  caption: z.string().max(80).optional(),
+  fade: n(0.1, 1).optional(),
 });
 export const playerIntro = () => playerIntroSchema.parse({});
+const squareIntroSchema = z.object({
+  asset: str.nullable().default(null),
+  square: z
+    .string()
+    .regex(/^[a-h][1-8]$/)
+    .default("e4"),
+  hold: n(0, 3).default(1.2),
+  pullback: n(0.25, 3).default(1.1),
+});
+export const squareIntro = () => squareIntroSchema.parse({});
 
 export const storyboardShotSchema = z
   .object({
@@ -843,6 +859,7 @@ export const projectSchema = z.object({
   }),
   evalBar: z.boolean().default(false),
   playerIntro: playerIntroSchema.prefault({}),
+  squareIntro: squareIntroSchema.prefault({}),
   introTitle: z
     .object({
       enabled: z.boolean(),
@@ -1047,6 +1064,7 @@ export function blank(): Project {
     },
     evalBar: false,
     playerIntro: playerIntro(),
+    squareIntro: squareIntro(),
     introTitle: { enabled: false, text: "CHESS STORY", piece: "knight" },
     reviewColors: {
       enabled: true,

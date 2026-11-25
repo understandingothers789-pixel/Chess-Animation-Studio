@@ -8,6 +8,7 @@ import { blank, boardPalettes, camera } from "../src/core/project";
 import { duration, segments } from "../src/core/timeline";
 import { shotFromMove } from "../src/core/storyboard";
 import { VideoJob } from "../desktop/export";
+import { prepareIntroVideo } from "../desktop/introVideo";
 import { dataUrl } from "../desktop/files";
 const dir = path.resolve("test-results/customization-render");
 await fs.mkdir(dir, { recursive: true });
@@ -235,8 +236,148 @@ try {
   assert.equal(blueCenter(decodedFrame(Math.ceil(p.lead * 24))), false);
   assert.ok(pink(decodedFrame(Math.round(memeTime * 24)), 1.2, -3.7));
   assert.equal(pink(decodedFrame(Math.ceil(depart * 24)), 1.2, -3.7), false);
+  const input = path.join(dir, "square-opener-source.mp4");
+  const film = path.join(dir, "square-opener-film.jpg");
+  execFileSync("ffmpeg", [
+    "-v",
+    "error",
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    "color=yellow:s=128x96:r=24:d=0.4",
+    "-f",
+    "lavfi",
+    "-i",
+    "color=magenta:s=128x96:r=24:d=0.7",
+    "-filter_complex",
+    "[0:v][1:v]concat=n=2:v=1:a=0",
+    "-c:v",
+    "libx264",
+    "-threads",
+    "2",
+    input,
+  ]);
+  await prepareIntroVideo("ffmpeg", input, film);
+  const filmAsset = {
+    ...p.assets[0],
+    id: "opening-video",
+    kind: "filmstrip" as const,
+    path: film,
+  };
+  p.assets.push(filmAsset);
+  p.squareIntro = {
+    asset: filmAsset.id,
+    square: "e4",
+    hold: 0.8,
+    pullback: 0.65,
+  };
+  p.lead = 2.45;
+  p.playerIntro.transition = "spotlight";
+  p.playerIntro.caption = "World Chess Champion";
+  p.moves[0].effect.preMoveMeme = {
+    asset: "reaction",
+    duration: 0.65,
+    x: 1,
+    zoom: 2,
+    fade: 0.1,
+  };
+  await page.evaluate(
+    async ({ project, urls }) => {
+      const w = window as any;
+      await w.scene.prepareAssets(urls);
+      w.project = project;
+    },
+    {
+      project: p,
+      urls: {
+        reaction: await dataUrl(p.assets[0]),
+        portrait: await dataUrl(p.assets[1]),
+        [filmAsset.id]: await dataUrl(filmAsset),
+      },
+    },
+  );
+  const center = (pixels: Buffer) => {
+    const i = (size * (size / 2) + size / 2) * 4;
+    return [...pixels.subarray(i, i + 3)];
+  };
+  const isYellow = ([r, g, b]: number[]) => r > 160 && g > 150 && b < 85;
+  const isMagenta = ([r, g, b]: number[]) => r > 160 && g < 90 && b > 160;
+  const first = await frame(0.15);
+  assert.ok(isYellow(center(first)), "The opening close-up plays the video");
+  assert.ok(
+    isMagenta(center(await frame(0.65))),
+    "The video advances on the composition clock",
+  );
+  assert.ok(
+    isYellow(center(await frame(0.15, "source", "black"))),
+    "Black orientation targets the same square",
+  );
+  assert.ok(
+    !isMagenta(center(await frame(1.5))),
+    "The full board replaces the close-up",
+  );
+  assert.ok(blueCenter(await frame(1.9)), "The player follows the video");
+  assert.deepEqual(
+    await frame(0.15),
+    first,
+    "Backward seeking restores the video frame",
+  );
+
+  const newMeme = await frame(p.lead + 0.2);
+  const [col, row] = boardPixel(1.3, -3.7);
+  const offset = (row * size + col) * 4;
+  assert.ok(
+    newMeme[offset + 1] > 160 && newMeme[offset] < 100,
+    "Crop controls choose the visible side",
+  );
+  const videoMp4 = path.join(dir, "video-pullback-and-player.mp4");
+  const video = new VideoJob(
+    p,
+    {
+      format: "square",
+      mode: "source",
+      start: 0,
+      end: p.lead,
+      width: size,
+      height: size,
+      fps: 24,
+    },
+    videoMp4,
+    "ffmpeg",
+    false,
+    () => {},
+  );
+  await video.start();
+  try {
+    for (let i = 0; i < video.frames; i++)
+      await video.frame(await frame(i / 24), i);
+    await video.finish();
+  } catch (error) {
+    await video.cancel();
+    throw error;
+  }
+  const rendered = execFileSync("ffmpeg", [
+    "-v",
+    "error",
+    "-ss",
+    "0.65",
+    "-i",
+    videoMp4,
+    "-frames:v",
+    "1",
+    "-f",
+    "rawvideo",
+    "-pix_fmt",
+    "rgba",
+    "-",
+  ]);
+  assert.ok(
+    isMagenta(center(rendered)),
+    "The exported MP4 contains the moving video",
+  );
   console.log(
-    "PASS: centered player intro, storyboard, decoded MP4, exact-square crop, and backward seeking.",
+    "PASS: player reveal, square video pullback, sticker crop, both orientations, exact backward seeks, and decoded MP4.",
   );
 } finally {
   await browser?.close();

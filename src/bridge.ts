@@ -43,7 +43,7 @@ export interface Studio {
   discardRecovery(): Promise<void>;
   autosave(p: Project): Promise<void>;
   recent(): Promise<string[]>;
-  importAsset(kind: "audio" | "image"): Promise<Asset | null>;
+  importAsset(kind: Asset["kind"]): Promise<Asset | null>;
   assetData(a: Asset): Promise<string | null>;
   assetStatus(assets: Asset[]): Promise<Record<string, string | null>>;
   collect(p: Project): Promise<{ project: Project; path: string } | null>;

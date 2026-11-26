@@ -7,6 +7,7 @@ export interface Settings {
   whisper?: string;
   whisperModel?: string;
   platform?: string;
+  architecture?: string;
 }
 export interface ExportOptions {
   mode?: PlaybackMode;
@@ -57,6 +58,10 @@ export interface Studio {
   chooseText(kind: "pgn" | "fen"): Promise<string | null>;
   settings(): Promise<Settings>;
   tool(kind: "ffmpeg" | "stockfish"): Promise<Settings>;
+  stockfishInstall(): Promise<Settings | null>;
+  cancelStockfishInstall(): Promise<void>;
+  showStockfish(): Promise<void>;
+  onStockfishProgress(cb: (message: string) => void): () => void;
   setEncoder(encoder: "auto" | "software"): Promise<void>;
   token(value: string): Promise<void>;
   logs(): Promise<void>;

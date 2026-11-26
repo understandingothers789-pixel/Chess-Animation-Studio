@@ -1,3 +1,4 @@
+import { engineNotation, mistakeLossCp } from "../src/core/badgeNotation";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -169,7 +170,7 @@ async function reviewMove(
   const best = await engine.search(fen, p, [], depth);
   const played =
     best.best === move ? best : await engine.search(fen, p, [move], depth);
-  const lossLimit = best.score >= 90000 && played.score >= 90000 ? 100 : 40;
+  const loss = Math.max(0, best.score - played.score);
   let sacrifice: ReturnType<typeof sacrificeLine>;
   if (
     candidate?.replies.length &&
@@ -177,7 +178,7 @@ async function reviewMove(
     played.exact &&
     Math.min(best.depth, played.depth) >= sacrificeDepth &&
     played.score >= -35 &&
-    best.score - played.score <= lossLimit
+    loss <= mistakeLossCp
   ) {
     const replies = candidate.replies.map(replyUci);
     if (replies.includes(played.pv[1])) {
@@ -197,23 +198,12 @@ async function reviewMove(
         sacrifice = sacrificeLine(candidate, accepted.pv);
     }
   }
-  const loss = Math.max(0, best.score - played.score);
   return {
     state: "done",
     score: played.score,
     loss,
     best: best.best,
-    label: sacrifice
-      ? "brilliant"
-      : best.best === move
-        ? "best"
-        : loss < 35
-          ? "good"
-          : loss < 90
-            ? "inaccuracy"
-            : loss < 180
-              ? "mistake"
-              : "blunder",
+    label: engineNotation(loss, best.best === move, !!sacrifice),
     depth: played.depth,
     message: engine.name + "; root mover perspective",
     ...(sacrifice ? { sacrifice } : {}),
@@ -334,7 +324,7 @@ export async function analyze(
       } else {
         const id = key(
           JSON.stringify([
-            "sacrifice-v1",
+            "sacrifice-v2",
             executable,
             engine!.name,
             s.fen,

@@ -1,3 +1,4 @@
+import { engineNotation } from "./badgeNotation";
 import { firstMatchingIndex } from "./sorted";
 import { beatInMusic } from "./beatMarkers";
 import {
@@ -173,13 +174,18 @@ export function badge(m: Project["moves"][number]) {
   const b = m.effect.badge.manual;
   if (b === "none") return null;
   if (b) return b;
-  if (
-    m.analysis.engine?.state === "done" &&
-    m.analysis.engine.label === "brilliant"
-  )
-    return "brilliant";
+  const review = m.analysis.engine;
+  const rating =
+    review?.state === "done"
+      ? engineNotation(
+          review.loss,
+          review.label === "best",
+          review.label === "brilliant",
+        )
+      : null;
+  if (rating === "mistake" || rating === "brilliant") return rating;
   if (m.analysis.book?.state === "found") return "book";
-  return m.analysis.engine?.state === "done" ? m.analysis.engine.label : null;
+  return rating;
 }
 export interface Visual extends Piece {
   x: number;

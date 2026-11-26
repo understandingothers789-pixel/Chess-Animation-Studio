@@ -1,5 +1,5 @@
 import { settingHelp } from "../help";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   effect,
   cinematicPresets,
@@ -43,6 +43,12 @@ function storedEffects(project: Project) {
 export function FilesPanel(q: PanelProps) {
   const p = q.project,
     [token, setToken] = useState("");
+  const [installing, setInstalling] = useState(false);
+  const [stockfishStatus, setStockfishStatus] = useState("");
+  useEffect(() => window.studio.onStockfishProgress?.(setStockfishStatus), []);
+  const available =
+    q.settings.platform === "win32" &&
+    ["x64", "arm64"].includes(q.settings.architecture ?? "");
   return (
     <>
       <Section title="Share project settings">
@@ -78,6 +84,7 @@ export function FilesPanel(q: PanelProps) {
         <button
           title="Choose a local Stockfish executable for optional engine analysis and move-badge suggestions."
           className="wide"
+          disabled={installing}
           onClick={() =>
             q.run(async () =>
               q.setSettings(await window.studio.tool("stockfish")),
@@ -86,9 +93,62 @@ export function FilesPanel(q: PanelProps) {
         >
           Choose Stockfish executable…
         </button>
+        {available && (
+          <>
+            <button
+              type="button"
+              className="wide"
+              disabled={installing}
+              onClick={() =>
+                q.run(async () => {
+                  setInstalling(true);
+                  setStockfishStatus("Checking official Stockfish releases…");
+                  try {
+                    const settings = await window.studio.stockfishInstall();
+                    if (settings) {
+                      q.setSettings(settings);
+                      q.message("Stockfish dev is ready for analysis.");
+                    }
+                  } finally {
+                    setInstalling(false);
+                    setStockfishStatus("");
+                  }
+                })
+              }
+            >
+              Download latest Stockfish dev
+            </button>
+            <p className="hint">
+              Saves the engine under Downloads / Stockfish Development and
+              selects it for analysis. The same build can be reused across
+              Studio versions.
+            </p>
+          </>
+        )}
+        {installing && (
+          <div className="button-row">
+            <span role="status">{stockfishStatus}</span>
+            <button
+              type="button"
+              onClick={() =>
+                q.run(() => window.studio.cancelStockfishInstall())
+              }
+            >
+              Cancel download
+            </button>
+          </div>
+        )}
         <p className="path">
           {q.settings.stockfish || "Stockfish is optional."}
         </p>
+        {q.settings.stockfish && (
+          <button
+            type="button"
+            onClick={() => q.run(() => window.studio.showStockfish())}
+          >
+            Show Stockfish in folder
+          </button>
+        )}
         <Select
           label="Video encoder"
           value={q.settings.encoder}

@@ -1,3 +1,4 @@
+import { engineNotation } from "./badgeNotation";
 import { moveGroups } from "./editing";
 import type { Project } from "./project";
 export function highlightGroups(p: Project): Record<string, string[]> {
@@ -32,7 +33,9 @@ export function highlightMatches(p: Project, filters: string[]) {
       (name) => name !== "All moves" && sets[name].has(m.id),
     );
     if (m.analysis.engine?.state === "done")
-      reasons.push(`Engine: ${m.analysis.engine.label}`);
+      reasons.push(
+        `Engine: ${engineNotation(m.analysis.engine.loss, m.analysis.engine.label === "best", m.analysis.engine.label === "brilliant")}`,
+      );
     return [{ id: m.id, index, san: m.san, reasons }];
   });
 }

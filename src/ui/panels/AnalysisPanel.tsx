@@ -1,3 +1,4 @@
+import { engineNotation } from "../../core/badgeNotation";
 import { settingHelp } from "../help";
 import { useState } from "react";
 import {
@@ -144,8 +145,9 @@ export function AnalysisPanel(q: PanelProps) {
           </button>
         )}
         <p className="hint">
-          Stockfish adds !! to near-best piece sacrifices after a deeper
-          tactical check. Manual badges and hidden badges take priority.
+          A move that loses more than 0.50 pawns gets ?. Stockfish adds !! to
+          near-best piece sacrifices after a deeper tactical check. Manual
+          badges and hidden badges take priority.
         </p>
       </Section>
       <Section
@@ -273,7 +275,11 @@ export function AnalysisPanel(q: PanelProps) {
                   Engine:{" "}
                   <strong>
                     {a.engine.state === "done"
-                      ? a.engine.label
+                      ? engineNotation(
+                          a.engine.loss,
+                          a.engine.label === "best",
+                          a.engine.label === "brilliant",
+                        )
                       : a.engine.state}
                   </strong>
                   <br />

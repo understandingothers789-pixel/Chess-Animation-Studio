@@ -1,3 +1,4 @@
+import { installStockfishDev } from "./stockfishSetup";
 import { prepareIntroVideo } from "./introVideo";
 import { installWhisper } from "./whisperSetup";
 import { transcribeLocal } from "./transcription";
@@ -43,6 +44,10 @@ let editor: BrowserWindow | null = null,
   job: VideoJob | null = null,
   analysis: AbortController | null = null;
 let transcription: AbortController | null = null;
+let stockfishDownload: {
+  controller: AbortController;
+  task: Promise<Settings>;
+} | null = null;
 let exportGeneration = 0;
 let pathProjectId: string | null = null;
 let currentPath: string | null = null,
@@ -58,7 +63,10 @@ let recoveryTimer: NodeJS.Timeout | undefined,
   recoveryWrite = Promise.resolve(),
   lastState: unknown = null;
 let quitting = false;
-app.on("before-quit", () => transcription?.abort());
+app.on("before-quit", () => {
+  transcription?.abort();
+  stockfishDownload?.controller.abort();
+});
 app.setPath(
   "userData",
   process.env.STUDIO_USER_DATA ??
@@ -229,6 +237,7 @@ app.whenReady().then(async () => {
     stockfish: process.env.STOCKFISH_PATH ?? saved.stockfish ?? "",
     tokenPresent: !!(await readToken()),
     platform: process.platform,
+    architecture: process.arch,
     whisper: process.env.WHISPER_PATH ?? saved.whisper,
     whisperModel: process.env.WHISPER_MODEL_PATH ?? saved.whisperModel,
   };
@@ -236,6 +245,14 @@ app.whenReady().then(async () => {
   editor = windowOf("editor");
   void log(`Startup ${VERSION}; ${process.platform} ${process.arch}`);
   editor.on("close", (e) => {
+    if (stockfishDownload) {
+      e.preventDefault();
+      stockfishDownload.controller.abort();
+      void stockfishDownload.task
+        .catch(() => {})
+        .finally(() => editor?.close());
+      return;
+    }
     if (!quitting && lastProject) {
       e.preventDefault();
       quitting = true;
@@ -508,6 +525,38 @@ app.whenReady().then(async () => {
     return pack;
   });
   handle("settings", () => preferences);
+  handle("stockfishInstall", async () => {
+    if (stockfishDownload) throw Error("Stockfish setup is already running.");
+    const controller = new AbortController();
+    const task = (async () => {
+      const result = await installStockfishDev(
+        app.getPath("downloads"),
+        process.platform,
+        process.arch,
+        controller.signal,
+        (message) => editor?.webContents.send("stockfish-progress", message),
+      );
+      const next = { ...preferences, stockfish: result.binary };
+      await atomic(store("settings.json"), JSON.stringify(next));
+      preferences.stockfish = result.binary;
+      return preferences;
+    })();
+    stockfishDownload = { controller, task };
+    try {
+      return await task;
+    } catch (error) {
+      if (controller.signal.aborted) return null;
+      throw error;
+    } finally {
+      stockfishDownload = null;
+    }
+  });
+  handle("cancelStockfishInstall", () => {
+    stockfishDownload?.controller.abort();
+  });
+  handle("showStockfish", () => {
+    if (preferences.stockfish) shell.showItemInFolder(preferences.stockfish);
+  });
   handle("tool", async (kind: "ffmpeg" | "stockfish") => {
     if (!["ffmpeg", "stockfish"].includes(kind)) throw Error("Unknown tool.");
     const f = await chooseFile([

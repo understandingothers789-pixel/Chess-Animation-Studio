@@ -28,3 +28,16 @@ export function notationColor(
     ? palette[rating as keyof typeof notationColors]
     : undefined;
 }
+
+export const mistakeLossCp = 50;
+
+/** Convert current and saved engine results to the editor's automatic badges. */
+export function engineNotation(
+  loss: number,
+  best: boolean,
+  brilliant: boolean,
+) {
+  if (loss > mistakeLossCp) return "mistake";
+  if (brilliant) return "brilliant";
+  return best ? "best" : "good";
+}

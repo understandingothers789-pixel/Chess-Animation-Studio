@@ -143,7 +143,7 @@ The 0.2.17 release displays **0.2.15** in the app because of a version-label err
 1. Extract **all** files from the versioned Windows ZIP.
 2. Double-click **Chess Animation Studio.exe**. Keep its companion files and folders together.
 3. In the **Files** tab, choose your local `ffmpeg.exe` to enable MP4 export. Download Windows builds through [FFmpeg's official download page](https://ffmpeg.org/download.html).
-4. Optionally choose a local Stockfish executable from [Stockfish's official download page](https://stockfishchess.org/download/).
+4. In **Files → Local tools**, choose **Download latest Stockfish dev** on Windows x64 or ARM64. Studio stores the engine in **Downloads / Stockfish Development** and reuses the same verified build across versions. You can also choose an existing executable from [Stockfish's official download page](https://stockfishchess.org/download/).
 
 No Node.js, npm, compiler, or source build is required to use the portable app. No encoder or engine executable is bundled. Open the Opera Game sample to try original synthesized music, corrected landing markers, sway, a thin-edge spin and capture glow.
 
@@ -156,7 +156,7 @@ The runtime and application are unsigned. The native workflow records `Get-Authe
 - **Motion / Camera / Look / Keys:** refine the selected move, including normalized keyframes and framing per output format.
 - **Music:** import music, analyze transients, correct markers, preview timing arrangements, and assign local sound cues.
 - **Scene:** select sharp artwork, adjust board colors, atmosphere, dark-square pulses and per-format layout.
-- **Analysis:** run **Review game with Stockfish** to mark near-best piece sacrifices with **!!**. **Selected move results** shows the line if the opponent takes the piece. The source and destination match the move notation by default. Use **Analysis → Move notation colors** to change the palette or turn matching off for the project. Use **Effects → Highlights & trail** to override selected moves.
+- **Analysis:** run **Review game with Stockfish** to mark near-best piece sacrifices with **!!**. **Selected move results** shows the line if the opponent takes the piece. An engine-reviewed move with more than 0.50 pawns of loss gets **?**. The source and destination match the move notation by default. Use **Analysis → Move notation colors** to change the palette or turn matching off for the project. Use **Effects → Highlights & trail** to override selected moves.
 - **Files:** configure tools and optional credentials, collect a portable project, relink assets, open logs and recent projects.
 
 See the [user guide](docs/USER_GUIDE.md), [architecture](docs/ARCHITECTURE.md), [sources and licensing](docs/SOURCES.md), and [known limits](docs/VALIDATION.md).

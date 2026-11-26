@@ -34,6 +34,10 @@ try {
   });
   page.on("pageerror", (e) => errors.push(e.message));
   await page.addInitScript(() => {
+    localStorage.setItem(
+      "studio.presetRecent",
+      JSON.stringify(["flip", "slide"]),
+    );
     (window as any).__name = (fn: unknown) => fn;
     const w = window as any;
     w.studio = {
@@ -356,12 +360,6 @@ try {
   await page
     .getByRole("button", { name: "Save as reusable preset", exact: true })
     .click();
-  await page.evaluate(() =>
-    localStorage.setItem(
-      "studio.presetRecent",
-      JSON.stringify(["flip", "slide"]),
-    ),
-  );
   await page.getByRole("button", { name: "presets", exact: true }).click();
   await page.getByRole("button", { name: "Recent", exact: true }).click();
   await expect(page.locator(".animation-card strong")).toHaveText([

@@ -18,9 +18,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          SOURCE: 64984fcb198175dab33c44f90144c77a75bb6c54
         run: |
           set -euo pipefail
-          SOURCE=$(git rev-parse HEAD^)
           for attempt in {1..20}; do
             RUN="$(gh run list --workflow windows.yml --commit "$SOURCE" --event push --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
             if [[ -n "$RUN" ]]; then break; fi

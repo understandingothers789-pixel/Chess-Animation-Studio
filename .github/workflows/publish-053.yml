@@ -4,7 +4,7 @@ on:
     branches: [release/publish-053]
     paths: [.github/workflows/publish-053.yml]
 permissions:
-  actions: read
+  actions: write
   contents: write
 jobs:
   publish:
@@ -14,11 +14,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
+      - name: Stop superseded builds and publishing jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for id in 45885393430 45885530846 45885382809 45885496088; do
+            gh run cancel "$id" || test "$(gh run view "$id" --json status --jq .status)" = completed
+          done
       - name: Verify validated source and artifact
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SOURCE: 64984fcb198175dab33c44f90144c77a75bb6c54
+          SOURCE: 3d50ffc314b3c74bc804566412e12c5fcbb255fc
         run: |
           set -euo pipefail
           for attempt in {1..20}; do

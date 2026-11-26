@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.52
+# Chess Animation Studio · 0.2.53
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
 
@@ -39,6 +39,8 @@ Right-click a timeline clip, or click the **⋯** on its track header, to open i
 Use **Copy** and **Paste** to transfer movement, piece size, after-effects, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.53 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.53/Chess-Animation-Studio-0.2.53-Windows-x64.zip?download=1).** Adds quicker access to move frames, clearer preset browsing, Stockfish sacrifice badges, and faster timeline evaluation. The executable is unsigned.
 
 **[Download Chess Animation Studio 0.2.52 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.52/Chess-Animation-Studio-0.2.52-Windows-x64.zip?download=1).** Adds stereo beat analysis, stronger music cues, storyboard openings, and export previews. Fixes beat alignment with offsets and reduces repeated waveform drawing. The executable is unsigned.
 

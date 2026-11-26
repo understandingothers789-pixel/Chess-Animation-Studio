@@ -31,7 +31,19 @@ jobs:
           exec > >(tee "$context_log") 2>&1
           trap 'context_status=$?; python .github/scripts/report-context-failure.py "$context_log"; exit "$context_status"' ERR
           export CHROMIUM_PATH=$(node --input-type=module -e "import {chromium} from '@playwright/test'; console.log(chromium.executablePath())")
+          # Compare shared render behavior with an unrated fixture. Notation's
+          # intentional palette change is covered by the endpoint render test.
+          unrate_sample() {
+            node --input-type=module - "$1/samples/Opera.castudio" <<'JS'
+          import { readFileSync, writeFileSync } from "node:fs";
+          const file = process.argv[2];
+          const sample = JSON.parse(readFileSync(file, "utf8"));
+          for (const move of sample.moves) move.effect.badge.manual = "none";
+          writeFileSync(file, JSON.stringify(sample));
+          JS
+          }
           git worktree add --detach "$RUNNER_TEMP/visual-reference" 9fcf3f54913ac1a27560a61e0db8e80abb998dd5
+          unrate_sample "$RUNNER_TEMP/visual-reference"
           (cd "$RUNNER_TEMP/visual-reference" && npm ci && npm run test:render -- reference)
           node --import tsx scripts/customization-ui-smoke.ts
           node --import tsx scripts/workflow-ui-smoke.ts
@@ -45,13 +57,17 @@ jobs:
           TRANSCRIPT_EVIDENCE_DIR=test-results/transcript-ui npm run test:transcript
           node --import tsx scripts/storyboard-render-smoke.ts --transcript
           npm run test:ducking
+          cp samples/Opera.castudio "$RUNNER_TEMP/original-opera.castudio"
+          unrate_sample "$PWD"
           npm run test:render -- final
           golden_ref=$(cat docs/cinematic-goldens/source-ref)
           [[ "$golden_ref" =~ ^[0-9a-f]{40}$ ]]
           git worktree add --detach "$RUNNER_TEMP/cinematic-reference" "$golden_ref"
+          unrate_sample "$RUNNER_TEMP/cinematic-reference"
           (cd "$RUNNER_TEMP/cinematic-reference" && npm ci && APPROVE_CINEMATIC_GOLDENS=phase4-reviewed node --import tsx scripts/cinematic-visual.ts)
           CINEMATIC_GOLDEN_DIR="$RUNNER_TEMP/cinematic-reference/test-results/phase4-candidate" node --import tsx scripts/cinematic-visual.ts
           node scripts/compare-render-hashes.mjs "$RUNNER_TEMP/visual-reference/test-results/render-reference/hashes.json" test-results/render-final/hashes.json
+          cp "$RUNNER_TEMP/original-opera.castudio" samples/Opera.castudio
       - uses: actions/upload-artifact@v4
         if: always()
         with:

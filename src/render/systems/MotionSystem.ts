@@ -1,8 +1,8 @@
 import * as T from "three";
 import type { RenderFrame } from "../engine/frame";
 import { Resources } from "../engine/resources";
-import type { Project } from "../../core/project";
-import { badge, clamp, moveHold } from "../../core/timeline";
+import { notationColor } from "../../core/badgeNotation";
+import { badge, clamp } from "../../core/timeline";
 export class MotionSystem {
   private resources = new Resources();
   private paths: T.Mesh[] = [];
@@ -43,14 +43,9 @@ export class MotionSystem {
       const mover = step?.before.find((v) => v.id === step.pieceId);
       const rating = step ? badge(step.move) : null;
       const ratingColor =
-        p.reviewColors.enabled &&
-        rating &&
-        rating !== "custom" &&
-        rating in p.reviewColors
-          ? p.reviewColors[
-              rating as keyof Omit<Project["reviewColors"], "enabled">
-            ]
-          : null;
+        p.reviewColors.enabled && hl.byNotation
+          ? notationColor(p.reviewColors, rating)
+          : undefined;
       const sideColor = hl.byMover
         ? mover?.color === "w"
           ? hl.whiteColor
@@ -60,6 +55,14 @@ export class MotionSystem {
         ? 1
         : clamp(1 - (time - c.timeline.segments[e.index].finish) / hl.fade);
       const reveal = clamp((e.u - hl.reveal) / 0.12);
+      const effectColor =
+        e.jam && e.jam.envelope > 0.001
+          ? e.jam.color
+          : e.effect.light.enabled &&
+              e.effect.light.highlights &&
+              e.light.strength > 0
+            ? e.effect.light.color
+            : undefined;
       for (const s of e.path) {
         const isFrom = s === e.source,
           isTo = s === e.destination;
@@ -78,30 +81,21 @@ export class MotionSystem {
         m.position.x = s.charCodeAt(0) - 97 - 3.5;
         m.position.y = Number(s[1]) - 1 - 3.5;
         const mat = m.material as T.MeshBasicMaterial;
+        const fallback =
+          sideColor ?? (isFrom ? hl.source : isTo ? hl.destination : hl.path);
         mat.color.set(
-          e.jam && e.jam.envelope > 0.001
-            ? e.jam.color
-            : e.effect.light.enabled &&
-                e.effect.light.highlights &&
-                e.light.strength > 0
-              ? e.effect.light.color
-              : !isFrom && ratingColor
-                ? ratingColor
-                : sideColor
-                  ? sideColor
-                  : isFrom
-                    ? hl.source
-                    : isTo
-                      ? hl.destination
-                      : hl.path,
+          isFrom || isTo
+            ? hl.byNotation
+              ? (ratingColor ?? effectColor ?? fallback)
+              : fallback
+            : (effectColor ?? ratingColor ?? fallback),
         );
         mat.opacity = hl.opacity * fade * reveal;
         mat.color.multiplyScalar(1 + hl.glow * 0.3);
       }
       // Knights jump rather than pass through squares. Show two soft, inset
       // accents along the long side of the L without implying captures there.
-      const piece = step?.before.find((v) => v.id === step.pieceId);
-      if (hl.showPath && piece?.type === "n" && e.source && e.destination) {
+      if (hl.showPath && mover?.type === "n" && e.source && e.destination) {
         const fx = e.source.charCodeAt(0) - 97,
           fy = Number(e.source[1]) - 1;
         const tx = e.destination.charCodeAt(0) - 97,

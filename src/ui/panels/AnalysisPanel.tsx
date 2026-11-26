@@ -149,7 +149,7 @@ export function AnalysisPanel(q: PanelProps) {
         </p>
       </Section>
       <Section
-        title="Review highlight colors"
+        title="Move notation colors"
         onReset={() =>
           q.edit("Reset review colors", (p) => {
             p.reviewColors = blank().reviewColors;
@@ -157,7 +157,7 @@ export function AnalysisPanel(q: PanelProps) {
         }
       >
         <Toggle
-          label="Color moves by review"
+          label="Match squares to move notation"
           checked={p.reviewColors.enabled}
           onChange={(v) =>
             q.edit("Review colors", (p) => {
@@ -166,8 +166,8 @@ export function AnalysisPanel(q: PanelProps) {
           }
         />
         <p className="hint">
-          Reviewed destination and route squares use these colors for either
-          side. Manual badges take priority.
+          The source and destination match the move badge. Set a palette here or
+          override individual moves under Effects → Highlights &amp; trail.
         </p>
         {(
           [

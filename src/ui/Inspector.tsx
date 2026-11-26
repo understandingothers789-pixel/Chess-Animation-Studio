@@ -236,6 +236,13 @@ export function Inspector({
     edit("Highlight " + k, (p) => {
       each(p, (e) => {
         e.highlight[k] = v;
+        if (k === "source" || k === "destination") {
+          e.highlight.byNotation = false;
+          e.highlight.byMover = false;
+        } else if (k === "whiteColor" || k === "blackColor") {
+          e.highlight.byNotation = false;
+          e.highlight.byMover = true;
+        }
       });
     });
   const badge = <K extends keyof Effect["badge"]>(
@@ -1490,6 +1497,17 @@ export function Inspector({
                 onReset={() => resetFields(["highlight"])}
               >
                 <Toggle
+                  label="Match notation colors for selected moves"
+                  checked={e.highlight.byNotation}
+                  mixed={mixed((v) => v.highlight.byNotation)}
+                  onChange={(v) => look("byNotation", v)}
+                />
+                <p className="hint">
+                  {project.reviewColors.enabled
+                    ? "Moves without a rating use the colors below. Choosing a source, destination, or side color switches the selected moves to manual colors."
+                    : "Automatic notation colors are off for this project. Turn them on in Analysis."}
+                </p>
+                <Toggle
                   label="Use different colors for White and Black"
                   checked={e.highlight.byMover}
                   mixed={mixed((v) => v.highlight.byMover)}
@@ -1528,6 +1546,8 @@ export function Inspector({
                             const color = e.highlight[k];
                             edit("Apply color to all highlights", (p) =>
                               each(p, (v) => {
+                                v.highlight.byNotation = false;
+                                v.highlight.byMover = false;
                                 v.highlight.source = color;
                                 v.highlight.destination = color;
                                 v.highlight.path = color;

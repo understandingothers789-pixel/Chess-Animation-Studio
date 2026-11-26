@@ -450,10 +450,7 @@ small {
   white-space: nowrap;
   overflow: hidden;
 }
-.badge-mini[data-rating="brilliant"] { color: #a3f8e8; background: #103d48; }
-.badge-mini[data-rating="inaccuracy"] { color: #f4d27f; }
-.badge-mini[data-rating="mistake"] { color: #f6ae78; }
-.badge-mini[data-rating="blunder"] { color: #ff989e; }
+.badge-mini[data-rating="brilliant"] { background: #103d48; }
 .preset-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -4,7 +4,7 @@ import type { RenderFrame } from "../engine/frame";
 import { Resources, radialTexture } from "../engine/resources";
 import { drawPlayerIntro, playerIntroFrame } from "../engine/playerIntro";
 import { clamp } from "../../core/timeline";
-import { badgeSymbols } from "../../core/badgeNotation";
+import { badgeSymbols, notationColor } from "../../core/badgeNotation";
 export class OverlaySystem {
   private resources = new Resources();
   private overlayProject?: Project;
@@ -91,10 +91,13 @@ export class OverlaySystem {
           e.badge === "brilliant" &&
           !b.manual &&
           !!c.game?.steps[e.index]?.move.analysis.engine?.sacrifice,
+        ratingColor = notationColor(p.reviewColors, e.badge),
+        color = ratingColor ?? "#aa9ee4",
         key = JSON.stringify([
           e.badge,
           b.text,
           automaticSacrifice,
+          color,
           p.badgeAssets[e.badge],
         ]);
       const asset = this.assetTextures.get(p.badgeAssets[e.badge]);
@@ -109,6 +112,7 @@ export class OverlaySystem {
             e.badge,
             b.text,
             automaticSacrifice,
+            color,
           ));
         mat.needsUpdate = true;
         this.badgeKey = key;
@@ -123,8 +127,9 @@ export class OverlaySystem {
       this.badge.scale.setScalar(b.size * entryScale);
       this.badgeGlow.position.copy(this.badge.position);
       this.badgeGlow.scale.setScalar(b.size * 2.5);
-      (this.badgeGlow.material as T.SpriteMaterial).opacity =
-        b.glow * b.opacity * 0.5;
+      const glow = this.badgeGlow.material as T.SpriteMaterial;
+      glow.color.set(ratingColor ?? "#a6d797");
+      glow.opacity = b.glow * b.opacity * 0.5;
       (this.badge.material as T.SpriteMaterial).opacity =
         b.opacity * (b.entry === "fade" ? entry : 1);
       if (b.ring) {
@@ -132,7 +137,7 @@ export class OverlaySystem {
         this.badgeRing.position.copy(this.badge.position);
         this.badgeRing.scale.setScalar(b.size * (1 + entry * 0.9));
         const m = this.badgeRing.material as T.MeshBasicMaterial;
-        m.color.set(p.style.accent);
+        m.color.set(ratingColor ?? p.style.accent);
         m.opacity = (1 - entry) * b.opacity * 0.65;
       }
     }
@@ -141,22 +146,14 @@ export class OverlaySystem {
     kind: string,
     text: string,
     automaticSacrifice: boolean,
+    color: string,
   ) {
     const c = document.createElement("canvas");
     c.width = c.height = 256;
     const x = c.getContext("2d")!;
-    const colors: Record<string, string> = {
-      book: "#9d9772",
-      brilliant: "#54c8d8",
-      best: "#96b56d",
-      good: "#7aa180",
-      inaccuracy: "#e7c36a",
-      mistake: "#e79a5d",
-      blunder: "#dd6d70",
-    };
-    x.shadowColor = colors[kind] ?? "#aa9ee4";
+    x.shadowColor = color;
     x.shadowBlur = 20;
-    x.fillStyle = colors[kind] ?? "#aa9ee4";
+    x.fillStyle = color;
     x.beginPath();
     x.arc(128, 128, 99, 0, Math.PI * 2);
     x.fill();
@@ -167,7 +164,7 @@ export class OverlaySystem {
     x.textBaseline = "middle";
     if (automaticSacrifice) {
       x.fillStyle = "#103d48";
-      x.strokeStyle = "#b6ffed";
+      x.strokeStyle = color;
       x.lineWidth = 6;
       x.beginPath();
       x.arc(128, 128, 89, 0, Math.PI * 2);
@@ -197,7 +194,7 @@ export class OverlaySystem {
       x.closePath();
       x.fill();
       x.stroke();
-      x.strokeStyle = colors.book;
+      x.strokeStyle = color;
       x.lineWidth = 5;
       x.beginPath();
       x.moveTo(128, 88);

@@ -476,14 +476,16 @@ export function settingHelp(label: string): string {
     return "Include this color in the cycle; disable it to skip the color.";
   if (/^(Snow|Pulse) color [1-6]$/.test(label))
     return "Choose this color for the cycle, including darker shades.";
-  if (label === "Color moves by review")
-    return "Color destination and route squares by their review badge; source squares retain the mover color.";
+  if (label === "Match squares to move notation")
+    return "Match both move squares to the badge color for all moves that allow automatic notation colors.";
+  if (label === "Match notation colors for selected moves")
+    return "Use the notation color for both squares on these moves. Switch off to use side or custom colors.";
   if (
     /^Review (book|brilliant|best|good|inaccuracy|mistake|blunder) color$/.test(
       label,
     )
   )
-    return "Color for destination and route squares with this review badge.";
+    return "Color shared by this notation badge and the move squares.";
   if (/^Check move /.test(label))
     return "Include this move in batch edits. Ctrl-click toggles moves; Shift-click selects a range.";
   if (/^Key \d+ time$/.test(label))

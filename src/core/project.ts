@@ -1,3 +1,4 @@
+import { reviewColorDefaults } from "./badgeNotation";
 import { transcriptSchema } from "./transcriptModel";
 import { annotationSchema } from "./annotations";
 import { z } from "zod";
@@ -274,6 +275,7 @@ export const effectSchema = z.object({
     source: color,
     destination: color,
     path: color,
+    byNotation: z.boolean().default(true),
     byMover: z.boolean().default(true),
     whiteColor: color.default("#FFA878"),
     blackColor: color.default("#FFE04C"),
@@ -355,6 +357,7 @@ export function effect(preset: Preset = "slide"): Effect {
       source: "#a8a0f5",
       destination: "#a8a0f5",
       path: "#a8a0f5",
+      byNotation: true,
       byMover: true,
       whiteColor: "#FFA878",
       blackColor: "#FFE04C",
@@ -897,16 +900,7 @@ export const projectSchema = z.object({
       mistake: color,
       blunder: color,
     })
-    .default({
-      enabled: true,
-      book: "#FFA878",
-      brilliant: "#44D9D6",
-      best: "#83CE60",
-      good: "#83CE60",
-      inaccuracy: "#F3D253",
-      mistake: "#F49A4A",
-      blunder: "#E63336",
-    }),
+    .default(() => ({ ...reviewColorDefaults })),
   beatsLocked: z.boolean().default(false),
   beats: z
     .array(
@@ -1088,16 +1082,7 @@ export function blank(): Project {
     playerIntro: playerIntro(),
     squareIntro: squareIntro(),
     introTitle: { enabled: false, text: "CHESS STORY", piece: "knight" },
-    reviewColors: {
-      enabled: true,
-      book: "#FFA878",
-      brilliant: "#44D9D6",
-      best: "#83CE60",
-      good: "#83CE60",
-      inaccuracy: "#F3D253",
-      mistake: "#F49A4A",
-      blunder: "#E63336",
-    },
+    reviewColors: { ...reviewColorDefaults },
     beatsLocked: false,
     beats: [],
     waveform: [],

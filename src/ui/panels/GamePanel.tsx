@@ -1,4 +1,4 @@
-import { badgeSymbols } from "../../core/badgeNotation";
+import { badgeSymbols, notationColor } from "../../core/badgeNotation";
 import { settingHelp } from "../help";
 import { useState } from "react";
 import {
@@ -161,6 +161,7 @@ export function GamePanel(q: PanelProps) {
       <div className="move-list">
         {p.moves.map((m, i) => {
           const rating = badge(m);
+          const color = notationColor(p.reviewColors, rating);
           return (
             <div
               className={"move-row " + (q.selected === i ? "active" : "")}
@@ -188,6 +189,7 @@ export function GamePanel(q: PanelProps) {
                   <span
                     className="badge-mini"
                     data-rating={rating}
+                    style={color ? { color } : undefined}
                     role="img"
                     title={rating}
                     aria-label={rating}

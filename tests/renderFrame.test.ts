@@ -1,3 +1,10 @@
+import {
+  Group,
+  type Mesh,
+  type MeshBasicMaterial,
+  type PlaneGeometry,
+} from "three";
+import { MotionSystem } from "../src/render/systems/MotionSystem";
 import { it, expect } from "vitest";
 import { blank, parseProject } from "../src/core/project";
 import { importPgn, buildGame } from "../src/core/chess";
@@ -88,4 +95,68 @@ it("continues releasing owned resources after a disposer fails", () => {
   expect(() => r.dispose()).toThrow(/cleanup/);
   r.dispose();
   expect(calls).toEqual([2, 1]);
+});
+
+it("matches both highlight endpoints to the notation palette with project and move overrides", () => {
+  const project = importPgn(blank(), "1. e4 e5");
+  const [move] = project.moves;
+  const { highlight } = move.effect;
+  Object.assign(highlight, {
+    glow: 0,
+    byMover: false,
+    source: "#665533",
+    destination: "#223355",
+  });
+  const root = new Group();
+  const motion = new MotionSystem(root);
+  const colors = (p: typeof project) => {
+    const snapshot = structuredClone(p);
+    const time = segments(snapshot)[0].land - 0.05;
+    motion.update(evaluateRenderFrame(snapshot, time, 320, 180));
+    return [12, 28].map((square) => {
+      const mesh = root.children[square] as Mesh<
+        PlaneGeometry,
+        MeshBasicMaterial
+      >;
+      return mesh.visible
+        ? "#" + mesh.material.color.getHexString().toUpperCase()
+        : null;
+    });
+  };
+
+  for (const rating of ["brilliant", "blunder", "good", "book"] as const) {
+    move.effect.badge.manual = rating;
+    expect(colors(project)).toEqual([
+      project.reviewColors[rating],
+      project.reviewColors[rating],
+    ]);
+  }
+  project.reviewColors.book = "#FF8901";
+  move.effect.badge.manual = null;
+  move.analysis.book = {
+    state: "found",
+    games: 100,
+    frequency: 0.5,
+    message: "Book",
+  };
+  expect(colors(project)).toEqual(["#FF8901", "#FF8901"]);
+
+  Object.assign(move.effect.light, {
+    enabled: true,
+    strength: 0.4,
+    color: "#FF0000",
+  });
+  expect(colors(project)).toEqual(["#FF8901", "#FF8901"]);
+  highlight.byNotation = false;
+  expect(colors(project)).toEqual(["#665533", "#223355"]);
+  highlight.byNotation = true;
+  move.effect.light.enabled = false;
+  project.reviewColors.enabled = false;
+  expect(colors(project)).toEqual(["#665533", "#223355"]);
+  project.reviewColors.enabled = true;
+  move.effect.badge.manual = "none";
+  expect(colors(project)).toEqual(["#665533", "#223355"]);
+  highlight.showSource = false;
+  expect(colors(project)[0]).toBeNull();
+  motion.dispose();
 });

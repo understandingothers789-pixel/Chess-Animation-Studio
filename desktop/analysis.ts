@@ -41,7 +41,12 @@ class Uci {
   lines: string[] = [];
   name = "";
   wake: (() => void) | null = null;
-  constructor(executable: string, signal: AbortSignal) {
+  private readonly abort = () => this.child.kill();
+  constructor(
+    executable: string,
+    private readonly signal: AbortSignal,
+  ) {
+    signal.throwIfAborted();
     this.child = spawn(executable, [], { windowsHide: true, stdio: "pipe" });
     this.child.stdout.on("data", (chunk) => {
       this.buffer += chunk.toString();
@@ -58,7 +63,7 @@ class Uci {
       this.lines.push("ERROR " + e.message);
       this.wake?.();
     });
-    signal.addEventListener("abort", () => this.stop(), { once: true });
+    signal.addEventListener("abort", this.abort, { once: true });
   }
   send(s: string) {
     this.child.stdin.write(s + "\n");
@@ -66,7 +71,10 @@ class Uci {
   async until(token: string, ms = 10000) {
     const found = () =>
       this.lines.some((x) => x.startsWith(token) || x.startsWith("ERROR"));
-    if (!found())
+    if (!found()) {
+      this.signal.throwIfAborted();
+      if (this.child.exitCode !== null || this.child.signalCode !== null)
+        throw Error("Engine stopped.");
       await new Promise<void>((resolve, reject) => {
         const cleanup = () => {
           clearTimeout(t);
@@ -89,6 +97,8 @@ class Uci {
         };
         this.child.once("exit", exited);
       });
+    }
+    this.signal.throwIfAborted();
     const lines = this.lines.splice(0);
     const error = lines.find((l) => l.startsWith("ERROR"));
     if (error) throw Error(error);
@@ -140,6 +150,7 @@ class Uci {
     };
   }
   stop() {
+    this.signal.removeEventListener("abort", this.abort);
     this.child.kill();
   }
 }
@@ -219,7 +230,9 @@ export async function analyze(
   signal: AbortSignal,
   progress: (done: number, total: number) => void,
 ) {
+  signal.throwIfAborted();
   await fs.mkdir(dir, { recursive: true });
+  signal.throwIfAborted();
   const g = buildGame(p),
     result: Record<string, Project["moves"][number]["analysis"]> = {};
   let engine: Uci | undefined;
@@ -336,6 +349,7 @@ export async function analyze(
         }
         a.engine = data;
       }
+      signal.throwIfAborted();
       result[s.move.id] = a;
       progress(k + 1, indices.length);
     }
@@ -345,7 +359,7 @@ export async function analyze(
     if (kind === "engine") {
       for (const i of indices) {
         const s = g.steps[i];
-        if (s)
+        if (s && !Object.hasOwn(result, s.move.id))
           result[s.move.id] = {
             ...s.move.analysis,
             engine: {

@@ -1,3 +1,4 @@
+import { firstMatchingIndex } from "./sorted";
 import { beatInMusic } from "./beatMarkers";
 import {
   camera,
@@ -133,6 +134,25 @@ export function compileTimeline(p: Project): CompiledTimeline {
   }
   return result;
 }
+function segmentIndex(sequence: CompiledTimeline["segments"], time: number) {
+  return Math.min(
+    firstMatchingIndex(sequence, (s) => time < s.end),
+    sequence.length - 1,
+  );
+}
+
+const beatIndex = new WeakMap<Project, Project["beats"]>();
+function indexedBeats(p: Project) {
+  let beats = beatIndex.get(p);
+  if (!beats) {
+    beats = p.beats
+      .filter((beat) => beat.enabled && beatInMusic(p, beat))
+      .sort((a, b) => a.time - b.time);
+    beatIndex.set(p, beats);
+  }
+  return beats;
+}
+
 export function duration(p: Project) {
   return (segments(p).at(-1)?.end ?? p.lead) + p.tail;
 }
@@ -282,10 +302,13 @@ export function evaluate(
   compiled?: CompiledTimeline,
   initialCamera?: Frame["camera"],
 ): Frame {
-  time = clamp(time, 0, compiled?.duration ?? duration(p));
   const seq = compiled?.segments ?? segments(p);
-  let index = seq.findIndex((s) => time < s.end);
-  if (index < 0) index = p.moves.length - 1;
+  time = clamp(
+    time,
+    0,
+    compiled?.duration ?? (seq.at(-1)?.end ?? p.lead) + p.tail,
+  );
+  const index = segmentIndex(seq, time);
   const seg = seq[index],
     step = g.steps[index],
     initial = !step || time < p.lead,
@@ -506,6 +529,7 @@ export function evaluate(
           time,
           spotlightStart(e, seg),
           xy(step.to),
+          compiled ? indexedBeats(p) : undefined,
         )
       : null;
   if (jam) {
@@ -528,15 +552,20 @@ export function evaluate(
     cam.zoom *= 1 + afterPulse * 0.55;
   }
   let pulse = 0;
-  if (p.pulse.enabled)
-    for (const b of p.beats) {
+  if (p.pulse.enabled) {
+    const beats = compiled ? indexedBeats(p) : p.beats;
+    const first = compiled
+      ? firstMatchingIndex(beats, (b) => time - b.time <= p.pulse.decay)
+      : 0;
+    for (let i = first; i < beats.length; i++) {
+      const b = beats[i];
+      const dt = time - b.time;
+      if (compiled && dt < -p.pulse.attack) break;
       if (
-        !b.enabled ||
-        !beatInMusic(p, b) ||
-        (p.pulse.accentsOnly && !b.accent)
+        (p.pulse.accentsOnly && !b.accent) ||
+        (!compiled && (!b.enabled || !beatInMusic(p, b)))
       )
         continue;
-      const dt = time - b.time;
       if (dt >= -p.pulse.attack && dt <= p.pulse.decay)
         pulse = Math.max(
           pulse,
@@ -545,6 +574,7 @@ export function evaluate(
             : Math.exp((-dt / p.pulse.decay) * 4),
         );
     }
+  }
   const dust: CaptureDust[] = [];
   // Reconstruct recent captures from time, including dust that outlives a move.
   for (let j = index; j >= 0; j--) {
@@ -714,20 +744,7 @@ export function evaluateMoveLight(
 ) {
   let chosen = { color: "#ff3030", strength: 0 };
   if (!seq.length) return chosen;
-  const at =
-    index ??
-    Math.max(
-      0,
-      seq.findIndex((s) => time < s.end),
-    );
-  for (
-    let j =
-      index === undefined && time >= (seq.at(-1)?.end ?? 0)
-        ? seq.length - 1
-        : at;
-    j >= 0;
-    j--
-  ) {
+  for (let j = index ?? segmentIndex(seq, time); j >= 0; j--) {
     const s = seq[j],
       l = p.moves[j].effect.light;
     if (time - s.finish > 4) break;
@@ -849,17 +866,28 @@ export function spotlightPeaks(p: Project, e: Effect, start: number) {
   );
 }
 
-function spotlightMarkerTimes(p: Project, effect: Effect, start: number) {
+function spotlightMarkerTimes(
+  p: Project,
+  effect: Effect,
+  start: number,
+  indexed?: readonly Project["beats"][number][],
+) {
   if (effect.jam.clock !== "auto") return [];
-  const markers = p.beats
-    .filter(
-      (b) =>
-        b.enabled &&
-        beatInMusic(p, b) &&
-        b.time >= start &&
-        b.time < start + effect.jam.duration,
-    )
-    .sort((a, b) => a.time - b.time);
+  const end = start + effect.jam.duration;
+  const markers = indexed
+    ? indexed.slice(
+        firstMatchingIndex(indexed, (beat) => beat.time >= start),
+        firstMatchingIndex(indexed, (beat) => beat.time >= end),
+      )
+    : p.beats
+        .filter(
+          (beat) =>
+            beat.enabled &&
+            beatInMusic(p, beat) &&
+            beat.time >= start &&
+            beat.time < end,
+        )
+        .sort((a, b) => a.time - b.time);
   const anchor = markers.find((b) => b.id === effect.jam.beat);
   return markers
     .filter((b) => !anchor || b.time >= anchor.time)
@@ -874,6 +902,7 @@ export function evaluateBeatSpotlight(
   time: number,
   start: number,
   anchor: [number, number],
+  indexed?: readonly Project["beats"][number][],
 ): BeatSpotlight | null {
   const j = effect.jam,
     age = time - start;
@@ -886,7 +915,7 @@ export function evaluateBeatSpotlight(
           : 0.12),
     ) *
     (1 - ease((age - j.duration + 0.2) / 0.2));
-  const times = spotlightMarkerTimes(p, effect, start);
+  const times = spotlightMarkerTimes(p, effect, start, indexed);
   let beat = 0,
     phase = 0,
     since = Infinity,

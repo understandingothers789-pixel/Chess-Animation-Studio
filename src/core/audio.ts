@@ -1,3 +1,4 @@
+import { firstMatchingIndex } from "./sorted";
 import { activeBeats, beatStrength } from "./beatMarkers";
 import { moveHold, moveLead } from "./timeline";
 import { type Project } from "./project";
@@ -11,19 +12,18 @@ export function automationPoints(p: Project) {
     ...new Map(p.music.volumePoints.map((v) => [v.time, v])).values(),
   ].sort((a, b) => a.time - b.time);
 }
-export function musicVolumeAt(p: Project, time: number) {
-  const points = automationPoints(p);
+export function musicVolumeAt(
+  p: Project,
+  time: number,
+  points = automationPoints(p),
+) {
   if (!points.length) return p.music.volume;
-  if (time <= points[0].time) return points[0].value;
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1],
-      b = points[i];
-    if (time <= b.time)
-      return (
-        a.value + ((b.value - a.value) * (time - a.time)) / (b.time - a.time)
-      );
-  }
-  return points[points.length - 1].value;
+  const index = firstMatchingIndex(points, (point) => time <= point.time);
+  if (index === 0) return points[0].value;
+  if (index === points.length) return points[index - 1].value;
+  const a = points[index - 1],
+    b = points[index];
+  return a.value + ((b.value - a.value) * (time - a.time)) / (b.time - a.time);
 }
 /** Effective source endpoint when a continuous soundtrack is capped by output. */
 export function musicEnd(

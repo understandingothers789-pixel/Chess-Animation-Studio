@@ -1,5 +1,6 @@
 import type { Project } from "../../core/project";
 import type { Game } from "../../core/chess";
+import { firstMatchingIndex } from "../../core/sorted";
 import { segments, type CompiledTimeline } from "../../core/timeline";
 /** Capture contact drives every accent from one absolute-time event. */
 export function captureImpact(
@@ -12,14 +13,17 @@ export function captureImpact(
     y = 0,
     light = 0,
     color = "#ffffff";
-  for (let i = 0; i < game.steps.length; i++) {
+  const window = 0.35;
+  const first = firstMatchingIndex(sequence, (s) => time - s.finish <= window);
+  const end = firstMatchingIndex(sequence, (s) => s.depart > time);
+  for (let i = first; i < end; i++) {
     if (!game.steps[i].capturedId) continue;
     const effect = p.moves[i].effect,
       settings = effect.capture;
     if (!settings.cameraShake && !settings.impactLight) continue;
     const age = time - sequence[i].depart - effect.duration * settings.impact;
-    if (age < 0 || age >= 0.35) continue;
-    const envelope = Math.exp(-age * 14) * (1 - age / 0.35);
+    if (age < 0 || age >= window) continue;
+    const envelope = Math.exp(-age * 14) * (1 - age / window);
     const seed = i * 2.399963;
     x += Math.sin(age * 105 + seed) * envelope * settings.cameraShake * 0.1;
     y += Math.sin(age * 133 + seed) * envelope * settings.cameraShake * 0.075;

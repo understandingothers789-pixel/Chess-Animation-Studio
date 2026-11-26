@@ -21,6 +21,7 @@ export function soundtrackGain(
   time: number,
   outputEnd: number,
   mode: PlaybackMode = "source",
+  points?: ReturnType<typeof automationPoints>,
 ) {
   const source = musicAt(p, time),
     end = musicEnd(p, p.music.sourceDuration, outputEnd),
@@ -34,7 +35,7 @@ export function soundtrackGain(
     return 0;
   return (
     (mode === "storyboard" ? storyboardDuckGain(p, time) : 1) *
-    musicVolumeAt(p, time) *
+    musicVolumeAt(p, time, points) *
     Math.min(1, p.music.fadeIn ? elapsed / p.music.fadeIn : 1) *
     Math.min(1, p.music.fadeOut ? (end - source) / p.music.fadeOut : 1)
   );
@@ -96,17 +97,23 @@ export function soundtrackGainExpression(
 ) {
   const points = automationPoints(p);
   const origin = Math.max(start, p.music.offset);
-  let expr = String(p.music.volume);
-  if (points.length) {
-    expr = String(points[points.length - 1].value);
-    for (let i = points.length - 2; i >= 0; i--) {
-      const a = points[i],
-        b = points[i + 1];
-      if (b.time === a.time) continue;
-      expr = `if(lt(t+${origin},${b.time}),${a.value}+(${b.value}-${a.value})*(t+${origin}-${a.time})/${b.time - a.time},${expr})`;
+  const clock = `(t+${origin})`;
+  // A balanced expression keeps FFmpeg's parser and per-frame lookup shallow.
+  const expression = (first: number, last: number): string => {
+    if (first < last) {
+      const middle = Math.floor((first + last) / 2);
+      return `if(lt(${clock},${points[middle].time}),${expression(first, middle)},${expression(middle + 1, last)})`;
     }
-    expr = `if(lt(t+${origin},${points[0].time}),${points[0].value},${expr})`;
-  }
+    if (first === 0) return String(points[0].value);
+    const a = points[first - 1];
+    const b = points[first];
+    return b
+      ? `${a.value}+(${b.value}-${a.value})*(${clock}-${a.time})/${b.time - a.time}`
+      : String(a.value);
+  };
+  const expr = points.length
+    ? expression(0, points.length)
+    : String(p.music.volume);
   const fadeIn = p.music.fadeIn
     ? `min(1,max(0,(t+${origin - p.music.offset})/${p.music.fadeIn}))`
     : "1";

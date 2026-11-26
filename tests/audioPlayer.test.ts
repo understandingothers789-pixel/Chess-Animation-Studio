@@ -8,6 +8,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it("clearing an unrelated missing asset does not stop scheduled music", async () => {
   const stop = vi.fn();
+  const gainUpdate = vi.fn();
   class FakeAudioContext {
     currentTime = 0;
     destination = {};
@@ -27,7 +28,7 @@ it("clearing an unrelated missing asset does not stop scheduled music", async ()
           value: 1,
           setValueAtTime: vi.fn(),
           linearRampToValueAtTime: vi.fn(),
-          setTargetAtTime: vi.fn(),
+          setTargetAtTime: gainUpdate,
         },
         connect: (destination: unknown) => destination,
       };
@@ -40,12 +41,20 @@ it("clearing an unrelated missing asset does not stop scheduled music", async ()
   vi.stubGlobal("performance", { now: () => 0 });
 
   const player = new AudioPlayer(),
-    project = blank();
+    project = importPgn(blank(), "1. e4");
+  project.audio.chess = 0;
   project.music.asset = "selected-music";
   player.buffers.set("selected-music", { duration: 90 } as AudioBuffer);
 
   await player.play(project, 0);
   player.clear("unavailable-old-track");
+  player.updateMusic(project, 0.1);
+  player.updateMusic(project, 0.2);
+  expect(gainUpdate).not.toHaveBeenCalled();
+  project.music.muted = true;
+  player.updateMusic(project, 0.3);
+  player.updateMusic(project, 0.4);
+  expect(gainUpdate).toHaveBeenCalledExactlyOnceWith(0, 0, 0.01);
 
   expect(stop).not.toHaveBeenCalled();
   player.stop();

@@ -4,12 +4,20 @@ import {
 } from "../core/audio/ducking";
 import { audioEvents } from "../core/audioEvents";
 import { presentationDuration } from "../core/storyboard";
-import { musicAt, musicVolumeAt, musicEnd } from "../core/audio";
+import {
+  automationPoints,
+  musicAt,
+  musicVolumeAt,
+  musicEnd,
+} from "../core/audio";
 import type { Project, PlaybackMode } from "../core/project";
 export class AudioPlayer {
   context = new AudioContext();
   buffers = new Map<string, AudioBuffer>();
-  sources: AudioScheduledSourceNode[] = [];
+  private sources = new Set<AudioScheduledSourceNode>();
+  private lastMusicGain: number | null = null;
+  private volumePoints?: Project["music"]["volumePoints"];
+  private orderedVolume = [] as ReturnType<typeof automationPoints>;
   private playbackRequest = 0;
   private loads = new Map<string, object>();
   musicGain: GainNode | null = null;
@@ -36,6 +44,10 @@ export class AudioPlayer {
     // Clearing an unavailable asset must not stop other playing sources.
     this.loads.delete(id);
     this.buffers.delete(id);
+  }
+  private track(source: AudioScheduledSourceNode) {
+    this.sources.add(source);
+    source.onended = () => this.sources.delete(source);
   }
   async play(
     p: Project,
@@ -67,7 +79,6 @@ export class AudioPlayer {
       const master = this.context.createGain(),
         fadeOutGain = this.context.createGain();
       const duck = this.context.createGain();
-      this.musicGain = master;
       master.gain.value = m.muted
         ? 0
         : musicVolumeAt(p, Math.max(time, m.offset));
@@ -124,7 +135,9 @@ export class AudioPlayer {
         if (m.fadeOut)
           fadeOutGain.gain.linearRampToValueAtTime(0, start + length / rate);
         source.start(start, sourceStart, length);
-        this.sources.push(source);
+        this.track(source);
+        this.musicGain = master;
+        this.lastMusicGain = master.gain.value;
       }
     }
     const events = audioEvents(p, mode);
@@ -138,6 +151,7 @@ export class AudioPlayer {
       const at = origin + Math.max(0, cue.at - time) / rate,
         volume = cue.volume * p.audio[cue.bus],
         buffer = this.buffers.get(cue.asset ?? "");
+      if (volume <= 0) continue;
       if (buffer) {
         const s = this.context.createBufferSource(),
           g = this.context.createGain();
@@ -152,7 +166,7 @@ export class AudioPlayer {
         );
         if (length <= 0) continue;
         s.start(at, offset, length);
-        this.sources.push(s);
+        this.track(s);
       } else if (!cue.asset) {
         const osc = this.context.createOscillator(),
           g = this.context.createGain();
@@ -171,26 +185,31 @@ export class AudioPlayer {
         osc.connect(g).connect(this.context.destination);
         osc.start(at);
         osc.stop(Math.min(at + 0.2 / rate, origin + (cue.end - time) / rate));
-        this.sources.push(osc);
+        this.track(osc);
       }
     }
     return perf;
   }
   updateMusic(p: Project, time: number) {
-    this.musicGain?.gain.setTargetAtTime(
-      p.music.muted ? 0 : musicVolumeAt(p, time),
-      this.context.currentTime,
-      0.01,
-    );
+    if (!this.musicGain) return;
+    if (p.music.volumePoints !== this.volumePoints) {
+      this.volumePoints = p.music.volumePoints;
+      this.orderedVolume = automationPoints(p);
+    }
+    const next = p.music.muted ? 0 : musicVolumeAt(p, time, this.orderedVolume);
+    if (next === this.lastMusicGain) return;
+    this.lastMusicGain = next;
+    this.musicGain.gain.setTargetAtTime(next, this.context.currentTime, 0.01);
   }
   stop() {
     this.playbackRequest++;
     this.musicGain = null;
+    this.lastMusicGain = null;
     for (const s of this.sources)
       try {
         s.stop();
       } catch {}
-    this.sources = [];
+    this.sources.clear();
   }
   dispose() {
     this.stop();

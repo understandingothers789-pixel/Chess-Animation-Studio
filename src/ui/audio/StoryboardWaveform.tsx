@@ -2,7 +2,12 @@ import { activeBeats, strongestBeat } from "../../core/beatMarkers";
 import { useRef, useState, useMemo, useEffect } from "react";
 import type { Project } from "../../core/project";
 import { compileStoryboard, resizeShot } from "../../core/storyboard";
-import { musicAt, musicVolumeAt, syncMarkers } from "../../core/audio";
+import {
+  automationPoints,
+  musicAt,
+  musicVolumeAt,
+  syncMarkers,
+} from "../../core/audio";
 import {
   normalizeMusicRange,
   snapTime,
@@ -251,14 +256,13 @@ export function StoryboardWaveform({
       </title>
     </rect>
   );
-  const curve = useMemo(
-    () =>
-      Array.from({ length: Math.ceil(width / 4) }, (_, i) => {
-        const t = (scroll + i * 4) / px;
-        return `${i ? "L" : "M"}${scroll + i * 4},${126 - soundtrackGain(p, t, c.duration, "storyboard") * 30}`;
-      }).join(" "),
-    [p, scroll, width, px, c.duration],
-  );
+  const curve = useMemo(() => {
+    const points = automationPoints(p);
+    return Array.from({ length: Math.ceil(width / 4) }, (_, i) => {
+      const t = (scroll + i * 4) / px;
+      return `${i ? "L" : "M"}${scroll + i * 4},${126 - soundtrackGain(p, t, c.duration, "storyboard", points) * 30}`;
+    }).join(" ");
+  }, [p, scroll, width, px, c.duration]);
   const selectedEntry = c.shots.find((e) => e.shot.id === selected),
     beat = beats.find((b) => b.id === activeBeat);
   const eligible = selectedEntry

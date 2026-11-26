@@ -34,3 +34,43 @@ it.each([
   );
   expect(compileTimeline(p)).toBe(compiled);
 });
+
+it("indexes corrected and trimmed music markers without changing frame values", () => {
+  const p = importPgn(blank(), "1. e4 d5 2. exd5");
+  const e = p.moves[0].effect;
+  Object.assign(e.jam, {
+    enabled: true,
+    start: "landing",
+    rhythm: "swell",
+    duration: 1.2,
+  });
+  p.pulse.enabled = true;
+  p.music.trimStart = 2;
+  p.music.sourceDuration = 8;
+  const seq = compileTimeline(p);
+  const game = buildGame(p);
+  const at = seq.segments[0].land;
+  p.beats = [
+    { id: "last", time: at + 0.2, enabled: true, accent: true },
+    {
+      id: "trimmed",
+      time: at - 0.1,
+      enabled: true,
+      accent: true,
+      sourceTime: 1.5,
+    },
+    { id: "first", time: at, enabled: true, accent: false },
+    { id: "duplicate", time: at + 0.0003, enabled: true, accent: false },
+    { id: "disabled", time: at + 0.15, enabled: false, accent: true },
+  ];
+  for (const time of [
+    at + 0.75,
+    at,
+    at - p.pulse.attack,
+    at + p.pulse.decay,
+    at - 0.08,
+  ])
+    expect(evaluate(p, time, game, p.format, seq)).toEqual(
+      evaluate(p, time, game),
+    );
+});

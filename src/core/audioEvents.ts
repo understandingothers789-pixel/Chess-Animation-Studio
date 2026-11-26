@@ -24,10 +24,15 @@ export function audioEvents(
 ): AudioEvent[] {
   const saved = cache.get(p)?.[mode];
   if (saved) return saved;
-  const timeline = compileTimeline(p),
-    game = mode === "storyboard" ? compileStoryboard(p).game : buildGame(p);
+  const timeline = compileTimeline(p);
+  const storyboard = mode === "storyboard" ? compileStoryboard(p) : undefined;
+  const game =
+    p.audio.automatic || p.audio.knightHorse
+      ? (storyboard?.game ?? buildGame(p))
+      : undefined;
+  const moveIndices = new Map(p.moves.map((move, index) => [move.id, index]));
   const events: AudioEvent[] = p.cues.map((c) => {
-    const i = c.move ? p.moves.findIndex((m) => m.id === c.move) : -1;
+    const i = c.move ? (moveIndices.get(c.move) ?? -1) : -1;
     return {
       id: c.id,
       asset: c.asset,
@@ -41,7 +46,7 @@ export function audioEvents(
       moveId: c.move,
     };
   });
-  for (let i = 0; i < p.moves.length; i++) {
+  for (let i = 0; game && i < p.moves.length; i++) {
     if (p.audio.automatic)
       events.push({
         id: `auto-${p.moves[i].id}`,
@@ -74,9 +79,9 @@ export function audioEvents(
       });
   }
   let result = events;
-  if (mode === "storyboard") {
+  if (storyboard) {
     result = [];
-    for (const entry of compileStoryboard(p).shots) {
+    for (const entry of storyboard.shots) {
       if (entry.shot.kind !== "move-range" || entry.issue) continue;
       const ids = new Set(
         p.moves.slice(entry.startIndex, entry.endIndex + 1).map((m) => m.id),

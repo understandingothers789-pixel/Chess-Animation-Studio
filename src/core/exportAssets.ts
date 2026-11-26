@@ -89,6 +89,7 @@ export function requiredAssetIds(p: Project, o: ExportOptions) {
     if (
       event.at < o.end &&
       event.end > o.start &&
+      event.volume * p.audio[event.bus] > 0 &&
       event.asset &&
       event.asset !== "__knightHorse"
     )

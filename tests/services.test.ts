@@ -114,6 +114,45 @@ it("caches Masters statistics separately from thresholds and handles cutoff/unav
     globalThis.fetch = real;
   }
 });
+it.runIf(process.platform !== "win32")(
+  "preserves completed reviews if the engine exits mid-game",
+  async () => {
+    const dir = await temp();
+    const executable = path.join(dir, "fixture-engine");
+    await fs.writeFile(
+      executable,
+      String.raw`#!/usr/bin/env node
+const io = require("node:readline").createInterface({ input: process.stdin });
+let searches = 0;
+io.on("line", (line) => {
+  if (line === "uci") console.log("id name Fixture UCI\nuciok");
+  if (line === "isready") console.log("readyok");
+  if (line.startsWith("go ") && searches++ === 0)
+    console.log("info depth 6 score cp 25 pv e2e4 e7e5\nbestmove e2e4");
+  else if (line.startsWith("go ")) process.exit(1);
+});
+`,
+      { mode: 0o700 },
+    );
+    const p = importPgn(blank(), "1. e4 e5");
+    const result = await analyze(
+      p,
+      "engine",
+      [0, 1],
+      dir,
+      executable,
+      "",
+      new AbortController().signal,
+      () => {},
+    );
+    expect(result[p.moves[0].id].engine).toMatchObject({
+      state: "done",
+      score: 25,
+    });
+    expect(result[p.moves[1].id].engine?.state).toBe("unavailable");
+  },
+);
+
 it.runIf(
   existsSync(
     process.env.STOCKFISH_PATH ?? "/workspace/tools/usr/games/stockfish",
@@ -229,6 +268,10 @@ it("exports measured audio offset and trim, and cleans up cancelled jobs", async
     fadeIn: 0,
     fadeOut: 0,
     volume: 1,
+    volumePoints: Array.from({ length: 1000 }, (_, i) => ({
+      time: i / 1000,
+      value: i % 2 ? 1 : 0.9,
+    })),
   };
   p.assets = [
     {
@@ -356,6 +399,57 @@ it("cancels during asynchronous encoder startup without leaving late temporary f
   await job.clean();
   expect(await fs.readdir(dir)).toEqual([]);
 });
+
+it("exports a large audio mix with reused move sounds and muted cues", async () => {
+  const dir = await temp();
+  const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg";
+  const project = blank();
+  project.audio.chess = 0;
+  project.cues = Array.from({ length: 156 }, (_, i) => ({
+    id: `cue-${i}`,
+    move: null,
+    asset: null,
+    time: 0.15 + 0.003 * i,
+    volume: 0.4,
+    kind: "move",
+    bus: i % 4 === 0 ? "chess" : "effects",
+  }));
+  const out = path.join(dir, "many-cues.mp4");
+  const job = new VideoJob(
+    project,
+    { format: "landscape", start: 0, end: 1, width: 16, height: 16, fps: 5 },
+    out,
+    ffmpeg,
+    false,
+    () => {},
+  );
+  await job.start();
+  for (let i = 0; i < job.frames; i++)
+    await job.frame(new Uint8Array(16 * 16 * 4), i);
+  await job.finish();
+  const pcm = execFileSync(ffmpeg, [
+    "-v",
+    "error",
+    "-i",
+    out,
+    "-vn",
+    "-f",
+    "s16le",
+    "-ac",
+    "1",
+    "-ar",
+    "48000",
+    "pipe:1",
+  ]);
+  const peak = (from: number, to: number) => {
+    let result = 0;
+    for (let sample = from * 48000; sample < to * 48000; sample++)
+      result = Math.max(result, Math.abs(pcm.readInt16LE(sample * 2)));
+    return result;
+  };
+  expect(peak(0, 0.1)).toBeLessThan(10);
+  expect(peak(0.22, 0.28)).toBeGreaterThan(500);
+}, 20000);
 
 it("rejects an acknowledged frame after cancellation instead of reporting late progress", async () => {
   const phases: string[] = [];

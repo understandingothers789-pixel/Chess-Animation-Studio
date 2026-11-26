@@ -44,29 +44,30 @@ export function AnalysisPanel(q: PanelProps) {
             ? [i]
             : [],
         );
-        if (kind === "review") {
-          const book = await window.studio.analyze(p, "starter", indices);
-          const engine = await window.studio.analyze(p, "engine", indices);
-          q.edit("Game review", (p) => {
-            for (const m of p.moves) {
-              if (book[m.id]?.book || engine[m.id]?.engine) {
-                m.analysis = {
-                  ...m.analysis,
-                  ...(book[m.id]?.book ? { book: book[m.id].book } : {}),
-                  ...(engine[m.id]?.engine
-                    ? { engine: engine[m.id].engine }
-                    : {}),
-                };
-              }
+        const book =
+          kind === "engine"
+            ? undefined
+            : await window.studio.analyze(
+                p,
+                kind === "review" ? "starter" : kind,
+                indices,
+              );
+        const engine =
+          kind === "engine" || kind === "review"
+            ? await window.studio.analyze(p, "engine", indices)
+            : undefined;
+        q.edit(
+          kind === "review" ? "Game review" : "Analysis results",
+          (draft) => {
+            if (draft.id !== p.id || draft.line !== p.line) return;
+            for (const m of draft.moves) {
+              const opening = book?.[m.id]?.book;
+              const evaluation = engine?.[m.id]?.engine;
+              if (opening) m.analysis.book = opening;
+              if (evaluation) m.analysis.engine = evaluation;
             }
-          });
-        } else {
-          const result = await window.studio.analyze(p, kind, indices);
-          q.edit("Analysis results", (p) => {
-            for (const m of p.moves)
-              if (result[m.id]) m.analysis = { ...m.analysis, ...result[m.id] };
-          });
-        }
+          },
+        );
       } finally {
         setBusy(false);
       }

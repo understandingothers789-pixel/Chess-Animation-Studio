@@ -258,9 +258,9 @@ export class VideoJob {
     });
     const p = this.project,
       args = ["-v", "error", "-y", "-i", path.join(this.temp, "video.mp4")],
-      filters: string[] = [],
       labels: string[] = [];
-    let input = 1;
+    const inputs: { branches: { tag: string; chain: string }[] }[] = [];
+    const shared = new Map<string, (typeof inputs)[number]>();
     const seconds = this.frames / (this.options.fps ?? 60),
       map = new Map(p.assets.map((a) => [a.id, a]));
     const add = (
@@ -269,14 +269,23 @@ export class VideoJob {
       trimEnd: number,
       delay: number,
       volume: number,
-      fadeIn = 0,
-      fadeOut = 0,
       automation = "",
+      shareInput = false,
     ) => {
-      if (trimEnd <= trimStart || delay >= seconds) return;
-      const idx = input++;
-      args.push("-i", file);
-      const tag = `a${idx}`;
+      if (
+        trimEnd <= trimStart ||
+        delay >= seconds ||
+        (!automation && volume <= 0)
+      )
+        return;
+      let input = shareInput ? shared.get(file) : undefined;
+      if (!input) {
+        input = { branches: [] };
+        inputs.push(input);
+        args.push("-i", file);
+        if (shareInput) shared.set(file, input);
+      }
+      const tag = `a${labels.length}`;
       const parts = [
         `atrim=start=${Math.max(0, trimStart)}${trimEnd > 0 ? `:end=${trimEnd}` : ""}`,
         "asetpts=PTS-STARTPTS",
@@ -285,13 +294,8 @@ export class VideoJob {
         ...(automation ? ["asetnsamples=n=256:p=0"] : []),
         automation ? `volume='${automation}':eval=frame` : `volume=${volume}`,
       ];
-      if (fadeIn) parts.push(`afade=t=in:d=${fadeIn}`);
-      if (fadeOut && trimEnd > trimStart)
-        parts.push(
-          `afade=t=out:st=${Math.max(0, trimEnd - trimStart - fadeOut)}:d=${fadeOut}`,
-        );
       parts.push(`adelay=${Math.round(Math.max(0, delay) * 1000)}:all=1`);
-      filters.push(`[${idx}:a]${parts.join(",")}[${tag}]`);
+      input.branches.push({ tag, chain: parts.join(",") });
       labels.push(`[${tag}]`);
     };
     const music = map.get(p.music.asset ?? "");
@@ -309,8 +313,6 @@ export class VideoJob {
         end,
         Math.max(0, p.music.offset - this.options.start),
         p.music.volume,
-        0,
-        0,
         soundtrackGainExpression(
           p,
           this.options.start,
@@ -322,11 +324,15 @@ export class VideoJob {
     }
     const moveSound = path.join(this.temp, "move.wav"),
       captureSound = path.join(this.temp, "capture.wav");
-    await fs.writeFile(moveSound, sound());
-    await fs.writeFile(captureSound, sound(true));
     const cues = audioEvents(p, this.options.mode);
     for (const c of cues) {
-      if (c.at >= this.options.end || c.end <= this.options.start) continue;
+      const volume = c.volume * p.audio[c.bus];
+      if (
+        volume <= 0 ||
+        c.at >= this.options.end ||
+        c.end <= this.options.start
+      )
+        continue;
       const trimStart = c.offset + Math.max(0, this.options.start - c.at);
       const trimEnd = Math.min(
         c.duration ?? Infinity,
@@ -342,18 +348,36 @@ export class VideoJob {
         trimStart,
         trimEnd,
         c.at - this.options.start,
-        c.volume * p.audio[c.bus],
-        0,
-        0,
+        volume,
+        "",
+        !asset,
       );
     }
+    if (shared.has(moveSound)) await fs.writeFile(moveSound, sound());
+    if (shared.has(captureSound)) await fs.writeFile(captureSound, sound(true));
+    let graphFileIndex = -1;
     if (labels.length) {
+      const filters = inputs.flatMap(({ branches }, i) => {
+        const stream = `[${i + 1}:a]`;
+        if (branches.length === 1)
+          return [`${stream}${branches[0].chain}[${branches[0].tag}]`];
+        return [
+          `${stream}asplit=${branches.length}${branches.map(({ tag }) => `[in_${tag}]`).join("")}`,
+          ...branches.map(({ tag, chain }) => `[in_${tag}]${chain}[${tag}]`),
+        ];
+      });
       filters.push(
         `${labels.join("")}amix=inputs=${labels.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95:level=0:latency=1,apad,atrim=duration=${seconds}[mix]`,
       );
+      const graph = filters.join(";");
+      // Long graphs can exceed the Windows command-line limit.
+      if (Buffer.byteLength(graph, "utf8") > 12000) {
+        const graphFile = path.join(this.temp, "mix.ffgraph");
+        await fs.writeFile(graphFile, graph);
+        graphFileIndex = args.length;
+        args.push("-/filter_complex", graphFile);
+      } else args.push("-filter_complex", graph);
       args.push(
-        "-filter_complex",
-        filters.join(";"),
         "-map",
         "0:v",
         "-map",
@@ -374,7 +398,7 @@ export class VideoJob {
         "-map",
         "0:v",
         "-map",
-        `${input}:a`,
+        "1:a",
         "-c:a",
         "aac",
         "-b:a",
@@ -390,7 +414,21 @@ export class VideoJob {
       "+faststart",
       path.join(this.temp, "complete.mp4"),
     );
-    await this.run(args);
+    this.check();
+    try {
+      await this.run(args);
+    } catch (error) {
+      if (
+        graphFileIndex < 0 ||
+        !/Unrecognized option ['"]\/filter_complex['"]/.test(
+          (error as Error).message,
+        )
+      )
+        throw error;
+      this.check();
+      args[graphFileIndex] = "-filter_complex_script";
+      await this.run(args);
+    }
   }
   async cancel() {
     if (this.finalizing) {

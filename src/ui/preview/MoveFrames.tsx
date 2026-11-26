@@ -1,6 +1,6 @@
 import { EffectTiming } from "./EffectTiming";
 import type { Edit } from "../state";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import type { Project } from "../../core/project";
 import { stepFrame } from "../../core/timeline";
 import { moveEffectTiming, moveFrameStops } from "../movePreview";
@@ -8,6 +8,7 @@ import type { ThumbnailPort } from "../storyboard/thumbnails";
 
 export function MoveFrames({
   project,
+  panel,
   index,
   time,
   playing,
@@ -19,6 +20,7 @@ export function MoveFrames({
   edit,
 }: {
   project: Project;
+  panel?: Ref<HTMLDetailsElement>;
   index: number;
   time: number;
   playing: boolean;
@@ -102,6 +104,7 @@ export function MoveFrames({
   return (
     <details
       className="move-frames"
+      ref={panel}
       open={expanded}
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
@@ -135,7 +138,9 @@ export function MoveFrames({
             <button
               type="button"
               disabled={at <= start}
-              onClick={() => seek(Math.max(start, stepFrame(at, fps, -1)))}
+              onClick={() =>
+                seek(time > end ? end : Math.max(start, stepFrame(at, fps, -1)))
+              }
               aria-label="Previous frame of move"
             >
               − Frame
@@ -144,6 +149,7 @@ export function MoveFrames({
               type="range"
               aria-label="Scrub selected move"
               aria-description="Seek within this move without changing its duration."
+              aria-valuetext={`${(at - start).toFixed(3)} seconds into the move`}
               title="Seek within the selected move"
               min={0}
               max={endTime}
@@ -156,7 +162,11 @@ export function MoveFrames({
             <button
               type="button"
               disabled={at >= end}
-              onClick={() => seek(Math.min(end, stepFrame(at, fps, 1)))}
+              onClick={() =>
+                seek(
+                  time < start ? start : Math.min(end, stepFrame(at, fps, 1)),
+                )
+              }
               aria-label="Next frame of move"
             >
               + Frame

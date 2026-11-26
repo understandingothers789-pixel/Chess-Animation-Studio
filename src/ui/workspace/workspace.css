@@ -970,3 +970,18 @@
   display: grid;
   margin: 6px 0;
 }
+
+
+.preset-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.move-frames summary:focus-visible {
+  outline: 2px solid var(--accent, #f6d38b);
+  outline-offset: 2px;
+}

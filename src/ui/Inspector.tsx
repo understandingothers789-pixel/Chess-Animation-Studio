@@ -50,6 +50,7 @@ export function Inspector({
   onCopy,
   onPaste,
   onBrowsePresets,
+  onInspectFrames,
   onPausePreview,
   time,
   fps,
@@ -66,6 +67,7 @@ export function Inspector({
   onCopy: () => void;
   onPaste: () => void;
   onBrowsePresets: () => void;
+  onInspectFrames: () => void;
   onPausePreview: () => void;
   time: number;
   fps: number;
@@ -420,6 +422,7 @@ export function Inspector({
                   <button onClick={onBrowsePresets}>
                     Open animation library
                   </button>
+                  <button onClick={onInspectFrames}>Inspect move frames</button>
                   <button
                     onClick={(event) =>
                       focusSetting(

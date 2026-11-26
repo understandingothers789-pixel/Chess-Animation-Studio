@@ -268,6 +268,7 @@ export function App() {
     [p.assets],
   );
   const [graphicsRevision, setGraphicsRevision] = useState(0);
+  const moveFrames = useRef<HTMLDetailsElement>(null);
   const graphicsChanged = useCallback(
     () => setGraphicsRevision((value) => value + 1),
     [],
@@ -2046,6 +2047,7 @@ export function App() {
               </div>
               {!introSelected && (
                 <MoveFrames
+                  panel={moveFrames}
                   project={previewProject}
                   index={activePreset?.index ?? selected}
                   onTune={activePreset ? undefined : inspectMoveEffect}
@@ -2292,6 +2294,15 @@ export function App() {
                     index={selected}
                     edit={edit}
                     onPausePreview={stop}
+                    onInspectFrames={() => {
+                      const panel = moveFrames.current;
+                      if (!panel) return;
+                      panel.open = true;
+                      panel
+                        .querySelector("summary")
+                        ?.focus({ preventScroll: true });
+                      panel.scrollIntoView({ block: "nearest" });
+                    }}
                     onBrowsePresets={() => {
                       workspace.patch({ hideLeft: false });
                       setTab("presets");

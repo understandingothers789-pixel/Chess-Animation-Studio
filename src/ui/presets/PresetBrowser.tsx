@@ -1,6 +1,6 @@
 import { animationPreset } from "../../core/animationPresets";
 import { settingsLabel } from "../commands/bulkEditing";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   effectSchema,
   presets,
@@ -20,6 +20,14 @@ import {
 import { presetDescriptions, presetLabels } from "./catalog";
 import { PresetPreview } from "./PresetPreview";
 import type { Edit } from "../state";
+const filters = [
+  ["all", "All"],
+  ["favorites", "Favorites"],
+  ["recent", "Recent"],
+  ["custom", "My presets"],
+] as const;
+type PresetFilter = (typeof filters)[number][0];
+
 function preference(key: string) {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
@@ -66,29 +74,48 @@ export function PresetBrowser({
     [recent, setRecent] = useState<string[]>(() =>
       preference("studio.presetRecent"),
     ),
-    [filter, setFilter] = useState("all"),
+    [filter, setFilter] = useState<PresetFilter>("all"),
     [replaceAll, setReplaceAll] = useState(false),
     [kind, setKind] = useState<SettingsKind>("movement"),
     [preserveKeys, setPreserveKeys] = useState(true);
   const [demoPreset, setDemoPreset] = useState<Preset | null>(null);
-  const items = [
-    ...presets.map((id) => ({
-      id,
-      name: presetLabels[id],
-      effect: animationPreset(id),
-      description: presetDescriptions[id],
-      custom: -1,
-      kind: "movement" as SettingsKind,
-    })),
-    ...p.presets.map((v, i) => ({
-      id: presetId(p, i),
-      name: v.name,
-      effect: v.effect,
-      description: "Your saved animation.",
-      custom: i,
-      kind: v.kind ?? "movement",
-    })),
-  ];
+  const items = useMemo(
+    () => [
+      ...presets.map((id) => ({
+        id,
+        name: presetLabels[id],
+        effect: animationPreset(id),
+        description: presetDescriptions[id],
+        custom: -1,
+        kind: "movement" as SettingsKind,
+      })),
+      ...p.presets.map((v, i) => ({
+        id: presetId(p, i),
+        name: v.name,
+        effect: v.effect,
+        description: "Your saved animation.",
+        custom: i,
+        kind: v.kind ?? "movement",
+      })),
+    ],
+    [p],
+  );
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const visible = (
+    filter === "recent"
+      ? recent.flatMap((id) => {
+          const item = byId.get(id);
+          return item ? [item] : [];
+        })
+      : items
+  ).filter(
+    (item) =>
+      (filter !== "favorites" || favorites.includes(item.id)) &&
+      (filter !== "custom" || item.custom >= 0) &&
+      (item.name + " " + item.description)
+        .toLowerCase()
+        .includes(query.trim().toLowerCase()),
+  );
   const targets =
     scope === "all"
       ? p.moves
@@ -98,7 +125,7 @@ export function PresetBrowser({
           ? [p.moves[index]]
           : [];
   const checkedCount = p.moves.filter((m) => checked.has(m.id)).length;
-  const selected = items.find((v) => v.id === chosen);
+  const selected = chosen ? byId.get(chosen) : undefined;
   const previewMove =
     targets.find((m) => m.id === p.moves[index]?.id) ?? targets[0];
   const previewIndex = p.moves.indexOf(previewMove);
@@ -176,13 +203,13 @@ export function PresetBrowser({
         onChange={(e) => search(e.target.value)}
       />
       <div className="button-row">
-        {["all", "favorites", "recent", "custom"].map((v) => (
+        {filters.map(([key, label]) => (
           <button
-            key={v}
-            aria-pressed={filter === v}
-            onClick={() => setFilter(v)}
+            key={key}
+            aria-pressed={filter === key}
+            onClick={() => setFilter(key)}
           >
-            {v}
+            {label}
           </button>
         ))}
       </div>
@@ -333,113 +360,121 @@ export function PresetBrowser({
         </div>
       </div>
       <div className="animation-grid">
-        {items
-          .filter(
-            (v) =>
-              (v.name + " " + v.description)
-                .toLowerCase()
-                .includes(query.toLowerCase()) &&
-              (filter === "all" ||
-                (filter === "favorites" && favorites.includes(v.id)) ||
-                (filter === "recent" && recent.includes(v.id)) ||
-                (filter === "custom" && v.custom >= 0)),
-          )
-          .map((v) => (
-            <article key={v.id} className={chosen === v.id ? "chosen" : ""}>
-              <button
-                className="animation-card"
-                title={v.description}
-                aria-description={v.description}
-                aria-pressed={chosen === v.id}
-                onClick={() => {
-                  choose(v.id);
-                  setKind(v.kind);
-                  preview(v.effect, v.kind);
-                }}
-              >
-                {v.custom < 0 && (
-                  <svg viewBox="0 0 140 65" aria-hidden="true">
-                    <path d="M12 50H128" stroke="#56735a" strokeWidth="2" />
-                    <g className={`preset-motion motion-${v.effect.preset}`}>
-                      <text x="12" y="48" fontSize="32" fill="#d5e8bd">
-                        ♞
-                      </text>
-                    </g>
-                    <circle
-                      cx="115"
-                      cy="38"
-                      r="13"
-                      fill="none"
-                      stroke="#94b47b"
-                      strokeDasharray="3 3"
-                    />
-                  </svg>
-                )}
-                <strong>{v.name}</strong>
-                <small>
-                  {v.custom >= 0
-                    ? `Saved ${v.kind} · select to preview actual settings on the board`
-                    : v.description}
-                </small>
-              </button>
-              <button
-                aria-label={`Favorite ${v.name}`}
-                aria-pressed={favorites.includes(v.id)}
-                onClick={() => {
-                  const next = favorites.includes(v.id)
-                    ? favorites.filter((x) => x !== v.id)
-                    : [...favorites, v.id];
-                  setFavorites(next);
-                  localStorage.setItem(
-                    "studio.favorites",
-                    JSON.stringify(next),
-                  );
-                }}
-              >
-                ☆
-              </button>
+        {!visible.length && (
+          <div className="preset-empty" role="status">
+            <span>
+              {query.trim()
+                ? "No presets match your search."
+                : filter === "favorites"
+                  ? "Favorite a preset to find it here."
+                  : filter === "recent"
+                    ? "Applied presets appear here, newest first."
+                    : "Save your move settings to build a preset library."}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                search("");
+                setFilter("all");
+              }}
+            >
+              Show all presets
+            </button>
+          </div>
+        )}
+        {visible.map((v) => (
+          <article key={v.id} className={chosen === v.id ? "chosen" : ""}>
+            <button
+              className="animation-card"
+              title={v.description}
+              aria-description={v.description}
+              aria-pressed={chosen === v.id}
+              onClick={() => {
+                choose(v.id);
+                setKind(v.kind);
+                preview(v.effect, v.kind);
+              }}
+            >
               {v.custom < 0 && (
+                <svg viewBox="0 0 140 65" aria-hidden="true">
+                  <path d="M12 50H128" stroke="#56735a" strokeWidth="2" />
+                  <g className={`preset-motion motion-${v.effect.preset}`}>
+                    <text x="12" y="48" fontSize="32" fill="#d5e8bd">
+                      ♞
+                    </text>
+                  </g>
+                  <circle
+                    cx="115"
+                    cy="38"
+                    r="13"
+                    fill="none"
+                    stroke="#94b47b"
+                    strokeDasharray="3 3"
+                  />
+                </svg>
+              )}
+              <strong>{v.name}</strong>
+              <small>
+                {v.custom >= 0
+                  ? `Saved ${v.kind} · select to preview actual settings on the board`
+                  : v.description}
+              </small>
+            </button>
+            <button
+              aria-label={`Favorite ${v.name}`}
+              aria-pressed={favorites.includes(v.id)}
+              onClick={() => {
+                const next = favorites.includes(v.id)
+                  ? favorites.filter((x) => x !== v.id)
+                  : [...favorites, v.id];
+                setFavorites(next);
+                localStorage.setItem("studio.favorites", JSON.stringify(next));
+              }}
+            >
+              ☆
+            </button>
+            {v.custom < 0 && (
+              <button
+                type="button"
+                title={v.description}
+                aria-label={`Pop-up preview for ${v.name}`}
+                onClick={() => {
+                  onPausePreview();
+                  setDemoPreset(v.effect.preset);
+                }}
+              >
+                Preview demo
+              </button>
+            )}
+            {v.custom >= 0 && (
+              <>
                 <button
-                  type="button"
-                  title={v.description}
-                  aria-label={`Pop-up preview for ${v.name}`}
                   onClick={() => {
-                    onPausePreview();
-                    setDemoPreset(v.effect.preset);
+                    const name = prompt("Preset name", v.name);
+                    if (name?.trim())
+                      edit("Rename preset", (p) => {
+                        p.presets[v.custom].name = name.trim().slice(0, 100);
+                      });
                   }}
                 >
-                  Preview demo
+                  Rename
                 </button>
-              )}
-              {v.custom >= 0 && (
-                <>
-                  <button
-                    onClick={() => {
-                      const name = prompt("Preset name", v.name);
-                      if (name?.trim())
-                        edit("Rename preset", (p) => {
-                          p.presets[v.custom].name = name.trim().slice(0, 100);
-                        });
-                    }}
-                  >
-                    Rename
-                  </button>
-                  <button
-                    onClick={() =>
-                      edit("Delete preset", (p) => {
-                        assignPresetIds(p);
-                        p.presets.splice(v.custom, 1);
-                        choose(null);
-                        onCancel();
-                      })
-                    }
-                  >
-                    Delete
-                  </button>
-                </>
-              )}
-            </article>
-          ))}
+                <button
+                  onClick={() =>
+                    edit("Delete preset", (p) => {
+                      assignPresetIds(p);
+                      p.presets.splice(v.custom, 1);
+                      choose(null);
+                      onCancel();
+                    })
+                  }
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </article>
+        ))}
       </div>
       {selected && selected.custom >= 0 && p.moves[index] && (
         <button

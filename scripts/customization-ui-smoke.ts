@@ -238,7 +238,10 @@ try {
   await page.getByLabel("Size return span value", { exact: true }).fill("65");
   await page.setViewportSize({ width: 1366, height: 768 });
   const frameStrip = page.locator(".move-frames");
-  await frameStrip.locator(":scope > summary").click();
+  await page
+    .getByRole("button", { name: "Inspect move frames", exact: true })
+    .click();
+  await expect(frameStrip.locator(":scope > summary")).toBeFocused();
   await expect(frameStrip.locator("img")).toHaveCount(4, { timeout: 15000 });
   await page
     .getByRole("button", { name: "View mid-move frame", exact: true })
@@ -353,7 +356,28 @@ try {
   await page
     .getByRole("button", { name: "Save as reusable preset", exact: true })
     .click();
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "studio.presetRecent",
+      JSON.stringify(["flip", "slide"]),
+    ),
+  );
   await page.getByRole("button", { name: "presets", exact: true }).click();
+  await page.getByRole("button", { name: "Recent", exact: true }).click();
+  await expect(page.locator(".animation-card strong")).toHaveText([
+    "Capture flip",
+    "Clean slide",
+  ]);
+  const presetSearch = page.getByLabel("Search animation presets", {
+    exact: true,
+  });
+  await presetSearch.fill("no such preset");
+  await expect(page.getByText("No presets match your search.")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Show all presets", exact: true })
+    .click();
+  await expect(presetSearch).toHaveValue("");
+
   await page
     .getByRole("button", {
       name: "Pop-up preview for Capture flip",

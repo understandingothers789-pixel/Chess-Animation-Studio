@@ -143,8 +143,8 @@ export function AnalysisPanel(q: PanelProps) {
           </button>
         )}
         <p className="hint">
-          Manual badges always win. Engine labels use centipawn loss, not
-          Chess.com's proprietary classifications.
+          Stockfish adds !! to near-best piece sacrifices after a deeper
+          tactical check. Manual badges and hidden badges take priority.
         </p>
       </Section>
       <Section
@@ -279,6 +279,15 @@ export function AnalysisPanel(q: PanelProps) {
                   Loss {a.engine.loss} cp · depth {a.engine.depth}
                   <br />
                   {a.engine.message}
+                  {a.engine.sacrifice && (
+                    <>
+                      <br />
+                      If accepted: {a.engine.sacrifice.reply}{" "}
+                      {a.engine.sacrifice.continuation}
+                      {" · "}
+                      {a.engine.sacrifice.material} pawn units offered
+                    </>
+                  )}
                 </p>
               ) : (
                 <p className="hint">Engine not analyzed.</p>

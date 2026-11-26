@@ -153,6 +153,11 @@ export function badge(m: Project["moves"][number]) {
   const b = m.effect.badge.manual;
   if (b === "none") return null;
   if (b) return b;
+  if (
+    m.analysis.engine?.state === "done" &&
+    m.analysis.engine.label === "brilliant"
+  )
+    return "brilliant";
   if (m.analysis.book?.state === "found") return "book";
   return m.analysis.engine?.state === "done" ? m.analysis.engine.label : null;
 }

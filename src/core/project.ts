@@ -485,7 +485,21 @@ const analysisSchema = z.object({
       score: n(-1e6, 1e6),
       loss: n(0, 2e6),
       best: str,
-      label: z.enum(["best", "good", "inaccuracy", "mistake", "blunder"]),
+      label: z.enum([
+        "brilliant",
+        "best",
+        "good",
+        "inaccuracy",
+        "mistake",
+        "blunder",
+      ]),
+      sacrifice: z
+        .object({
+          reply: str,
+          continuation: str,
+          material: n(1, 100),
+        })
+        .optional(),
       depth: n(0, 100),
       message: str,
     })

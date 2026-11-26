@@ -437,10 +437,23 @@ small {
   outline: 1px solid #789860;
 }
 .badge-mini {
+  min-width: 1.4rem;
+  max-width: 4rem;
+  padding: 0.1rem 0.28rem;
+  border: 1px solid currentColor;
+  border-radius: 0.35rem;
   font-size: var(--text-meta);
+  font-weight: 800;
   color: #bdc9a7;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   overflow: hidden;
 }
+.badge-mini[data-rating="brilliant"] { color: #a3f8e8; background: #103d48; }
+.badge-mini[data-rating="inaccuracy"] { color: #f4d27f; }
+.badge-mini[data-rating="mistake"] { color: #f6ae78; }
+.badge-mini[data-rating="blunder"] { color: #ff989e; }
 .preset-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

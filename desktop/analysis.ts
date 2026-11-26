@@ -6,6 +6,12 @@ import { type Project } from "../src/core/project";
 import { buildGame } from "../src/core/chess";
 import { starterBook } from "../src/core/openingBook";
 import { atomic } from "./files";
+import {
+  replyUci,
+  sacrificeCandidates,
+  sacrificeDepth,
+  sacrificeLine,
+} from "./sacrifices";
 const key = (s: string) => createHash("sha256").update(s).digest("hex");
 async function cached(dir: string, id: string, ttl = 7 * 864e5) {
   try {
@@ -88,35 +94,121 @@ class Uci {
     if (error) throw Error(error);
     return lines;
   }
-  async search(fen: string, p: Project, played?: string) {
+  async search(
+    fen: string,
+    p: Project,
+    only: readonly string[] = [],
+    depthLimit = p.analysis.depth,
+  ) {
     this.lines = [];
     this.send("position fen " + fen);
     this.send(
-      `go depth ${p.analysis.depth} movetime ${p.analysis.milliseconds}${played ? " searchmoves " + played : ""}`,
+      `go depth ${depthLimit} movetime ${p.analysis.milliseconds}${only.length ? " searchmoves " + only.join(" ") : ""}`,
     );
     const lines = await this.until("bestmove", p.analysis.milliseconds + 12000);
-    let score = 0,
-      depth = 0;
-    for (const l of lines) {
-      const match = l.match(/score (cp|mate) (-?\d+)/);
-      if (match) {
-        score =
-          match[1] === "mate"
-            ? Math.sign(+match[2]) * (100000 - Math.abs(+match[2]) * 100)
-            : +match[2];
-        depth = Number(l.match(/depth (\d+)/)?.[1] ?? depth);
-      }
-    }
+    const best =
+      lines.find((line) => line.startsWith("bestmove "))?.split(" ")[1] ?? "";
+    const scoring = lines.flatMap((line) => {
+      const match = line.match(
+        /^info depth (\d+) .*?score (cp|mate) (-?\d+)(.*)$/,
+      );
+      if (!match) return [];
+      const [, depth, kind, raw, rest] = match;
+      const value = Number(raw);
+      const pv =
+        rest
+          .match(/ pv (.+)$/)?.[1]
+          .trim()
+          .split(/\s+/) ?? [];
+      return [
+        {
+          depth: Number(depth),
+          score:
+            kind === "mate"
+              ? (value > 0 ? 1 : -1) * (100000 - Math.abs(value) * 100)
+              : value,
+          exact: !/\b(?:lowerbound|upperbound)\b/.test(rest) && pv[0] === best,
+          pv,
+        },
+      ];
+    });
+    const exact = [...scoring].reverse().find((line) => line.exact);
     return {
-      score,
-      depth,
-      best: lines.find((l) => l.startsWith("bestmove "))?.split(" ")[1] ?? "",
+      ...(exact ??
+        scoring.at(-1) ?? { score: 0, depth: 0, exact: false, pv: [] }),
+      best,
     };
   }
   stop() {
     this.child.kill();
   }
 }
+async function reviewMove(
+  engine: Uci,
+  p: Project,
+  fen: string,
+  move: string,
+): Promise<NonNullable<Project["moves"][number]["analysis"]["engine"]>> {
+  const candidate = /^Stockfish\b/i.test(engine.name)
+    ? sacrificeCandidates(fen, move)
+    : undefined;
+  const depth = candidate?.replies.length
+    ? Math.max(sacrificeDepth, p.analysis.depth)
+    : p.analysis.depth;
+  const best = await engine.search(fen, p, [], depth);
+  const played =
+    best.best === move ? best : await engine.search(fen, p, [move], depth);
+  const lossLimit = best.score >= 90000 && played.score >= 90000 ? 100 : 40;
+  let sacrifice: ReturnType<typeof sacrificeLine>;
+  if (
+    candidate?.replies.length &&
+    best.exact &&
+    played.exact &&
+    Math.min(best.depth, played.depth) >= sacrificeDepth &&
+    played.score >= -35 &&
+    best.score - played.score <= lossLimit
+  ) {
+    const replies = candidate.replies.map(replyUci);
+    if (replies.includes(played.pv[1])) {
+      sacrifice = sacrificeLine(candidate, played.pv.slice(1));
+    } else {
+      const accepted = await engine.search(
+        candidate.after.fen(),
+        p,
+        replies,
+        depth,
+      );
+      if (
+        accepted.exact &&
+        accepted.depth >= sacrificeDepth &&
+        accepted.score <= 35
+      )
+        sacrifice = sacrificeLine(candidate, accepted.pv);
+    }
+  }
+  const loss = Math.max(0, best.score - played.score);
+  return {
+    state: "done",
+    score: played.score,
+    loss,
+    best: best.best,
+    label: sacrifice
+      ? "brilliant"
+      : best.best === move
+        ? "best"
+        : loss < 35
+          ? "good"
+          : loss < 90
+            ? "inaccuracy"
+            : loss < 180
+              ? "mistake"
+              : "blunder",
+    depth: played.depth,
+    message: engine.name + "; root mover perspective",
+    ...(sacrifice ? { sacrifice } : {}),
+  };
+}
+
 export async function analyze(
   p: Project,
   kind: "book" | "engine" | "starter",
@@ -228,34 +320,18 @@ export async function analyze(
         }
       } else {
         const id = key(
-          JSON.stringify([executable, engine!.name, s.fen, s.uci, p.analysis]),
+          JSON.stringify([
+            "sacrifice-v1",
+            executable,
+            engine!.name,
+            s.fen,
+            s.uci,
+            p.analysis,
+          ]),
         );
         let data = await cached(dir, id, 30 * 864e5);
         if (!data) {
-          const best = await engine!.search(s.fen, p),
-            played =
-              best.best === s.uci
-                ? best
-                : await engine!.search(s.fen, p, s.uci),
-            loss = Math.max(0, best.score - played.score);
-          data = {
-            state: "done",
-            score: played.score,
-            loss,
-            best: best.best,
-            label:
-              best.best === s.uci
-                ? "best"
-                : loss < 35
-                  ? "good"
-                  : loss < 90
-                    ? "inaccuracy"
-                    : loss < 180
-                      ? "mistake"
-                      : "blunder",
-            depth: played.depth,
-            message: engine!.name + "; root mover perspective",
-          };
+          data = await reviewMove(engine!, p, s.fen, s.uci);
           await atomic(path.join(dir, id + ".json"), JSON.stringify(data));
         }
         a.engine = data;

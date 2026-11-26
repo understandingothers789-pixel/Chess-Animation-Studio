@@ -4,15 +4,7 @@ import type { RenderFrame } from "../engine/frame";
 import { Resources, radialTexture } from "../engine/resources";
 import { drawPlayerIntro, playerIntroFrame } from "../engine/playerIntro";
 import { clamp } from "../../core/timeline";
-const symbols: Record<string, string> = {
-  book: "▤",
-  brilliant: "!!",
-  best: "★",
-  good: "✓",
-  inaccuracy: "?!",
-  mistake: "?",
-  blunder: "??",
-};
+import { badgeSymbols } from "../../core/badgeNotation";
 export class OverlaySystem {
   private resources = new Resources();
   private overlayProject?: Project;
@@ -95,7 +87,16 @@ export class OverlaySystem {
     this.badgeGlow.visible = this.badge.visible;
     if (e.badge && e.badgePosition && e.effect) {
       const b = e.effect.badge,
-        key = e.badge + b.text + (p.badgeAssets[e.badge] ?? "");
+        automaticSacrifice =
+          e.badge === "brilliant" &&
+          !b.manual &&
+          !!c.game?.steps[e.index]?.move.analysis.engine?.sacrifice,
+        key = JSON.stringify([
+          e.badge,
+          b.text,
+          automaticSacrifice,
+          p.badgeAssets[e.badge],
+        ]);
       const asset = this.assetTextures.get(p.badgeAssets[e.badge]);
       if (key !== this.badgeKey || asset !== this.lastAsset) {
         this.generated?.dispose();
@@ -103,7 +104,12 @@ export class OverlaySystem {
         this.lastAsset = asset;
         const mat = this.badge.material as T.SpriteMaterial;
         mat.map =
-          asset ?? (this.generated = this.badgeTexture(e.badge, b.text));
+          asset ??
+          (this.generated = this.badgeTexture(
+            e.badge,
+            b.text,
+            automaticSacrifice,
+          ));
         mat.needsUpdate = true;
         this.badgeKey = key;
       }
@@ -131,7 +137,11 @@ export class OverlaySystem {
       }
     }
   }
-  private badgeTexture(kind: string, text: string) {
+  private badgeTexture(
+    kind: string,
+    text: string,
+    automaticSacrifice: boolean,
+  ) {
     const c = document.createElement("canvas");
     c.width = c.height = 256;
     const x = c.getContext("2d")!;
@@ -155,7 +165,24 @@ export class OverlaySystem {
     x.font = "bold 112px system-ui";
     x.textAlign = "center";
     x.textBaseline = "middle";
-    if (kind === "book") {
+    if (automaticSacrifice) {
+      x.fillStyle = "#103d48";
+      x.strokeStyle = "#b6ffed";
+      x.lineWidth = 6;
+      x.beginPath();
+      x.arc(128, 128, 89, 0, Math.PI * 2);
+      x.fill();
+      x.stroke();
+      x.fillStyle = "#f5fffb";
+      for (const center of [105, 151]) {
+        x.beginPath();
+        x.roundRect(center - 11, 68, 22, 71, 8);
+        x.fill();
+        x.beginPath();
+        x.arc(center, 163, 11, 0, Math.PI * 2);
+        x.fill();
+      }
+    } else if (kind === "book") {
       x.strokeStyle = "#fff";
       x.lineWidth = 9;
       x.lineJoin = "round";
@@ -193,7 +220,11 @@ export class OverlaySystem {
       x.closePath();
       x.fill();
     } else
-      x.fillText(kind === "custom" ? text : (symbols[kind] ?? kind), 128, 132);
+      x.fillText(
+        kind === "custom" ? text : (badgeSymbols[kind] ?? kind),
+        128,
+        132,
+      );
     const t = new T.CanvasTexture(c);
     t.colorSpace = T.SRGBColorSpace;
     return t;

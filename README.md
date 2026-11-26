@@ -154,7 +154,7 @@ The runtime and application are unsigned. The native workflow records `Get-Authe
 - **Motion / Camera / Look / Keys:** refine the selected move, including normalized keyframes and framing per output format.
 - **Music:** import music, analyze transients, correct markers, preview timing arrangements, and assign local sound cues.
 - **Scene:** select sharp artwork, adjust board colors, atmosphere, dark-square pulses and per-format layout.
-- **Analysis:** suggest opening-book and engine badges. Manual badges always take priority.
+- **Analysis:** run **Review game with Stockfish** to mark near-best piece sacrifices with **!!**. **Selected move results** shows the line if the opponent takes the piece. Manual badges and hidden badges take priority.
 - **Files:** configure tools and optional credentials, collect a portable project, relink assets, open logs and recent projects.
 
 See the [user guide](docs/USER_GUIDE.md), [architecture](docs/ARCHITECTURE.md), [sources and licensing](docs/SOURCES.md), and [known limits](docs/VALIDATION.md).

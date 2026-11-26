@@ -1,3 +1,4 @@
+import { badgeSymbols } from "../../core/badgeNotation";
 import { settingHelp } from "../help";
 import { useState } from "react";
 import {
@@ -158,34 +159,49 @@ export function GamePanel(q: PanelProps) {
         </button>
       </div>
       <div className="move-list">
-        {p.moves.map((m, i) => (
-          <div
-            className={"move-row " + (q.selected === i ? "active" : "")}
-            key={m.id}
-          >
-            <input
-              title={settingHelp("Check move " + (i + 1))}
-              aria-description={settingHelp("Check move " + (i + 1))}
-              aria-label={"Check move " + (i + 1)}
-              type="checkbox"
-              checked={q.checked.has(m.id)}
-              onChange={(e) => {
-                const s = new Set(q.checked);
-                if (e.target.checked) s.add(m.id);
-                else s.delete(m.id);
-                q.setChecked(s);
-              }}
-            />
-            <button onClick={(event) => q.select(i, event)}>
-              <span className="muted">
-                {i % 2 === 0 ? Math.floor(i / 2) + 1 + "." : "…"}
-              </span>
-              <strong>{m.san}</strong>
-              <span className="badge-mini">{badge(m) ?? ""}</span>
-              <small>{m.effect.duration.toFixed(2)}s</small>
-            </button>
-          </div>
-        ))}
+        {p.moves.map((m, i) => {
+          const rating = badge(m);
+          return (
+            <div
+              className={"move-row " + (q.selected === i ? "active" : "")}
+              key={m.id}
+            >
+              <input
+                title={settingHelp("Check move " + (i + 1))}
+                aria-description={settingHelp("Check move " + (i + 1))}
+                aria-label={"Check move " + (i + 1)}
+                type="checkbox"
+                checked={q.checked.has(m.id)}
+                onChange={(e) => {
+                  const s = new Set(q.checked);
+                  if (e.target.checked) s.add(m.id);
+                  else s.delete(m.id);
+                  q.setChecked(s);
+                }}
+              />
+              <button onClick={(event) => q.select(i, event)}>
+                <span className="muted">
+                  {i % 2 === 0 ? Math.floor(i / 2) + 1 + "." : "…"}
+                </span>
+                <strong>{m.san}</strong>
+                {rating && (
+                  <span
+                    className="badge-mini"
+                    data-rating={rating}
+                    role="img"
+                    title={rating}
+                    aria-label={rating}
+                  >
+                    {rating === "custom"
+                      ? m.effect.badge.text
+                      : badgeSymbols[rating]}
+                  </span>
+                )}
+                <small>{m.effect.duration.toFixed(2)}s</small>
+              </button>
+            </div>
+          );
+        })}
       </div>
     </>
   );

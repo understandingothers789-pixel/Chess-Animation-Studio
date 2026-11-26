@@ -14,7 +14,8 @@ import {
 import { analyze } from "../desktop/analysis";
 import { VideoJob } from "../desktop/export";
 import { sample, importPgn } from "../src/core/chess";
-import { blank } from "../src/core/project";
+import { blank, parseProject } from "../src/core/project";
+import { badge } from "../src/core/timeline";
 const temp = () => fs.mkdtemp(path.join(os.tmpdir(), "studio-test-"));
 it("writes and reads projects atomically, preserving relative references", async () => {
   const dir = await temp(),
@@ -138,6 +139,64 @@ it.runIf(
   expect(r[p.moves[0].id].engine?.state).toBe("done");
   expect(p.moves[0].effect.badge.manual).toBe("brilliant");
 });
+it.runIf(
+  existsSync(
+    process.env.STOCKFISH_PATH ?? "/workspace/tools/usr/games/stockfish",
+  ),
+)(
+  "marks sound Stockfish sacrifices while skipping material blunders and trades",
+  async () => {
+    const executable =
+      process.env.STOCKFISH_PATH ?? "/workspace/tools/usr/games/stockfish";
+    const dir = await temp();
+    const review = async (p: ReturnType<typeof blank>, indices: number[]) => {
+      p.analysis.threads = 1;
+      p.analysis.milliseconds = 3000;
+      const result = await analyze(
+        p,
+        "engine",
+        indices,
+        dir,
+        executable,
+        "",
+        new AbortController().signal,
+        () => {},
+      );
+      for (const i of indices) p.moves[i].analysis = result[p.moves[i].id];
+    };
+
+    const opera = sample();
+    const queen = opera.moves.findIndex((m) => m.san === "Qb8+");
+    await review(opera, [queen]);
+    expect(opera.moves[queen].analysis.engine).toMatchObject({
+      label: "brilliant",
+      sacrifice: { reply: "Nxb8", continuation: "Rd8#", material: 9 },
+    });
+    opera.moves[queen].analysis.book = {
+      state: "found",
+      games: 10,
+      frequency: 0.5,
+      message: "Opening badge",
+    };
+    const move = parseProject(opera).moves[queen];
+    expect(badge(move)).toBe("brilliant");
+    move.effect.badge.manual = "mistake";
+    expect(badge(move)).toBe("mistake");
+    move.effect.badge.manual = "none";
+    expect(badge(move)).toBeNull();
+
+    for (const pgn of [
+      '[FEN "7k/8/3p4/2Q5/8/8/8/K7 w - - 0 1"] 1. Qe5+',
+      '[FEN "3q2rk/8/8/8/8/8/8/K2Q4 w - - 0 1"] 1. Qxd8',
+    ]) {
+      const p = importPgn(blank(), pgn);
+      await review(p, [0]);
+      expect(p.moves[0].analysis.engine?.state).toBe("done");
+      expect(p.moves[0].analysis.engine?.label).not.toBe("brilliant");
+      expect(p.moves[0].analysis.engine?.sacrifice).toBeUndefined();
+    }
+  },
+);
 it("exports measured audio offset and trim, and cleans up cancelled jobs", async () => {
   const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg";
   try {

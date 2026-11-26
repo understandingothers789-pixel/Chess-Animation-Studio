@@ -1,7 +1,7 @@
+import { animationPreset } from "../../core/animationPresets";
 import { settingsLabel } from "../commands/bulkEditing";
 import { useState } from "react";
 import {
-  effect,
   effectSchema,
   presets,
   presetId,
@@ -75,7 +75,7 @@ export function PresetBrowser({
     ...presets.map((id) => ({
       id,
       name: presetLabels[id],
-      effect: effect(id),
+      effect: animationPreset(id),
       description: presetDescriptions[id],
       custom: -1,
       kind: "movement" as SettingsKind,

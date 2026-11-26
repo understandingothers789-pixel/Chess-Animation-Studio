@@ -849,7 +849,10 @@ function spotlightMarkerTimes(p: Project, effect: Effect, start: number) {
   const markers = p.beats
     .filter(
       (b) =>
-        b.enabled && b.time >= start && b.time < start + effect.jam.duration,
+        b.enabled &&
+        beatInMusic(p, b) &&
+        b.time >= start &&
+        b.time < start + effect.jam.duration,
     )
     .sort((a, b) => a.time - b.time);
   const anchor = markers.find((b) => b.id === effect.jam.beat);

@@ -1,9 +1,10 @@
+import { animationPreset } from "../../core/animationPresets";
 import {
   applyMoveSettings,
   bulkGroups,
   settingsLabel as label,
 } from "./bulkEditing";
-import { effect, type Project, type Effect } from "../../core/project";
+import { type Project, type Effect } from "../../core/project";
 import {
   settingsKinds,
   settingsAffectTiming,
@@ -178,7 +179,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
           disabled: m.effect.locked,
           run: () =>
             changeSource("Reset duration", (e) => {
-              e.duration = effect(m.effect.preset).duration;
+              e.duration = animationPreset(m.effect.preset).duration;
             }),
         },
       ],
@@ -194,7 +195,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
     });
     actions.push({
       label: "Reset movement only",
-      run: () => apply("movement", one, effect(m.effect.preset)),
+      run: () => apply("movement", one, animationPreset(m.effect.preset)),
     });
   }
   if (track === "camera")
@@ -231,7 +232,7 @@ export function moveCommands(c: MoveCommandContext): MenuAction[] {
       },
       {
         label: "Reset visual effects only",
-        run: () => apply("effects", one, effect(m.effect.preset)),
+        run: () => apply("effects", one, animationPreset(m.effect.preset)),
       },
       { label: "Composition-wide effects…", run: () => c.navigate("effects") },
     );

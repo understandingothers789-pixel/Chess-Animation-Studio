@@ -1,9 +1,9 @@
+import { animationPreset } from "../../core/animationPresets";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { importPgn } from "../../core/chess";
 import {
   blank,
   camera,
-  effect,
   presets,
   type Preset,
   type Project,
@@ -50,7 +50,7 @@ export function PresetPreview({
     p.tail = 0.32;
     p.boardFX.intro = false;
     p.ambient.enabled = false;
-    p.moves[0].effect = effect(selected);
+    p.moves[0].effect = animationPreset(selected);
     p.moves[0].effect.cameras.square = {
       ...camera(),
       mode: "manual",

@@ -1,7 +1,7 @@
+import { animationPreset } from "../core/animationPresets";
 import { channelNames } from "./keyframes/KeyframePanel";
 import { useState } from "react";
 import {
-  effect,
   camera,
   type Project,
   type Effect,
@@ -68,7 +68,7 @@ export function EffectPicker({
           e,
           applyPresetEffect(
             e,
-            effect("somersault"),
+            animationPreset("somersault"),
             p.format,
             false,
             "movement",
@@ -90,13 +90,19 @@ export function EffectPicker({
       name: "Piece flip",
       tab: "move",
       add: (e: Effect) =>
-        Object.assign(e, applyPresetEffect(e, effect("somersault"), p.format)),
+        Object.assign(
+          e,
+          applyPresetEffect(e, animationPreset("somersault"), p.format),
+        ),
     },
     {
       name: "Soft hop",
       tab: "move",
       add: (e: Effect) =>
-        Object.assign(e, applyPresetEffect(e, effect("hop"), p.format)),
+        Object.assign(
+          e,
+          applyPresetEffect(e, animationPreset("hop"), p.format),
+        ),
     },
     {
       name: "Beat zoom",
@@ -110,10 +116,15 @@ export function EffectPicker({
       name: "Flip + smooth beat zoom",
       tab: "effects",
       add: (e: Effect) => {
-        Object.assign(e, applyPresetEffect(e, effect("somersault"), p.format));
+        Object.assign(
+          e,
+          applyPresetEffect(e, animationPreset("somersault"), p.format),
+        );
+        if (e.locked) return;
         e.jam.enabled = true;
         e.jam.rhythm = "swell";
         e.jam.start = "landing";
+        e.jam.offset = Math.min(0.12, e.duration * e.landing);
       },
     },
     {
@@ -147,7 +158,7 @@ export function EffectPicker({
         Object.assign(
           e,
           pasteSettings(e, {
-            source: effect("slide"),
+            source: animationPreset("slide"),
             format: p.format,
             kind: "movement",
           }),
@@ -301,7 +312,7 @@ export function EffectPicker({
                 aria-label={`Reset ${v.name} settings`}
                 onClick={() =>
                   change("Reset " + v.name, (e) => {
-                    const defaults = effect(e.preset);
+                    const defaults = animationPreset(e.preset);
                     if (v.name === "Beat zoom") e.jam = defaults.jam;
                     else if (v.name === "Light wash") e.light = defaults.light;
                     else if (v.name === "Capture dust")

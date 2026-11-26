@@ -1,3 +1,4 @@
+import { animationPreset } from "../core/animationPresets";
 import { activeBeats } from "../core/beatMarkers";
 import { StartingSquareMeme } from "./StartingSquareMeme";
 import { AfterEffect } from "./AfterEffect";
@@ -24,7 +25,6 @@ import { CurveEditor } from "./keyframes/CurveEditor";
 import { settingHelp } from "./help";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
-  effect,
   uid,
   moveLightDefaults,
   beatSpotlightDefaults,
@@ -133,7 +133,7 @@ export function Inspector({
     targets(p).forEach((m) => fn(m.effect));
   const applyMovement = (preset: Preset) =>
     edit("Apply preset", (p) => {
-      const settings = effect(preset);
+      const settings = animationPreset(preset);
       for (const m of targets(p))
         m.effect = applyPresetEffect(
           m.effect,
@@ -148,7 +148,7 @@ export function Inspector({
   const resetFields = (keys: (keyof Effect)[]) =>
     edit("Reset " + keys.join(","), (p) =>
       each(p, (e) => {
-        const defaults = effect(e.preset);
+        const defaults = animationPreset(e.preset);
         for (const key of keys)
           (e as any)[key] = structuredClone(defaults[key]);
       }),
@@ -175,7 +175,8 @@ export function Inspector({
   const effectStatus = (get: (v: Effect) => unknown) =>
     mixed(get)
       ? "Mixed"
-      : JSON.stringify(get(e)) === JSON.stringify(get(effect(e.preset)))
+      : JSON.stringify(get(e)) ===
+          JSON.stringify(get(animationPreset(e.preset)))
         ? "Default"
         : "Customized";
   const range = (
@@ -520,7 +521,7 @@ export function Inspector({
                 onReset={() => {
                   edit("Reset piece size", (p) =>
                     each(p, (fx) => {
-                      const defaults = effect(fx.preset);
+                      const defaults = animationPreset(fx.preset);
                       fx.scale = defaults.scale;
                       fx.peak = defaults.peak;
                       fx.sizeProfile = defaults.sizeProfile;
@@ -977,7 +978,7 @@ export function Inspector({
                     onReset={() =>
                       edit("Reset capture " + k, (p) =>
                         each(p, (v) => {
-                          v.capture[k] = effect(v.preset).capture[k];
+                          v.capture[k] = animationPreset(v.preset).capture[k];
                         }),
                       )
                     }
@@ -1569,7 +1570,9 @@ export function Inspector({
                   onReset={() =>
                     edit("Reset highlight width", (p) =>
                       each(p, (v) => {
-                        v.highlight.width = effect(v.preset).highlight.width;
+                        v.highlight.width = animationPreset(
+                          v.preset,
+                        ).highlight.width;
                       }),
                     )
                   }
@@ -1584,7 +1587,9 @@ export function Inspector({
                   onReset={() =>
                     edit("Reset highlight glow", (p) =>
                       each(p, (v) => {
-                        v.highlight.glow = effect(v.preset).highlight.glow;
+                        v.highlight.glow = animationPreset(
+                          v.preset,
+                        ).highlight.glow;
                       }),
                     )
                   }
@@ -1599,7 +1604,7 @@ export function Inspector({
                   onReset={() =>
                     edit("Reset highlight opacity", (p) =>
                       each(p, (v) => {
-                        v.highlight.opacity = effect(
+                        v.highlight.opacity = animationPreset(
                           v.preset,
                         ).highlight.opacity;
                       }),
@@ -1616,7 +1621,9 @@ export function Inspector({
                   onReset={() =>
                     edit("Reset highlight reveal", (p) =>
                       each(p, (v) => {
-                        v.highlight.reveal = effect(v.preset).highlight.reveal;
+                        v.highlight.reveal = animationPreset(
+                          v.preset,
+                        ).highlight.reveal;
                       }),
                     )
                   }
@@ -1631,7 +1638,9 @@ export function Inspector({
                   onReset={() =>
                     edit("Reset highlight fade", (p) =>
                       each(p, (v) => {
-                        v.highlight.fade = effect(v.preset).highlight.fade;
+                        v.highlight.fade = animationPreset(
+                          v.preset,
+                        ).highlight.fade;
                       }),
                     )
                   }
@@ -1712,7 +1721,7 @@ export function Inspector({
                     onReset={() =>
                       edit("Reset badge " + k, (p) =>
                         each(p, (v) => {
-                          v.badge[k] = effect(v.preset).badge[k];
+                          v.badge[k] = animationPreset(v.preset).badge[k];
                         }),
                       )
                     }

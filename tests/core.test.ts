@@ -1,3 +1,5 @@
+import { animationPreset } from "../src/core/animationPresets";
+import { captureImpact } from "../src/render/engine/impact";
 import { describe, it, expect } from "vitest";
 import { blank, effect, parseProject, VERSION } from "../src/core/project";
 import packageInfo from "../package.json";
@@ -21,6 +23,7 @@ import {
   evaluateBeatSpotlight,
   moveChannelSampler,
   spotlightStart,
+  spotlightPeaks,
   stepFrame,
 } from "../src/core/timeline";
 it("uses the package version for the application and saved projects", () => {
@@ -515,4 +518,45 @@ it("samples the preset curve and steps onto the selected export frame grid", () 
   expect(moveChannelSampler(p, 0, "rz", false)(0.4)).toBeCloseTo(112);
   expect(stepFrame(10.01, 24, -1)).toBe(10);
   expect(stepFrame(10.01, 24, 1)).toBe(241 / 24);
+});
+
+it("keeps the polished capture payoff on the landing frame", () => {
+  const p = importPgn(blank(), "1. e4 d5 2. exd5 Qxd5");
+  const e = (p.moves[2].effect = animationPreset("flip"));
+  const game = buildGame(p);
+  const segment = segments(p)[2];
+  expect(e.capture.exitAt).toBe(e.landing);
+  expect(e.capture.impact).toBe(e.landing);
+  expect(captureImpact(p, game, segment.land - 0.001).light).toBe(0);
+  expect(captureImpact(p, game, segment.land + 0.001).light).toBeGreaterThan(
+    0.1,
+  );
+  const pose = evaluate(p, segment.land, game).pieces.find(
+    (piece) => piece.id === game.steps[2].pieceId,
+  )!;
+  expect(pose.scale).toBe(1);
+  expect(Math.sin(pose.ry)).toBeCloseTo(0);
+});
+
+it("starts the polished finale pulse at landing and skips markers outside the music trim", () => {
+  const p = importPgn(blank(), "1. e4");
+  const e = (p.moves[0].effect = animationPreset("finale"));
+  const [s] = segments(p);
+  const start = spotlightStart(e, s);
+  p.music.trimStart = 4;
+  p.beats = [
+    {
+      id: "trimmed",
+      time: s.land - 0.05,
+      sourceTime: 3,
+      enabled: true,
+      accent: true,
+    },
+  ];
+  expect(spotlightPeaks(p, e, start)[0].time).toBeCloseTo(s.land);
+  expect(
+    evaluateBeatSpotlight(p, e, s.land, start, [0, 0])?.zoomLevel,
+  ).toBeCloseTo(1);
+  p.beats = [{ ...p.beats[0], sourceTime: 5 }];
+  expect(spotlightPeaks(p, e, start)[0].time).toBeCloseTo(s.land - 0.05);
 });

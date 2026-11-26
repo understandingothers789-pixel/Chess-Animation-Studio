@@ -247,6 +247,17 @@ try {
     .click();
   await expect(frameStrip.locator(":scope > summary")).toBeFocused();
   await expect(frameStrip.locator("img")).toHaveCount(4, { timeout: 15000 });
+  await expect(
+    page
+      .getByRole("group", { name: "Preview tools menu" })
+      .getByRole("button", { name: "Tools", exact: false }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      preview.evaluate((canvas) => canvas.getBoundingClientRect().height),
+    )
+    .toBeGreaterThan(110);
+
   await page
     .getByRole("button", { name: "View mid-move frame", exact: true })
     .click();

@@ -972,6 +972,21 @@
 }
 
 
+.move-preset-tools.button-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(102px, 1fr));
+}
+
+@media (max-height: 880px) {
+  .studio:has(.move-frames[open]) .preview-shell {
+    --compact-preview-tools: true;
+  }
+  .workspace.flexible .studio:has(.move-frames[open]) .preview-area {
+    flex-basis: 230px;
+    min-height: 230px;
+  }
+}
+
 .preset-empty {
   grid-column: 1 / -1;
   display: flex;

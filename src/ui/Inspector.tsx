@@ -410,7 +410,7 @@ export function Inspector({
                   optionDescriptions={presetDescriptions}
                   onChange={applyMovement}
                 />
-                <div className="button-row">
+                <div className="button-row move-preset-tools">
                   <button
                     onClick={() => {
                       onPausePreview();

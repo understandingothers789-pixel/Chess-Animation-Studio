@@ -1,4 +1,7 @@
-import type { Project, StoryboardShot } from "./project";
+import { Chess } from "chess.js";
+import { annotation } from "./annotations";
+import { buildGame, type Step } from "./chess";
+import { camera, type Project, type StoryboardShot } from "./project";
 import { shotFromMove, titleShot, shotCaption } from "./storyboard";
 import { moveGroups } from "./editing";
 export function moveShort(p: Project, id: string): StoryboardShot[] {
@@ -17,12 +20,103 @@ export const storyTemplates = [
   "Combination",
   "Game Highlights",
   "Checkmate Reveal",
+  "Tactical Breakdown",
 ] as const;
 export type StoryTemplate = (typeof storyTemplates)[number];
+export const countdownLengths = [2, 3, 5] as const;
+export type CountdownLength = (typeof countdownLengths)[number];
+
+const pieceName: Record<string, string> = {
+  p: "pawn",
+  n: "knight",
+  b: "bishop",
+  r: "rook",
+  q: "queen",
+  k: "king",
+};
+
+function moveResult(step: Step, chess: Chess) {
+  const san = step.move.san;
+  const captured = step.before.find((piece) => piece.id === step.capturedId);
+  if (chess.isCheckmate()) return `Checkmate · ${san}`;
+  if (step.rook)
+    return step.to[0] === "g" ? "Kingside castling" : "Queenside castling";
+  const promotion = step.promotion;
+  if (promotion) return `Promotion to ${pieceName[promotion]} · ${san}`;
+  if (captured && captured.square !== step.to) return `En passant · ${san}`;
+  if (captured) return `Captures a ${pieceName[captured.type]} · ${san}`;
+  if (chess.isCheck()) return `Check · ${san}`;
+  return `Played move · ${san}`;
+}
+
+function mark(
+  kind: "arrow" | "circle",
+  from: string,
+  to: string,
+  color: string,
+  duration: number,
+) {
+  return {
+    ...annotation(kind, 0),
+    from,
+    to,
+    color,
+    end: duration,
+    width: kind === "circle" ? 0.05 : 0.085,
+    opacity: 0.9,
+  };
+}
+
+function tacticalBreakdown(p: Project, id: string): StoryboardShot[] {
+  const step = buildGame(p).steps.find(({ move }) => move.id === id);
+  if (!step) throw Error("Choose a source move.");
+  const before = shotFromMove(p, id, "position-hold", "before");
+  before.name = "Tactical setup";
+  before.camera = { ...camera(), mode: "full" };
+  before.duration = 1.65;
+  before.annotations = [
+    shotCaption(p, "Watch this piece", before.duration),
+    mark("circle", step.from, step.from, "#FFD690", before.duration),
+  ];
+
+  const after = shotFromMove(p, id, "position-hold", "after");
+  after.name = "Tactical breakdown";
+  after.camera = { ...camera(), mode: "full" };
+  after.duration = 2.7;
+  const chess = new Chess(step.fen);
+  const attacker = chess.turn();
+  chess.move(step.move.san);
+  after.annotations = [
+    shotCaption(p, moveResult(step, chess), after.duration),
+    mark("arrow", step.from, step.to, "#65DBEC", after.duration),
+  ];
+  if (step.rook)
+    after.annotations.push(
+      mark("arrow", step.rook.from, step.rook.to, "#FFD690", after.duration),
+    );
+  if (chess.isCheck()) {
+    const king = chess.findPiece({ type: "k", color: chess.turn() })[0];
+    after.annotations.push(
+      mark("circle", king, king, "#FF7588", after.duration),
+    );
+    for (const from of chess.attackers(king, attacker))
+      after.annotations.push(
+        mark("arrow", from, king, "#FF7588", after.duration),
+      );
+  } else {
+    after.annotations.push(
+      mark("circle", step.to, step.to, "#FFD690", after.duration),
+    );
+  }
+
+  return [before, shotFromMove(p, id), after];
+}
+
 export function createStoryTemplate(
   p: Project,
   template: StoryTemplate,
   ids: string[],
+  countdown: CountdownLength = 3,
 ): StoryboardShot[] {
   const valid = ids.filter((id) => p.moves.some((m) => m.id === id));
   if (!valid.length)
@@ -46,13 +140,32 @@ export function createStoryTemplate(
     if (name) s.name = name;
     return s;
   };
-  if (template === "Puzzle Challenge")
+  if (template === "Tactical Breakdown") return tacticalBreakdown(p, anchor);
+  if (template === "Puzzle Challenge") {
+    const puzzle = hold(anchor, "before", "Can you find the move?", countdown);
+    puzzle.name = "Puzzle countdown";
+    puzzle.camera = { ...camera(), mode: "full" };
+    const vertical =
+      p.format === "vertical" || p.format === "square-in-vertical";
+    for (let second = 0; second < countdown; second++) {
+      puzzle.annotations.push({
+        ...annotation("text", second),
+        text: String(countdown - second),
+        size: vertical ? 112 : 80,
+        y: vertical ? 0.79 : 0.82,
+        color: "#FFD690",
+        end: second + 1,
+        entrance: "none",
+        exit: "none",
+      });
+    }
+    const san = p.moves.find((m) => m.id === anchor)!.san;
     return [
-      hold(anchor, "before", "Can you find the move?", 2.5),
-      hold(anchor, "before", "Your turn to think", 4),
+      puzzle,
       move(anchor, "The reveal"),
-      hold(anchor, "after", "Explain the idea", 3),
+      hold(anchor, "after", `Played move · ${san}`, 2.4),
     ];
+  }
   if (template === "Checkmate Reveal") {
     const mate = valid.find((id) => moveGroups(p).Checkmates.includes(id));
     if (!mate)

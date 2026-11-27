@@ -8,7 +8,7 @@ const origin = "http://127.0.0.1:5188",
     ["node_modules/vite/bin/vite.js", "--port", "5188"],
     { stdio: "pipe" },
   );
-const root = "docs/storyboard-030";
+const root = process.env.STORYBOARD_EVIDENCE_DIR ?? "docs/storyboard-030";
 await fs.mkdir(root, { recursive: true });
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
@@ -200,12 +200,47 @@ try {
   await page
     .getByRole("button", { name: "Story templates", exact: true })
     .click();
+  await page.getByLabel("Countdown length").selectOption("5");
   await page
     .getByRole("button", { name: "Preview template", exact: true })
     .click();
+  const countdown = page
+    .getByRole("listitem")
+    .filter({ hasText: "Puzzle countdown" });
+  await expect(countdown).toContainText("5.00s");
+  await countdown.scrollIntoViewIfNeeded();
+  await expect(
+    countdown.getByRole("img", { name: "Puzzle countdown rendered thumbnail" }),
+  ).toBeVisible({ timeout: 30000 });
   const count = (await state()).storyboard.shots.length;
   await snap("11-puzzle-template");
   assert.equal((await state()).storyboard.shots.length, count);
+  await page.getByLabel("Countdown length").selectOption("2");
+  await expect(
+    page.getByRole("button", { name: "Apply template", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Story template", { exact: true })
+    .selectOption("Tactical Breakdown");
+  await page
+    .getByRole("button", { name: "Preview template", exact: true })
+    .click();
+  await expect(
+    page.getByText("3. Tactical breakdown", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Apply template", exact: true })
+    .click();
+  await expect(page.locator(".shot-card")).toHaveCount(count + 3);
+  assert.ok(
+    (await state()).storyboard.shots
+      .at(-1)
+      .annotations.some((layer: any) => layer.kind === "arrow"),
+  );
+  await page.getByTitle("Undo", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Story templates", exact: true })
+    .click();
   await page
     .getByLabel("Story template", { exact: true })
     .selectOption("Game Highlights");
@@ -219,6 +254,29 @@ try {
   assert.ok((await state()).storyboard.shots.length > count);
   await page.getByTitle("Undo", { exact: true }).click();
   assert.equal((await state()).storyboard.shots.length, count);
+  await page.locator(".shot-card").first().click();
+  const original = (await state()).storyboard.shots[0];
+  await page.getByLabel("Replay speed", { exact: true }).selectOption("0.35");
+  await page
+    .getByRole("button", { name: "Add slow-motion replay", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: `Replay · ${original.name}`,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".shot-card")).toHaveCount(count + 1);
+  const [originalAfter, replay] = (await state()).storyboard.shots;
+  assert.deepEqual(originalAfter, original);
+  assert.deepEqual(replay.source, original.source);
+  const holds = original.preHold + original.postHold;
+  assert.ok(
+    Math.abs(replay.duration - (holds + (original.duration - holds) / 0.35)) <
+      0.001,
+  );
+  await page.getByTitle("Undo", { exact: true }).click();
+  await expect(page.locator(".shot-card")).toHaveCount(count);
   await page
     .getByRole("button", { name: "Restart storyboard", exact: true })
     .click();
@@ -280,7 +338,7 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: real storyboard UI add/select, accurate thumbnails, native drag + keyboard, single Undo, duplicate, caption, timing drag, holds/title, template preview/apply/Undo, playback/seek, formats, save/reopen, source preservation, responsive screenshots; zero page errors.",
+    "PASS: real storyboard UI add/select, accurate thumbnails, native drag + keyboard, single Undo, duplicate, caption, timing drag, holds/title, rendered template preview and countdown, tactical arrows, slow-motion replay, playback/seek, formats, save/reopen, source preservation, responsive screenshots; zero page errors.",
   );
 } finally {
   await browser.close();

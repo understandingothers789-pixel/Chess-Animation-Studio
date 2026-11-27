@@ -615,6 +615,66 @@ export function duplicateShot(shot: StoryboardShot): StoryboardShot {
     })),
   };
 }
+/** Replay a move range at a fraction of the selected shot's speed. */
+export function replayShot(
+  p: Project,
+  entry: CompiledShot,
+  rate: number,
+): StoryboardShot | null {
+  const original = entry.shot;
+  if (
+    entry.issue ||
+    original.kind !== "move-range" ||
+    !original.source ||
+    !Number.isFinite(rate) ||
+    rate <= 0
+  )
+    return null;
+  const { preHold, postHold } = original;
+  const active = original.duration - preHold - postHold;
+  const slowed = active / rate;
+  const duration = preHold + slowed + postHold;
+  if (active <= 0.01 || slowed <= 0.01 || duration < 0.1 || duration > 600)
+    return null;
+
+  const replay = duplicateShot(original);
+  replay.name = `Replay · ${original.name}`.slice(0, 120);
+  replay.duration = duration;
+  replay.source!.line = entry.sourceLine;
+  delete replay.beatPin;
+  replay.transition = transition();
+  const remap = (time: number) =>
+    time <= preHold
+      ? time
+      : time >= original.duration - postHold
+        ? time + duration - original.duration
+        : preHold + (time - preHold) / rate;
+  replay.annotations = replay.annotations
+    .filter((layer) => layer.start < original.duration)
+    .map((layer) => ({
+      ...layer,
+      start: remap(layer.start),
+      end: remap(Math.min(layer.end, original.duration)),
+      fade: Math.min(
+        5,
+        remap(Math.min(layer.start + layer.fade, original.duration)) -
+          remap(layer.start),
+      ),
+    }));
+  if (
+    !replay.annotations.some(
+      (layer) =>
+        !layer.hidden &&
+        (layer.kind === "text" || layer.kind === "caption") &&
+        layer.start < 1.25,
+    )
+  )
+    replay.annotations.push(
+      shotCaption(p, `Replay · ${rate}× speed`, Math.min(1.25, duration)),
+    );
+  return replay;
+}
+
 export function reorderShot(
   shots: StoryboardShot[],
   id: string,

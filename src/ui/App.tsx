@@ -2306,6 +2306,7 @@ export function App() {
           {mode === "storyboard" ? (
             <StoryTimeline
               playShot={previewStoryShot}
+              pause={stop}
               p={p}
               edit={storyEdit}
               selected={shotId}
@@ -2423,6 +2424,12 @@ export function App() {
                 });
               }}
               preview={previewStoryShot}
+              selectReplay={(id, at) => {
+                seek(at);
+                setShotId(id);
+                shotIdRef.current = id;
+                message("Slow-motion replay added. Undo is available.");
+              }}
               annotationId={annotationId}
               annotationIds={annotationIds}
               setAnnotationId={selectVisualAnnotation}

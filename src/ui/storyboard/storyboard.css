@@ -261,6 +261,13 @@
 .shot-inspector .section {
   margin-top: 12px;
 }
+.shot-replay-tools {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-block: 8px;
+}
 .story-annotation-editor {
   margin-top: 14px;
   padding: 8px;
@@ -268,14 +275,32 @@
   border-radius: 6px;
 }
 .template-panel {
+  box-sizing: border-box;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
   overflow: auto;
-  max-height: 260px;
-  margin: 0 12px 10px;
-  padding: 12px;
-  border: 1px solid #79945e;
+  padding: 20px;
+  color: var(--text, #e8efe3);
   background: #1c3022;
-  border-radius: 7px;
-  flex-shrink: 0;
+  border: 1px solid #79945e;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px #0008;
+}
+.template-panel::backdrop {
+  background: #080e0ba8;
+}
+.template-panel h2 {
+  margin: 0 0 12px;
+}
+.template-panel .button-row {
+  align-items: end;
+}
+.template-panel > label {
+  margin-inline-end: 10px;
+}
+.template-panel .button-row label {
+  display: grid;
+  gap: 3px;
 }
 .template-shots {
   display: flex;
@@ -287,10 +312,13 @@
 .template-shots li {
   display: grid;
   gap: 5px;
-  min-width: 160px;
+  flex: 0 0 175px;
   padding: 9px;
   background: #2a4030;
   border-radius: 5px;
+}
+.template-shots .shot-thumbnail {
+  height: 156px;
 }
 .template-shots span {
   font-size: 12px;

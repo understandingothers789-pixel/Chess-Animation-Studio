@@ -5,6 +5,7 @@ import { camera, presets } from "../../core/project";
 import {
   compileStoryboard,
   localizeInheritedText,
+  replayShot,
   resizeShot,
   shotCaption,
 } from "../../core/storyboard";
@@ -19,6 +20,7 @@ export function ShotInspector({
   sourceId,
   openSource,
   preview,
+  selectReplay,
   annotationId,
   annotationIds,
   setAnnotationId,
@@ -31,6 +33,7 @@ export function ShotInspector({
   sourceId: string | null;
   openSource: (i: number, play?: boolean, line?: number) => void;
   preview: (id: string) => void;
+  selectReplay: (id: string, at: number) => void;
   annotationId: string | null;
   annotationIds?: string[];
   setAnnotationId: (id: string, additive?: boolean) => void;
@@ -40,6 +43,9 @@ export function ShotInspector({
   const s = p.storyboard.shots.find((s) => s.id === id),
     entry = compileStoryboard(p).shots.find((e) => e.shot.id === id);
   const [name, setName] = useState(s?.name ?? "");
+  const [replayRate, setReplayRate] = useState("0.5");
+  const [replayError, setReplayError] = useState("");
+  useEffect(() => setReplayError(""), [s?.id, replayRate]);
   useEffect(() => setName(s?.name ?? ""), [s?.id, s?.name]);
   const change = (label: string, fn: (s: StoryboardShot) => void) => {
     if (!id) return;
@@ -120,6 +126,59 @@ export function ShotInspector({
       <button className="primary wide" onClick={() => preview(s.id)}>
         Preview selected shot
       </button>
+      {s.kind === "move-range" && !entry.issue && (
+        <>
+          <div className="shot-replay-tools">
+            <Select
+              label="Replay speed"
+              value={replayRate}
+              options={[
+                ["0.35", "0.35×"],
+                ["0.5", "0.5×"],
+                ["0.75", "0.75×"],
+              ]}
+              onChange={setReplayRate}
+            />
+            <button
+              disabled={p.storyboard.shots.length >= 200}
+              title={
+                p.storyboard.shots.length >= 200
+                  ? "A storyboard supports up to 200 shots"
+                  : "Insert a replay after this shot at the chosen fraction of its current speed"
+              }
+              onClick={() => {
+                const replay = replayShot(p, entry, Number(replayRate));
+                if (!replay) {
+                  setReplayError(
+                    "This replay is too long. Trim the source or choose a faster speed.",
+                  );
+                  return;
+                }
+                edit.begin();
+                try {
+                  edit("Add slow-motion replay", (d) => {
+                    const index = d.storyboard.shots.findIndex(
+                      ({ id }) => id === s.id,
+                    );
+                    if (index >= 0 && d.storyboard.shots.length < 200)
+                      d.storyboard.shots.splice(index + 1, 0, replay);
+                  });
+                } finally {
+                  edit.end();
+                }
+                selectReplay(replay.id, entry.end);
+              }}
+            >
+              Add slow-motion replay
+            </button>
+          </div>
+          {replayError && (
+            <p role="alert" className="danger">
+              {replayError}
+            </p>
+          )}
+        </>
+      )}
       <details className="story-annotation-editor" open>
         <summary>Text layers and annotations · selected shot</summary>
         {!s.annotations.some(

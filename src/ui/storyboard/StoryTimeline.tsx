@@ -29,6 +29,7 @@ export function StoryTimeline({
   thumbnails,
   graphicsRevision,
   playing,
+  pause,
   playShot,
 }: {
   playShot: (id: string) => void;
@@ -45,6 +46,7 @@ export function StoryTimeline({
   thumbnails?: StoryThumbnails;
   graphicsRevision: number;
   playing: boolean;
+  pause: () => void;
 }) {
   const c = compileStoryboard(p),
     [dragging, setDragging] = useState<string | null>(null),
@@ -127,7 +129,10 @@ export function StoryTimeline({
         </button>
         <button
           disabled={!sourceIds.length}
-          onClick={() => setTemplates((v) => !v)}
+          onClick={() => {
+            pause();
+            setTemplates(true);
+          }}
         >
           Story templates
         </button>
@@ -180,6 +185,9 @@ export function StoryTimeline({
           select={select}
           close={() => setTemplates(false)}
           report={report}
+          thumbnails={thumbnails}
+          graphicsRevision={graphicsRevision}
+          playing={playing}
         />
       )}
       {!c.shots.length ? (

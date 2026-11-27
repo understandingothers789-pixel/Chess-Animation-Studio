@@ -12,6 +12,12 @@ Historical screenshots and validation reports are in the GitHub repository.
 
 Extract the portable ZIP and open Chess Animation Studio.exe. The application works locally. Configure FFmpeg in Files before exporting; Stockfish is optional. Online opening lookups are optional and can fail without preventing editing or export.
 
+## Storyboard ideas
+
+- Open **Story templates → Puzzle Challenge**, choose a countdown length, and preview the three shots. The countdown holds the position until the move plays. Edit the numbers and answer caption in the shot's text layers.
+- Choose **Tactical Breakdown** to spotlight a move and show its route. The final shot also marks a checked king and its attackers, or the rook's path when castling. Edit the arrows, rings, and caption in the shot inspector.
+- Select a move shot in **Storyboard**, set **Replay speed**, and click **Add slow-motion replay**. The replay appears immediately after that shot and plays at the chosen fraction of its speed. You can trim it and edit its captions, effects, and camera independently.
+
 ## First composition
 
 Open **Opera Game with original music**. Space plays/pauses, the transport slider seeks, and the timeline selects moves. Click a move in Game to edit its effect. Selecting a move seeks to its departure; play or scrub through it to inspect the animation.

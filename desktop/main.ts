@@ -1,5 +1,9 @@
 import { installStockfishDev } from "./stockfishSetup";
-import { prepareIntroVideo } from "./introVideo";
+import {
+  introDuration,
+  introSourceFrame,
+  prepareIntroVideo,
+} from "./introVideo";
 import { installWhisper } from "./whisperSetup";
 import { transcribeLocal } from "./transcription";
 import { requiredAssetIds } from "../src/core/exportAssets";
@@ -16,10 +20,11 @@ import {
 } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   parseProject,
+  projectSchema,
   type Project,
   type Asset,
   VERSION,
@@ -36,7 +41,12 @@ import {
 } from "./files";
 import { analyze } from "./analysis";
 import { VideoJob } from "./export";
-import type { Settings, ExportOptions } from "../src/bridge";
+import type {
+  Settings,
+  ExportOptions,
+  ExportProgress,
+  RecoverySummary,
+} from "../src/bridge";
 const root = path.resolve(__dirname, "..");
 let editor: BrowserWindow | null = null,
   presentation: BrowserWindow | null = null,
@@ -49,19 +59,20 @@ let stockfishDownload: {
   task: Promise<Settings>;
 } | null = null;
 let exportGeneration = 0;
+let lastExportPath: string | undefined;
 let pathProjectId: string | null = null;
-let currentPath: string | null = null,
-  lastProject: Project | null = null;
+let currentPath: string | null = null;
 const allowed = new Map<string, string>();
+const allowedIntroSources = new Map<string, string>();
 let preferences: Settings = {
   ffmpeg: "",
   stockfish: "",
   encoder: "auto",
   tokenPresent: false,
 };
-let recoveryTimer: NodeJS.Timeout | undefined,
-  recoveryWrite = Promise.resolve(),
+let recoveryWrite = Promise.resolve(),
   lastState: unknown = null;
+let flushingRecovery = false;
 let quitting = false;
 app.on("before-quit", () => {
   transcription?.abort();
@@ -99,10 +110,20 @@ async function remember(file: string) {
 }
 function permit(p: Project) {
   allowed.clear();
-  for (const a of p.assets) allowed.set(a.id, path.resolve(a.path));
+  allowedIntroSources.clear();
+  for (const a of p.assets) {
+    allowed.set(a.id, path.resolve(a.path));
+    if (a.kind === "filmstrip" && a.videoSource)
+      allowedIntroSources.set(a.id, path.resolve(a.videoSource));
+  }
 }
 function ensureAsset(a: Asset) {
-  if (allowed.get(a.id) !== path.resolve(a.path))
+  if (
+    allowed.get(a.id) !== path.resolve(a.path) ||
+    (a.videoSource &&
+      (a.kind !== "filmstrip" ||
+        allowedIntroSources.get(a.id) !== path.resolve(a.videoSource)))
+  )
     throw Error("Choose or relink this asset before reading it.");
 }
 function checkAssets(p: Project) {
@@ -157,20 +178,73 @@ function handle(
     }
   });
 }
-async function recovery() {
-  if (lastProject)
-    await atomic(
-      store("recovery.json"),
-      JSON.stringify({
-        project: lastProject,
-        path: pathProjectId === lastProject.id ? currentPath : null,
-      }),
-    );
+const recoveryDir = () => store("recovery");
+const recoveryFile = (id: string) =>
+  path.join(
+    recoveryDir(),
+    createHash("sha256").update(id).digest("hex") + ".json",
+  );
+type Checkpoint = { project: Project; path: string | null };
+function queueRecovery(work: () => Promise<void>) {
+  const action = recoveryWrite.then(work);
+  recoveryWrite = action.catch((e) =>
+    log("Recovery write failed: " + e.message),
+  );
+  return action;
+}
+async function readCheckpoint(file: string): Promise<Checkpoint | null> {
+  try {
+    const state = await fs.stat(file);
+    if (state.size > 32 * 1024 * 1024) return null;
+    const item = JSON.parse(await fs.readFile(file, "utf8"));
+    return {
+      project: parseProject(item.project),
+      path: typeof item.path === "string" ? item.path : null,
+    };
+  } catch {
+    return null;
+  }
+}
+async function recoveryList(): Promise<RecoverySummary[]> {
+  await recoveryWrite;
+  const files = await fs.readdir(recoveryDir()).catch(() => []);
+  const candidates = [
+    store("recovery.json"),
+    ...files
+      .filter((name) => /^[0-9a-f]{64}\.json$/.test(name))
+      .map((name) => path.join(recoveryDir(), name)),
+  ];
+  const unique = new Map<string, RecoverySummary>();
+  for (const file of candidates) {
+    const item = await readCheckpoint(file);
+    const stat = await fs.stat(file).catch(() => null);
+    if (item && stat)
+      unique.set(item.project.id, {
+        id: item.project.id,
+        title: item.project.title,
+        path: item.path,
+        updated: stat.mtimeMs,
+      });
+  }
+  return [...unique.values()].sort((a, b) => b.updated - a.updated);
+}
+async function recoveryItem(id: string) {
+  if (!projectSchema.shape.id.safeParse(id).success)
+    throw Error("Invalid recovery checkpoint.");
+  const checkpoint =
+    (await readCheckpoint(recoveryFile(id))) ??
+    (await readCheckpoint(store("recovery.json")));
+  return checkpoint?.project.id === id ? checkpoint : null;
+}
+function adoptRecovery(item: Checkpoint) {
+  permit(item.project);
+  currentPath = item.path;
+  pathProjectId = item.project.id;
+  return item;
 }
 async function open(file: string) {
   const p = await readProject(file);
   permit(p);
-  lastProject = p;
   currentPath = file;
   pathProjectId = p.id;
   await remember(file);
@@ -199,9 +273,36 @@ async function save(p: Project, as: boolean) {
   await writeProject(file, p);
   currentPath = file;
   pathProjectId = p.id;
-  lastProject = p;
   await remember(file);
   return file;
+}
+async function importIntro(
+  input: string,
+  trim?: Asset["videoTrim"],
+  knownDuration?: number,
+): Promise<Asset> {
+  if (!preferences.ffmpeg)
+    throw Error("Choose FFmpeg before preparing an intro video.");
+  const id = randomUUID();
+  const output = store(path.join("intro-media", id + ".jpg"));
+  await prepareIntroVideo(preferences.ffmpeg, input, output, trim);
+  const duration =
+    knownDuration ?? (await introDuration(preferences.ffmpeg, input));
+  const a: Asset = {
+    id,
+    kind: "filmstrip",
+    name: path.basename(input),
+    path: output,
+    source: "Intro video",
+    videoTrim: trim,
+    videoSource: input,
+    videoDuration: duration,
+    guidance:
+      "Silent three-second clip. Keep the original video to change its crop or in-point.",
+  };
+  allowed.set(id, path.resolve(output));
+  allowedIntroSources.set(id, path.resolve(input));
+  return a;
 }
 async function readToken() {
   try {
@@ -253,14 +354,31 @@ app.whenReady().then(async () => {
         .finally(() => editor?.close());
       return;
     }
-    if (!quitting && lastProject) {
+    if (!quitting) {
       e.preventDefault();
-      quitting = true;
-      clearTimeout(recoveryTimer);
-      recoveryWrite = recoveryWrite
-        .then(recovery)
-        .catch((e) => log("Recovery write failed: " + e.message));
-      void recoveryWrite.finally(() => editor?.close());
+      if (flushingRecovery) return;
+      flushingRecovery = true;
+      const closing = editor;
+      if (!closing) return;
+      const flushed = new Promise<void>((resolve) => {
+        const ready = (event: Electron.IpcMainEvent) => {
+          if (event.sender === closing.webContents) complete();
+        };
+        const complete = () => {
+          clearTimeout(timer);
+          ipcMain.removeListener("recovery-flushed", ready);
+          resolve();
+        };
+        const timer = setTimeout(complete, 2000);
+        ipcMain.on("recovery-flushed", ready);
+        closing.webContents.send("flush-recovery");
+      });
+      void flushed
+        .then(() => recoveryWrite)
+        .finally(() => {
+          quitting = true;
+          if (!closing.isDestroyed()) closing.close();
+        });
     }
   });
   editor.on("closed", () => {
@@ -274,8 +392,8 @@ app.whenReady().then(async () => {
   handle("sample", async () => {
     const p = await readProject(path.join(root, "samples/Opera.castudio"));
     permit(p);
-    lastProject = p;
     currentPath = null;
+    pathProjectId = null;
     return p;
   });
   handle("open", async () => {
@@ -301,36 +419,47 @@ app.whenReady().then(async () => {
     report.assets = report.assets.map((asset) => ({
       ...asset,
       path: "[local path omitted]",
+      videoSource: undefined,
     }));
     await fs.writeFile(r.filePath, JSON.stringify(report, null, 2), "utf8");
     return r.filePath;
   });
   handle("autosave", async (value: unknown) => {
-    const p = parseProject(value);
-    checkAssets(p);
-    lastProject = p;
-    clearTimeout(recoveryTimer);
-    recoveryTimer = setTimeout(() => {
-      recoveryWrite = recoveryWrite
-        .then(recovery)
-        .catch((e) => log("Recovery write failed: " + e.message));
-    }, 1400);
+    const project = parseProject(value);
+    checkAssets(project);
+    const checkpoint = {
+      project,
+      path: pathProjectId === project.id ? currentPath : null,
+    };
+    return queueRecovery(() =>
+      atomic(recoveryFile(project.id), JSON.stringify(checkpoint)),
+    );
+  });
+  handle("listRecovery", recoveryList);
+  handle("openRecovery", async (id: string) => {
+    await recoveryWrite;
+    const item = await recoveryItem(id);
+    if (!item) throw Error("This recovery checkpoint is no longer available.");
+    return adoptRecovery(item);
   });
   handle("recover", async () => {
-    const r = (await json("recovery.json", null)) as {
-      project: unknown;
-      path: string | null;
-    } | null;
-    if (!r) return null;
-    const project = parseProject(r.project);
-    permit(project);
-    lastProject = project;
-    currentPath = r.path;
-    pathProjectId = project.id;
-    return { project, path: r.path };
+    const [summary] = await recoveryList();
+    const item = summary && (await recoveryItem(summary.id));
+    return item ? adoptRecovery(item) : null;
   });
-  handle("discardRecovery", async () => {
-    await fs.rm(store("recovery.json"), { force: true });
+  handle("discardRecovery", async (id?: string) => {
+    const target = id ?? (await recoveryList())[0]?.id;
+    if (
+      typeof target !== "string" ||
+      !projectSchema.shape.id.safeParse(target).success
+    )
+      return;
+    return queueRecovery(async () => {
+      await fs.rm(recoveryFile(target), { force: true });
+      const legacy = store("recovery.json");
+      if ((await readCheckpoint(legacy))?.project.id === target)
+        await fs.rm(legacy, { force: true });
+    });
   });
   handle("recent", () => json("recent.json", []));
   handle("chooseTranscript", async () => {
@@ -435,21 +564,7 @@ app.whenReady().then(async () => {
           },
         ]);
         if (!input) return null;
-        const id = randomUUID();
-        const output = store(path.join("intro-media", id + ".jpg"));
-        await prepareIntroVideo(preferences.ffmpeg, input, output, trim);
-        const a: Asset = {
-          id,
-          kind,
-          name: path.basename(input),
-          path: output,
-          source: "Intro video",
-          videoTrim: trim,
-          guidance:
-            "Prepared as a silent 3-second clip. Relink by choosing the source video.",
-        };
-        allowed.set(a.id, path.resolve(output));
-        return a;
+        return importIntro(input, trim);
       }
       if (!["audio", "image"].includes(kind))
         throw Error("Invalid asset type.");
@@ -476,6 +591,21 @@ app.whenReady().then(async () => {
       return a;
     },
   );
+  handle(
+    "retimeIntro",
+    async (asset: Asset, trim: NonNullable<Asset["videoTrim"]>) => {
+      ensureAsset(asset);
+      if (asset.kind !== "filmstrip" || !asset.videoSource)
+        throw Error("Replace the intro to attach its original video.");
+      return importIntro(asset.videoSource, trim, asset.videoDuration);
+    },
+  );
+  handle("introSourceFrame", async (asset: Asset, time: number) => {
+    ensureAsset(asset);
+    if (!preferences.ffmpeg || asset.kind !== "filmstrip" || !asset.videoSource)
+      return null;
+    return introSourceFrame(preferences.ffmpeg, asset.videoSource, time);
+  });
   handle("assetData", async (a: Asset) => {
     ensureAsset(a);
     try {
@@ -651,9 +781,10 @@ app.whenReady().then(async () => {
     });
     if (r.canceled || !r.filePath) return false;
     const generation = ++exportGeneration;
-    const progress = (v: unknown) => {
-      if (generation === exportGeneration)
-        editor?.webContents.send("export-progress", v);
+    const progress = (v: ExportProgress) => {
+      if (generation !== exportGeneration) return;
+      if (v.phase === "Complete" && v.path) lastExportPath = v.path;
+      editor?.webContents.send("export-progress", v);
     };
     job = new VideoJob(
       p,
@@ -728,6 +859,13 @@ app.whenReady().then(async () => {
     },
     "worker",
   );
+  handle("showExport", async () => {
+    if (!lastExportPath)
+      throw Error("Export a video before opening its output folder.");
+    if (!(await fs.stat(lastExportPath).catch(() => null))?.isFile())
+      throw Error("The exported file has been moved or deleted.");
+    shell.showItemInFolder(lastExportPath);
+  });
   handle("cancelExport", async () => {
     const target = worker,
       active = job;

@@ -1,11 +1,17 @@
+import { sourceToStoryboard } from "../../core/storyboard";
 import {
   activeBeats,
   describeHit,
   strongestBeat,
 } from "../../core/beatMarkers";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Project } from "../../core/project";
-import { moveEffectTiming } from "../movePreview";
+import {
+  alignMoveEvent,
+  moveBeatEvents,
+  moveEffectTiming,
+  type MoveBeatEvent,
+} from "../movePreview";
 import {
   proposeTiming,
   timingFields,
@@ -19,6 +25,7 @@ export function EffectTiming({
   project,
   index,
   time,
+  fps,
   seek,
   onTune,
   edit,
@@ -26,6 +33,7 @@ export function EffectTiming({
   project: Project;
   index: number;
   time: number;
+  fps: number;
   seek: (time: number) => void;
   onTune?: (section: string) => void;
   edit?: Edit;
@@ -62,7 +70,44 @@ export function EffectTiming({
     landing: effect.landingBeat,
     zoomBeat: effect.jam.beat ?? null,
   });
-  const beats = activeBeats(project);
+  const beats = useMemo(() => activeBeats(project), [project]);
+  const events = useMemo(
+    () => moveBeatEvents(project, index),
+    [project, index],
+  );
+  const [eventId, setEventId] = useState<MoveBeatEvent>("landing");
+  const [pinTarget, setPinTarget] = useState<{
+    event: MoveBeatEvent;
+    beat: string;
+  }>();
+  const event = events.find((item) => item.id === eventId) ?? events[0];
+  const requestedBeat =
+    pinTarget?.event === event.id ? pinTarget.beat : event.beat;
+  const visibleBeats = beats.filter(
+    (b) =>
+      b.id === requestedBeat ||
+      (b.time >= event.min - 1e-8 && b.time <= event.max + 1e-8),
+  );
+  const beat = beats.find((b) => b.id === requestedBeat);
+  const drift = beat ? event.time - beat.time : undefined;
+  const outputTimes = useMemo(
+    () =>
+      project.storyboard.shots.length
+        ? sourceToStoryboard(project, event.time)
+        : [],
+    [project, event.time],
+  );
+  const formatDrift = (difference: number) =>
+    Math.abs(difference) < 0.0005
+      ? "in sync"
+      : `${Math.abs(difference * 1000).toFixed(1)} ms (${Math.abs(difference * fps).toFixed(2)} frames at ${fps} fps) ${difference < 0 ? "early" : "late"}`;
+  const canPin = !!(
+    beat &&
+    !effect.locked &&
+    event.min - 1e-8 <= beat.time &&
+    beat.time <= event.max + 1e-8
+  );
+
   const nearbyLanding = strongestBeat(
     beats.filter((b) => {
       const duration = (b.time - timing.segment.depart) / effect.landing;
@@ -217,6 +262,95 @@ export function EffectTiming({
             </div>
           );
         })}
+        {edit && (
+          <div className="beat-pin">
+            <strong>Sync an event to music</strong>
+            <label>
+              Event
+              <select
+                value={event.id}
+                onChange={(e) => setEventId(e.target.value as MoveBeatEvent)}
+              >
+                {events.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Music hit
+              <select
+                value={beat?.id ?? ""}
+                onChange={(e) =>
+                  setPinTarget({ event: event.id, beat: e.target.value })
+                }
+              >
+                <option value="">
+                  {visibleBeats.length
+                    ? "Choose a nearby hit"
+                    : "No nearby hits in this event’s range"}
+                </option>
+                {visibleBeats.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.time.toFixed(3)} s · {describeHit(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <output>
+              {event.time.toFixed(3)} s on the source timeline
+              {drift !== undefined && ` · ${formatDrift(drift)}`}
+              {!beat && event.beat ? " · Assigned hit is unavailable" : ""}
+            </output>
+            {beat &&
+              outputTimes.slice(0, 4).map((item) => (
+                <small key={item.id}>
+                  {
+                    project.storyboard.shots.find((shot) => shot.id === item.id)
+                      ?.name
+                  }{" "}
+                  on storyboard · {item.time.toFixed(3)} s ·{" "}
+                  {formatDrift(item.time - beat.time)}
+                </small>
+              ))}
+            <div className="button-row">
+              <button
+                type="button"
+                disabled={!canPin}
+                onClick={() => {
+                  if (!beat) return;
+                  const next = alignMoveEvent(
+                    project,
+                    index,
+                    event.id,
+                    beat.id,
+                    beat.time,
+                  );
+                  if (!next) return;
+                  if (edit.moves)
+                    edit.moves(
+                      "Pin effect event to music hit",
+                      new Set([move.id]),
+                      (target) => {
+                        target.effect = next;
+                      },
+                    );
+                  else
+                    edit("Pin effect event to music hit", (draft) => {
+                      draft.moves[index].effect = next;
+                    });
+                  seek(beat.time);
+                }}
+              >
+                Pin to hit
+              </button>
+              <button type="button" onClick={() => seek(event.time)}>
+                View event frame
+              </button>
+            </div>
+          </div>
+        )}
         {effect.locked && (
           <p className="hint">Timing is locked for this move.</p>
         )}
@@ -323,11 +457,19 @@ export function EffectTiming({
                   if (!propose || !edit) return;
                   edit.begin();
                   try {
-                    edit("Edit move effect timing", (p) => {
-                      const target = p.moves.find((m) => m.id === move.id);
-                      if (target && !target.effect.locked)
-                        target.effect = propose.effect;
-                    });
+                    const change = (target: Project["moves"][number]) => {
+                      if (!target.effect.locked) target.effect = propose.effect;
+                    };
+                    if (edit.moves)
+                      edit.moves(
+                        "Edit move effect timing",
+                        new Set([move.id]),
+                        change,
+                      );
+                    else
+                      edit("Edit move effect timing", (p) =>
+                        change(p.moves[index]),
+                      );
                   } finally {
                     edit.end();
                   }

@@ -1,7 +1,13 @@
+import { audioEvents } from "../src/core/audioEvents";
 import { expect, it } from "vitest";
 import { blank } from "../src/core/project";
 import { importPgn } from "../src/core/chess";
 import { segments, spotlightPeaks, spotlightStart } from "../src/core/timeline";
+import {
+  alignMoveEvent,
+  moveBeatEvents,
+  type MoveBeatEvent,
+} from "../src/ui/movePreview";
 import { proposeTiming } from "../src/ui/effectTimingEdit";
 
 it("proposes a shorter meme without moving its assigned landing beat", () => {
@@ -35,4 +41,31 @@ it("pins a beat zoom pulse to the selected marker even with one marker", () => {
   expect(spotlightPeaks(choice.next, choice.effect, start)).toEqual([
     { time: start + 0.24, clock: "Music marker" },
   ]);
+});
+
+it("syncs eligible landing, capture, zoom and after-effect events to exact hit times", () => {
+  const p = importPgn(blank(), "1. e4 d5 2. exd5");
+  p.audio.automatic = true;
+  const effect = p.moves[2].effect;
+  effect.after.kind = "rebound";
+  effect.jam.enabled = true;
+  effect.jam.rhythm = "alternate";
+  const seek = (id: MoveBeatEvent) =>
+    moveBeatEvents(p, 2).find((event) => event.id === id)!;
+  for (const id of ["landing", "capture", "zoom", "after"] as const) {
+    const original = seek(id);
+    const time =
+      original.min + Math.min(0.2, (original.max - original.min) / 2);
+    p.beats.push({ id, time, enabled: true, accent: true });
+    const moved = alignMoveEvent(p, 2, id, id, time);
+    expect(moved).not.toBeNull();
+    p.moves[2].effect = moved!;
+    expect(seek(id)).toMatchObject({ beat: id });
+    expect(seek(id).time).toBeCloseTo(time, 9);
+  }
+  const cue = audioEvents(p).find((event) => event.kind === "capture");
+  expect(cue?.at).toBeCloseTo(seek("capture").time, 9);
+  expect(alignMoveEvent(p, 2, "capture", "off", 0)).toBeNull();
+  p.moves[2].effect.locked = true;
+  expect(alignMoveEvent(p, 2, "after", "after", seek("after").time)).toBeNull();
 });

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { validIntroSource } from "./introVideo";
 import { parseProject, type Project, type Asset } from "../src/core/project";
 export const extensions = {
   audio: new Set([".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"]),
@@ -29,13 +30,20 @@ export async function readProject(file: string): Promise<Project> {
   if (stat.size > 32 * 1024 * 1024)
     throw Error("Project is larger than 32 MB.");
   const p = parseProject(JSON.parse(await fs.readFile(file, "utf8")));
-  for (const a of p.assets) a.path = path.resolve(path.dirname(file), a.path);
+  for (const a of p.assets) {
+    a.path = path.resolve(path.dirname(file), a.path);
+    if (a.videoSource)
+      a.videoSource = path.resolve(path.dirname(file), a.videoSource);
+  }
   return p;
 }
 export async function writeProject(file: string, p: Project) {
   const copy = parseProject(structuredClone(p));
-  for (const a of copy.assets)
+  for (const a of copy.assets) {
     a.path = path.relative(path.dirname(file), a.path);
+    if (a.videoSource)
+      a.videoSource = path.relative(path.dirname(file), a.videoSource);
+  }
   await atomic(file, JSON.stringify(copy, null, 2));
 }
 export async function validAsset(a: Asset) {
@@ -61,12 +69,27 @@ export async function collectProject(p: Project, dir: string) {
   const copy = structuredClone(p),
     assets = path.join(dir, "assets");
   await fs.mkdir(assets, { recursive: true });
+  const videoSources = new Map<string, string>();
   for (const a of copy.assets) {
     await validAsset(a);
     const name = a.id.replace(/[^a-z0-9-]/gi, "") + path.extname(a.path);
     const dest = path.join(assets, name);
     await fs.copyFile(a.path, dest, fs.constants.COPYFILE_EXCL);
     a.path = dest;
+    if (a.videoSource) {
+      const source = a.videoSource;
+      let collected = videoSources.get(source);
+      if (!collected) {
+        await validIntroSource(source);
+        collected = path.join(
+          assets,
+          a.id.replace(/[^a-z0-9-]/gi, "") + "-source" + path.extname(source),
+        );
+        await fs.copyFile(source, collected, fs.constants.COPYFILE_EXCL);
+        videoSources.set(source, collected);
+      }
+      a.videoSource = collected;
+    }
   }
   const file = path.join(dir, "Composition.castudio");
   await writeProject(file, copy);

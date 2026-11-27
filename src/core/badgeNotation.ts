@@ -41,3 +41,35 @@ export function engineNotation(
   if (brilliant) return "brilliant";
   return best ? "best" : "good";
 }
+
+export function forcedMateLost(
+  mate: number | undefined,
+  bestMate: number | undefined,
+) {
+  return mate !== undefined && mate <= 0
+    ? bestMate === undefined || bestMate > 0
+    : bestMate !== undefined && bestMate > 0 && mate === undefined;
+}
+
+export function reviewNotation(review: {
+  loss: number;
+  score: number;
+  mate?: number;
+  bestMate?: number;
+  label: string;
+}) {
+  const legacyWinningMate = review.mate === undefined && review.score >= 90000;
+  const mateComparison =
+    legacyWinningMate ||
+    review.mate !== undefined ||
+    review.bestMate !== undefined;
+  return engineNotation(
+    mateComparison
+      ? forcedMateLost(review.mate, review.bestMate)
+        ? mistakeLossCp + 1
+        : 0
+      : review.loss,
+    review.label === "best",
+    review.label === "brilliant",
+  );
+}

@@ -1,6 +1,16 @@
 import type { Project, StoryboardShot } from "./project";
 import { shotFromMove, titleShot, shotCaption } from "./storyboard";
 import { moveGroups } from "./editing";
+export function moveShort(p: Project, id: string): StoryboardShot[] {
+  const before = shotFromMove(p, id, "position-hold", "before");
+  before.name = "Opening position";
+  before.duration = 2;
+  const after = shotFromMove(p, id, "position-hold", "after");
+  after.name = "Final position";
+  after.duration = 2.5;
+  return [before, shotFromMove(p, id), after];
+}
+
 export const storyTemplates = [
   "Puzzle Challenge",
   "Opening Trap",

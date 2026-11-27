@@ -179,6 +179,7 @@ export function MoveFrames({
               project={project}
               index={index}
               time={time}
+              fps={fps}
               seek={seek}
               onTune={onTune}
               edit={onTune ? edit : undefined}

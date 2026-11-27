@@ -30,6 +30,7 @@ export class VideoJob {
   private completion: Promise<void> | null = null;
   private renderError: Error | null = null;
   private count = 0;
+  private firstFrameAt = 0;
   constructor(
     readonly project: Project,
     readonly options: ExportOptions,
@@ -215,10 +216,17 @@ export class VideoJob {
     });
     this.check();
     this.count++;
+    const now = performance.now();
+    if (this.count === 1) this.firstFrameAt = now;
     this.progress({
       phase: `Rendering · ${this.encoder}`,
       done: this.count,
       total: this.frames,
+      etaSeconds:
+        this.count >= 8
+          ? ((now - this.firstFrameAt) * (this.frames - this.count)) /
+            ((this.count - 1) * 1000)
+          : undefined,
     });
   }
   async finish(error?: string) {

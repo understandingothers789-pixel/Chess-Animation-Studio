@@ -11,6 +11,11 @@ on:
         type: boolean
         required: false
         default: false
+      require_signature:
+        description: Require a verified Studio publisher signature
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: write
 jobs:
@@ -69,6 +74,10 @@ jobs:
       - name: Run unit and service tests
         run: npm test
       - name: Build standard portable layout
+        env:
+          STUDIO_SIGNING_PFX_BASE64: ${{ secrets.STUDIO_SIGNING_PFX_BASE64 }}
+          STUDIO_SIGNING_PFX_PASSWORD: ${{ secrets.STUDIO_SIGNING_PFX_PASSWORD }}
+          STUDIO_REQUIRE_SIGNATURE: ${{ inputs.require_signature || false }}
         run: node scripts/portable.mjs
       - name: Record official runtime signature
         shell: pwsh
@@ -78,12 +87,14 @@ jobs:
           $s | Format-List Status,StatusMessage,SignerCertificate
           $s | Select-Object Status,StatusMessage,@{n='Signer';e={$_.SignerCertificate.Subject}} | ConvertTo-Json -Depth 3 | Set-Content 'release/runtime-signature-${{ steps.version.outputs.value }}.json' -Encoding utf8
           if ($s.Status -notin @('Valid', 'NotSigned')) { throw 'Runtime signature validation error' }
-          if ($s.Status -eq 'NotSigned') { Write-Warning 'Official runtime is unsigned; Smart App Control approval is not guaranteed.' }
+          $build = Get-Content "release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable/BUILD.json" | ConvertFrom-Json
+          if ($build.appSigned -and $s.Status -ne 'Valid') { throw 'Studio publisher signature is invalid' }
+          if ((Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant() -ne $build.packagedExecutableSha256) { throw 'Packaged executable checksum mismatch' }
       - name: Exercise packaged Windows app and exports
         shell: pwsh
         run: |
           $fresh = Join-Path $env:RUNNER_TEMP 'Portable launch with spaces'
-          Expand-Archive -LiteralPath 'release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-Portable.zip' -DestinationPath $fresh
+          Expand-Archive -LiteralPath 'release/Chess-Animation-Studio-${{ steps.version.outputs.value }}-Windows-x64.zip' -DestinationPath $fresh
           $env:STUDIO_PACKAGED_EXE = (Join-Path $fresh 'Chess Animation Studio.exe')
           $desktopLog = Join-Path $env:RUNNER_TEMP 'desktop-validation.log'
           $desktopStatus = 1
@@ -128,9 +139,20 @@ jobs:
           git ls-remote --exit-code --tags origin "refs/tags/studio-v$v"
           if ($LASTEXITCODE -eq 0) { throw 'Version tag already exists; choose a new version explicitly.' }
           if ($LASTEXITCODE -ne 2) { throw 'Unable to verify release tag availability.' }
-          gh release create "studio-v$v" "release/Chess-Animation-Studio-$v-Windows-Portable.zip" "release/Chess-Animation-Studio-$v-Windows-Portable.zip.sha256" "release/runtime-signature-$v.json" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Chess Animation Studio $v" --notes-file "docs/releases/$v.md"
+          $name = "Chess-Animation-Studio-$v-Windows-x64.zip"
+          gh release create "studio-v$v" "release/$name" "release/$name.sha256" "release/runtime-signature-$v.json" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Chess Animation Studio $v for Windows (x64)" --notes-file "docs/releases/$v.md"
           if ($LASTEXITCODE -ne 0) {
             "## Release publication failed`nThe validated portable artifact remains available in this run." >> $env:GITHUB_STEP_SUMMARY
             throw 'Release upload failed; the validated workflow artifact remains available.'
           }
-          "## Release published`nVersion $v was published successfully." >> $env:GITHUB_STEP_SUMMARY
+          $base = "https://github.com/${{ github.repository }}/releases/download/studio-v$v"
+          $expected = (Get-FileHash -LiteralPath "release/$name" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $download = Join-Path $env:RUNNER_TEMP $name
+          $publishedChecksum = Join-Path $env:RUNNER_TEMP "$name.sha256"
+          curl.exe --fail --silent --show-error --location --retry 6 --retry-all-errors "$base/${name}?download=1" --output $download
+          if ($LASTEXITCODE -ne 0) { throw 'Public ZIP download failed' }
+          curl.exe --fail --silent --show-error --location --retry 6 --retry-all-errors "$base/$name.sha256" --output $publishedChecksum
+          if ($LASTEXITCODE -ne 0) { throw 'Public checksum download failed' }
+          $advertised = ((Get-Content -Raw $publishedChecksum).Trim() -split '\s+')[0]
+          if ($advertised -ne $expected -or (Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Public release checksum mismatch' }
+          "## Release verified`n[Download Chess Animation Studio $v for Windows (x64)]($base/${name}?download=1)" >> $env:GITHUB_STEP_SUMMARY

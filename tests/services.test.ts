@@ -12,6 +12,11 @@ import {
   collectProject,
 } from "../desktop/files";
 import { analyze } from "../desktop/analysis";
+import {
+  introDuration,
+  introSourceFrame,
+  prepareIntroVideo,
+} from "../desktop/introVideo";
 import { VideoJob } from "../desktop/export";
 import { sample, importPgn } from "../src/core/chess";
 import { blank, parseProject } from "../src/core/project";
@@ -551,3 +556,94 @@ it("treats final rename as an irreversible commit and preserves destinations whe
     (await fs.readdir(dir)).some((f) => f.startsWith(".chess-studio-export")),
   ).toBe(false);
 });
+
+it.runIf(
+  Boolean(process.env.STOCKFISH_PATH && existsSync(process.env.STOCKFISH_PATH)),
+)(
+  "keeps a slower winning mate out of the centipawn mistake threshold",
+  async () => {
+    const p = importPgn(
+      blank(),
+      '[FEN "7k/8/5K2/8/8/8/5Q2/8 w - - 0 1"] 1. Kg6',
+    );
+    p.analysis.depth = 14;
+    p.analysis.milliseconds = 700;
+    const dir = await temp();
+    try {
+      const review = await analyze(
+        p,
+        "engine",
+        [0],
+        dir,
+        process.env.STOCKFISH_PATH!,
+        "",
+        new AbortController().signal,
+        () => {},
+      );
+      const move = p.moves[0];
+      move.analysis = review[move.id];
+      expect(move.analysis.engine).toMatchObject({
+        state: "done",
+        mate: 3,
+        bestMate: 2,
+        loss: 0,
+        label: "good",
+      });
+      expect(badge(move)).toBe("good");
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+it("renders and collects a re-editable video intro with its original source", async () => {
+  const dir = await temp();
+  const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg";
+  const source = path.join(dir, "source video.mp4");
+  const output = path.join(dir, "intro.jpg");
+  try {
+    execFileSync(ffmpeg, [
+      "-v",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=256x144:rate=24:duration=2",
+      "-pix_fmt",
+      "yuv420p",
+      "-y",
+      source,
+    ]);
+    const duration = await introDuration(ffmpeg, source);
+    expect(duration).toBeCloseTo(2, 1);
+    const trim = { start: 0.5, x: 0.9, y: 0.5 };
+    expect(await introSourceFrame(ffmpeg, source, 0.5)).toMatch(
+      /^data:image\/jpeg;base64,\/9j/,
+    );
+    await prepareIntroVideo(ffmpeg, source, output, trim);
+    const p = blank();
+    p.assets.push({
+      id: "opener",
+      name: "Opener",
+      kind: "filmstrip",
+      path: output,
+      source: "local",
+      guidance: "",
+      videoSource: source,
+      videoTrim: trim,
+      videoDuration: duration,
+    });
+    const collected = await collectProject(p, path.join(dir, "collected"));
+    const stored = JSON.parse(await fs.readFile(collected.path, "utf8"))
+      .assets[0];
+    expect(path.isAbsolute(stored.videoSource)).toBe(false);
+    const reopened = await readProject(collected.path);
+    expect(reopened.assets[0].videoTrim).toEqual(trim);
+    expect(reopened.assets[0].videoSource).not.toBe(source);
+    expect(await fs.readFile(reopened.assets[0].videoSource!)).toEqual(
+      await fs.readFile(source),
+    );
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+}, 15000);

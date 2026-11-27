@@ -5,6 +5,93 @@ import path from "node:path";
 import { introFilm as film } from "../src/core/introVideo";
 
 const run = promisify(execFile);
+export async function validIntroSource(input: string) {
+  const stat = await fs.stat(input);
+  if (
+    !stat.isFile() ||
+    stat.size > 256 * 1024 * 1024 ||
+    !/\.(mp4|mov|webm|mkv|m4v)$/i.test(input)
+  )
+    throw Error("Choose an MP4, MOV, WebM or MKV video under 256 MB.");
+}
+
+export async function introDuration(ffmpeg: string, input: string) {
+  const probe = path.join(
+    path.dirname(ffmpeg),
+    process.platform === "win32" ? "ffprobe.exe" : "ffprobe",
+  );
+  try {
+    const { stdout } = await run(
+      probe,
+      [
+        "-v",
+        "error",
+        "-protocol_whitelist",
+        "file",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        input,
+      ],
+      { timeout: 8000, windowsHide: true },
+    );
+    const duration = Number(stdout.trim());
+    return Number.isFinite(duration) && duration > 0
+      ? Math.min(7200, duration)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function introSourceFrame(
+  ffmpeg: string,
+  input: string,
+  start: number,
+) {
+  if (!Number.isFinite(start) || start < 0 || start > 7200)
+    throw Error("Choose a valid source time.");
+  await validIntroSource(input);
+  const { stdout } = await run(
+    ffmpeg,
+    [
+      "-nostdin",
+      "-v",
+      "error",
+      "-protocol_whitelist",
+      "file",
+      "-ss",
+      String(start),
+      "-i",
+      input,
+      "-map",
+      "0:v:0",
+      "-frames:v",
+      "1",
+      "-filter_threads",
+      "1",
+      "-threads",
+      "1",
+      "-vf",
+      "scale=480:480:force_original_aspect_ratio=decrease,setsar=1",
+      "-f",
+      "image2pipe",
+      "-vcodec",
+      "mjpeg",
+      "pipe:1",
+    ],
+    {
+      encoding: "buffer",
+      maxBuffer: 1024 * 1024,
+      timeout: 12000,
+      windowsHide: true,
+    },
+  );
+  if (!stdout.length) throw Error("No source frame at this time.");
+  return "data:image/jpeg;base64," + stdout.toString("base64");
+}
+
 export async function prepareIntroVideo(
   ffmpeg: string,
   input: string,
@@ -18,13 +105,7 @@ export async function prepareIntroVideo(
     ![trim.x, trim.y].every((v) => Number.isFinite(v) && v >= 0 && v <= 1)
   )
     throw Error("Choose a valid video in-point and crop.");
-  const stat = await fs.stat(input);
-  if (
-    !stat.isFile() ||
-    stat.size > 256 * 1024 * 1024 ||
-    !/\.(mp4|mov|webm|mkv|m4v)$/i.test(input)
-  )
-    throw Error("Choose an MP4, MOV, WebM or MKV video under 256 MB.");
+  await validIntroSource(input);
   const frames = film.fps * film.seconds;
   const filter = [
     `fps=${film.fps}`,

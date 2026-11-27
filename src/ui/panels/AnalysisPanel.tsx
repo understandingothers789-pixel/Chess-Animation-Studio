@@ -1,4 +1,4 @@
-import { engineNotation } from "../../core/badgeNotation";
+import { forcedMateLost, reviewNotation } from "../../core/badgeNotation";
 import { settingHelp } from "../help";
 import { useState } from "react";
 import {
@@ -275,16 +275,36 @@ export function AnalysisPanel(q: PanelProps) {
                   Engine:{" "}
                   <strong>
                     {a.engine.state === "done"
-                      ? engineNotation(
-                          a.engine.loss,
-                          a.engine.label === "best",
-                          a.engine.label === "brilliant",
-                        )
+                      ? reviewNotation(a.engine)
                       : a.engine.state}
                   </strong>
                   <br />
-                  Loss {a.engine.loss} cp · depth {a.engine.depth}
-                  <br />
+                  {a.engine.state === "done" && (
+                    <>
+                      {a.engine.mate !== undefined ||
+                      a.engine.bestMate !== undefined
+                        ? [
+                            forcedMateLost(a.engine.mate, a.engine.bestMate)
+                              ? "Missed or allowed a forced mate"
+                              : null,
+                            a.engine.mate === undefined
+                              ? "Played move has a centipawn evaluation"
+                              : a.engine.mate > 0
+                                ? `Forces mate in ${a.engine.mate}`
+                                : `Opponent has mate in ${Math.abs(a.engine.mate)}`,
+                            a.engine.bestMate && a.engine.bestMate > 0
+                              ? `Best move mates in ${a.engine.bestMate}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : a.engine.score >= 90000
+                          ? "Saved winning mate · reanalyze for mate distance"
+                          : `Loss ${a.engine.loss} cp`}{" "}
+                      · depth {a.engine.depth}
+                      <br />
+                    </>
+                  )}
                   {a.engine.message}
                   {a.engine.sacrifice && (
                     <>

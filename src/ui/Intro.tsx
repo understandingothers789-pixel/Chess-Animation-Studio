@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState, type PointerEvent } from "react";
 import { introFilm } from "../core/introVideo";
-import { blank, playerIntro, type Asset, type Project } from "../core/project";
+import {
+  blank,
+  playerIntro,
+  sizes,
+  type Asset,
+  type Project,
+} from "../core/project";
 import { settingHelp } from "./help";
 import type { Edit } from "./state";
 import { Section, Select, Range, Toggle } from "./controls";
@@ -12,6 +18,9 @@ export function IntroInspector({
   importPhoto,
   importVideo,
   videoImporting,
+  active,
+  openingTime,
+  seekOpening,
   previewIntro,
 }: {
   project: Project;
@@ -19,8 +28,11 @@ export function IntroInspector({
   images: Record<string, string>;
   missing: Set<string>;
   importPhoto: () => void;
-  importVideo: (trim: NonNullable<Asset["videoTrim"]>) => void;
+  importVideo: (trim: NonNullable<Asset["videoTrim"]>, source?: Asset) => void;
   videoImporting: boolean;
+  active: boolean;
+  openingTime: number;
+  seekOpening: (time: number) => void;
   previewIntro: () => void;
 }) {
   const intro = p.playerIntro;
@@ -31,13 +43,80 @@ export function IntroInspector({
     asset: string | null;
     value: NonNullable<Asset["videoTrim"]>;
   }>();
+  const originalTrim = video?.videoTrim ?? { start: 0, x: 0.5, y: 0.5 };
   const trim =
     trimDraft?.project === p.id && trimDraft.asset === clip.asset
       ? trimDraft.value
-      : (video?.videoTrim ?? { start: 0, x: 0.5, y: 0.5 });
+      : originalTrim;
+  const changedTrim =
+    trim.start !== originalTrim.start ||
+    trim.x !== originalTrim.x ||
+    trim.y !== originalTrim.y;
   const setTrim = (value: NonNullable<Asset["videoTrim"]>) =>
     setTrimDraft({ project: p.id, asset: clip.asset, value });
   const prepared = clip.asset ? images[clip.asset] : undefined;
+  const [sourceFrame, setSourceFrame] = useState<{
+    id: string;
+    image: string;
+  }>();
+  const [sourceError, setSourceError] = useState("");
+  const [ratio, setRatio] = useState(1);
+  const [cropOpen, setCropOpen] = useState(false);
+  const frame = sourceFrame?.id === clip.asset ? sourceFrame : undefined;
+  const maxStart = video?.videoDuration
+    ? Math.max(0, video.videoDuration - 0.05)
+    : 7200;
+  useEffect(() => {
+    if (
+      !active ||
+      !cropOpen ||
+      !video?.videoSource ||
+      !window.studio.introSourceFrame
+    )
+      return;
+    let current = true;
+    setSourceError("");
+    const task = setTimeout(() => {
+      window.studio
+        .introSourceFrame(video, trim.start)
+        .then((image) => {
+          if (current && image) setSourceFrame({ id: video.id, image });
+        })
+        .catch(() => {
+          if (current)
+            setSourceError(
+              "Source frame unavailable. Try an earlier time or replace the original video.",
+            );
+        });
+    }, 140);
+    return () => {
+      current = false;
+      clearTimeout(task);
+    };
+  }, [active, cropOpen, video?.id, video?.videoSource, trim.start]);
+  const cropW = Math.min(1, 1 / ratio);
+  const cropH = Math.min(1, ratio);
+  const moveCrop = (event: PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    const clamp = (value: number) => Math.max(0, Math.min(1, value));
+    setTrim({
+      ...trim,
+      x:
+        cropW < 1
+          ? clamp(
+              ((event.clientX - box.left) / box.width - cropW / 2) /
+                (1 - cropW),
+            )
+          : trim.x,
+      y:
+        cropH < 1
+          ? clamp(
+              ((event.clientY - box.top) / box.height - cropH / 2) /
+                (1 - cropH),
+            )
+          : trim.y,
+    });
+  };
   const videoTime = clip.hold + clip.pullback;
   const minIntro = clip.asset ? videoTime + (intro.enabled ? 0.5 : 0) : 0.2;
   const squares = Array.from({ length: 64 }, (_, i) => {
@@ -52,10 +131,25 @@ export function IntroInspector({
       <div className="inspector-title">
         <span className="eyebrow">INTRO CLIP</span>
         <h2>Opening board</h2>
-        <p className="hint">
-          This clip fills the time before the first move. Choose another opener
-          here.
-        </p>
+        {p.lead > 0 && (
+          <div className="opening-review">
+            <button type="button" onClick={previewIntro}>
+              Play entire opening
+            </button>
+            <label>
+              Opening playhead · {Math.min(p.lead, openingTime).toFixed(2)} s ·{" "}
+              {sizes[p.format].join(" × ")}
+              <input
+                type="range"
+                min={0}
+                max={p.lead}
+                step={0.01}
+                value={Math.min(p.lead, openingTime)}
+                onChange={(e) => seekOpening(Number(e.target.value))}
+              />
+            </label>
+          </div>
+        )}
       </div>
       <div className="inspector-content">
         <Section title="Player intro" status={intro.enabled ? "On" : "Off"}>
@@ -234,14 +328,51 @@ export function IntroInspector({
           </div>
           <details
             className="intro-video-source"
-            open={!clip.asset ? true : undefined}
+            open={cropOpen}
+            onToggle={(e) => setCropOpen(e.currentTarget.open)}
           >
             <summary>Source in-point and crop</summary>
+            {frame && (
+              <div
+                className="intro-source-frame"
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  moveCrop(e);
+                }}
+                onPointerMove={(e) => {
+                  if (e.currentTarget.hasPointerCapture(e.pointerId))
+                    moveCrop(e);
+                }}
+              >
+                <img
+                  src={frame.image}
+                  alt="Source video frame. Drag to position the square crop."
+                  draggable={false}
+                  onLoad={(e) =>
+                    setRatio(
+                      e.currentTarget.naturalWidth /
+                        e.currentTarget.naturalHeight,
+                    )
+                  }
+                />
+                <span
+                  className="intro-source-square"
+                  style={{
+                    left: `${trim.x * (1 - cropW) * 100}%`,
+                    top: `${trim.y * (1 - cropH) * 100}%`,
+                    width: `${cropW * 100}%`,
+                    height: `${cropH * 100}%`,
+                  }}
+                />
+              </div>
+            )}
+            {sourceError && <p role="status">{sourceError}</p>}
             <Range
               label="Video source start"
               value={trim.start}
               min={0}
-              max={7200}
+              max={maxStart}
               step={0.05}
               unit="s"
               onChange={(start) => setTrim({ ...trim, start })}
@@ -262,10 +393,21 @@ export function IntroInspector({
               unit="%"
               onChange={(y) => setTrim({ ...trim, y: y / 100 })}
             />
-            <p className="hint">
-              Set these values, then import or replace the video. The crop
-              preview shows the first frame of the prepared clip.
-            </p>
+            {video?.videoSource ? (
+              <button
+                type="button"
+                disabled={
+                  videoImporting || Boolean(sourceError) || !changedTrim
+                }
+                onClick={() => importVideo(trim, video)}
+              >
+                Apply trim and crop
+              </button>
+            ) : (
+              <p className="hint">
+                Choose an original video to preview and adjust its crop.
+              </p>
+            )}
           </details>
           {prepared && (
             <div

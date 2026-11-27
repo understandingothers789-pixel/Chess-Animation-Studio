@@ -971,19 +971,21 @@
   margin: 6px 0;
 }
 
-
 .move-preset-tools.button-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(102px, 1fr));
 }
 
 @media (max-height: 880px) {
-  .studio:has(.move-frames[open]) .preview-shell {
+  .studio .preview-shell {
     --compact-preview-tools: true;
   }
-  .workspace.flexible .studio:has(.move-frames[open]) .preview-area {
-    flex-basis: 230px;
-    min-height: 230px;
+  .workspace.flexible .studio .preview-area {
+    flex-basis: 260px;
+    min-height: 260px;
+  }
+  .workspace.flexible .studio > :is(.timeline, .story-timeline) {
+    min-height: 108px;
   }
 }
 
@@ -999,4 +1001,50 @@
 .move-frames summary:focus-visible {
   outline: 2px solid var(--accent, #f6d38b);
   outline-offset: 2px;
+}
+
+.preset-components {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 4px 10px;
+  margin: 0;
+}
+.preset-components label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.preset-selection small {
+  display: block;
+}
+.beat-pin {
+  display: grid;
+  gap: 6px;
+}
+
+.opening-review,
+.opening-review label {
+  display: grid;
+  gap: 4px;
+}
+.intro-source-frame {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 8px auto;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+.intro-source-frame img {
+  display: block;
+  max-width: 100%;
+  max-height: 208px;
+}
+.intro-source-square {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #deebbb;
+  box-shadow: 0 0 0 500px #09140bb0;
+  pointer-events: none;
 }

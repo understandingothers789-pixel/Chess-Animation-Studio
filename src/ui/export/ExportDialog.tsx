@@ -5,6 +5,7 @@ import { ProductionChecks } from "./ProductionChecks";
 import { productionChecks } from "../../core/productionChecks";
 import { compileStoryboard } from "../../core/storyboard";
 import { MAX_EXPORT_DIMENSION } from "../../core/exportOptions";
+import { clock } from "../controls";
 import { useEffect, useRef, useState } from "react";
 import {
   sizes,
@@ -300,9 +301,21 @@ export function ExportDialog({
           <progress max={Math.max(1, progress.total)} value={progress.done} />
           <p>
             {progress.phase} · {progress.done}/{progress.total}
+            {progress.etaSeconds !== undefined &&
+              progress.done < progress.total &&
+              ` · About ${clock(Math.ceil(progress.etaSeconds))} left to render frames`}
           </p>
           {progress.error && <p className="danger">{progress.error}</p>}
           {progress.path && <p className="path">{progress.path}</p>}
+          {progress.phase === "Complete" && progress.path && (
+            <button
+              type="button"
+              disabled={picking}
+              onClick={() => void choose(() => window.studio.showExport())}
+            >
+              Open output folder
+            </button>
+          )}
         </div>
       )}
       {missing > 0 && (

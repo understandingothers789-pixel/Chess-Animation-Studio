@@ -1,4 +1,8 @@
-import { engineNotation, mistakeLossCp } from "../src/core/badgeNotation";
+import {
+  forcedMateLost,
+  engineNotation,
+  mistakeLossCp,
+} from "../src/core/badgeNotation";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -134,10 +138,8 @@ class Uci {
       return [
         {
           depth: Number(depth),
-          score:
-            kind === "mate"
-              ? (value > 0 ? 1 : -1) * (100000 - Math.abs(value) * 100)
-              : value,
+          score: kind === "cp" ? value : 0,
+          mate: kind === "mate" ? value : undefined,
           exact: !/\b(?:lowerbound|upperbound)\b/.test(rest) && pv[0] === best,
           pv,
         },
@@ -146,7 +148,13 @@ class Uci {
     const exact = [...scoring].reverse().find((line) => line.exact);
     return {
       ...(exact ??
-        scoring.at(-1) ?? { score: 0, depth: 0, exact: false, pv: [] }),
+        scoring.at(-1) ?? {
+          score: 0,
+          mate: undefined,
+          depth: 0,
+          exact: false,
+          pv: [],
+        }),
       best,
     };
   }
@@ -170,14 +178,17 @@ async function reviewMove(
   const best = await engine.search(fen, p, [], depth);
   const played =
     best.best === move ? best : await engine.search(fen, p, [move], depth);
-  const loss = Math.max(0, best.score - played.score);
+  const comparable = best.mate === undefined && played.mate === undefined;
+  const loss = comparable ? Math.max(0, best.score - played.score) : 0;
+  const missedMate = forcedMateLost(played.mate, best.mate);
   let sacrifice: ReturnType<typeof sacrificeLine>;
   if (
     candidate?.replies.length &&
     best.exact &&
     played.exact &&
     Math.min(best.depth, played.depth) >= sacrificeDepth &&
-    played.score >= -35 &&
+    (played.mate === undefined ? played.score >= -35 : played.mate > 0) &&
+    !missedMate &&
     loss <= mistakeLossCp
   ) {
     const replies = candidate.replies.map(replyUci);
@@ -193,7 +204,9 @@ async function reviewMove(
       if (
         accepted.exact &&
         accepted.depth >= sacrificeDepth &&
-        accepted.score <= 35
+        (accepted.mate === undefined
+          ? accepted.score <= 35
+          : accepted.mate <= 0)
       )
         sacrifice = sacrificeLine(candidate, accepted.pv);
     }
@@ -203,7 +216,13 @@ async function reviewMove(
     score: played.score,
     loss,
     best: best.best,
-    label: engineNotation(loss, best.best === move, !!sacrifice),
+    label: engineNotation(
+      missedMate ? mistakeLossCp + 1 : loss,
+      best.best === move,
+      !!sacrifice,
+    ),
+    ...(played.mate === undefined ? {} : { mate: played.mate }),
+    ...(best.mate === undefined ? {} : { bestMate: best.mate }),
     depth: played.depth,
     message: engine.name + "; root mover perspective",
     ...(sacrifice ? { sacrifice } : {}),
@@ -324,7 +343,7 @@ export async function analyze(
       } else {
         const id = key(
           JSON.stringify([
-            "sacrifice-v2",
+            "mate-scores-v3",
             executable,
             engine!.name,
             s.fen,

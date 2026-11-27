@@ -3,16 +3,49 @@ import type { Annotation } from "../core/annotations";
 import { preserveLockedTiming } from "../core/editing";
 import { useCallback, useRef, useState } from "react";
 import { sample } from "../core/chess";
-import { VERSION, type Project } from "../core/project";
+import { VERSION, type Project, type StoryboardShot } from "../core/project";
 export type Edit = ((label: string, fn: (p: Project) => void) => void) & {
   annotations?: (
     label: string,
     change: (layers: Annotation[]) => void,
     shotId?: string,
   ) => void;
+  moves?: (
+    label: string,
+    ids: ReadonlySet<string>,
+    change: (move: Project["moves"][number]) => void,
+  ) => void;
+  shot?: (
+    label: string,
+    id: string,
+    change: (shot: StoryboardShot) => void,
+  ) => void;
   begin: () => void;
   end: () => void;
 };
+export function changeMoves(
+  p: Project,
+  ids: ReadonlySet<string>,
+  change: (move: Project["moves"][number]) => void,
+) {
+  let changed = false;
+  const moves = p.moves.map((before) => {
+    if (!ids.has(before.id)) return before;
+    const next = structuredClone(before);
+    change(next);
+    preserveLockedTiming(before.effect, next.effect);
+    if (
+      before.autoPreset &&
+      JSON.stringify(before.effect) !== JSON.stringify(next.effect)
+    )
+      delete next.autoPreset;
+    if (JSON.stringify(before) === JSON.stringify(next)) return before;
+    changed = true;
+    return next;
+  });
+  return changed ? { ...p, moves } : p;
+}
+
 export function useProject() {
   const [project, set] = useState<Project>(sample),
     current = useRef(project);
@@ -48,9 +81,7 @@ export function useProject() {
   const edit = useCallback(
     Object.assign(
       (label: string, fn: (p: Project) => void) => {
-        const old = current.current,
-          h = history.current,
-          now = Date.now();
+        const old = current.current;
         const next = structuredClone(old);
         fn(next);
         const previous = new Map(old.moves.map((m) => [m.id, m]));
@@ -67,6 +98,33 @@ export function useProject() {
         accept(label, next);
       },
       {
+        moves: (
+          label: string,
+          ids: ReadonlySet<string>,
+          change: (move: Project["moves"][number]) => void,
+        ) => {
+          const old = current.current;
+          const next = changeMoves(old, ids, change);
+          if (next !== old) accept(label, next);
+        },
+        shot: (
+          label: string,
+          id: string,
+          change: (shot: StoryboardShot) => void,
+        ) => {
+          const old = current.current;
+          const index = old.storyboard.shots.findIndex(
+            (shot) => shot.id === id,
+          );
+          if (index < 0) return;
+          const before = old.storyboard.shots[index];
+          const after = structuredClone(before);
+          change(after);
+          if (JSON.stringify(after) === JSON.stringify(before)) return;
+          const shots = old.storyboard.shots.slice();
+          shots[index] = after;
+          accept(label, { ...old, storyboard: { ...old.storyboard, shots } });
+        },
         annotations: (
           label: string,
           change: (layers: Annotation[]) => void,

@@ -1,3 +1,7 @@
+import type { RecoverySummary } from "../bridge";
+import { audioEvents } from "../core/audioEvents";
+import { storyboardDuckEnvelope } from "../core/audio/ducking";
+import { moveShort } from "../core/storyTemplates";
 import { normalizeMusicRange } from "../core/audio/timing";
 import { MoveFrames } from "./preview/MoveFrames";
 import { TranscriptPanel } from "./captions/TranscriptPanel";
@@ -192,10 +196,9 @@ export function App() {
       tokenPresent: false,
     }),
     [recent, setRecent] = useState<string[]>([]),
-    [recovery, setRecovery] = useState<{
-      project: Project;
-      path: string | null;
-    } | null>(null),
+    [recovery, setRecovery] = useState<RecoverySummary[]>([]),
+    [recoveryId, setRecoveryId] = useState(""),
+    [recoveryVisible, setRecoveryVisible] = useState(true),
     [promotion, setPromotion] = useState("q"),
     [picked, setPicked] = useState<string | null>(null),
     [analysisProgress, setAnalysisProgress] = useState<{
@@ -258,7 +261,7 @@ export function App() {
   const latest = useRef(p),
     timeRef = useRef(time),
     audio = useRef<AudioPlayer | null>(null),
-    saved = useRef(p),
+    saved = useRef<Project | null>(p),
     clipboard = useRef<SettingsClipboard | null>(null),
     assetKeys = useRef(new Map<string, { path: string; kind: string }>());
   const [assetRevision, setAssetRevision] = useState(0);
@@ -412,7 +415,8 @@ export function App() {
     run(async () => {
       setSettings(await window.studio.settings());
       setRecent(await window.studio.recent());
-      setRecovery(await window.studio.recover());
+      if (window.studio.listRecovery)
+        setRecovery(await window.studio.listRecovery());
     });
     const offA = window.studio.onAnalysis(setAnalysisProgress),
       offE = window.studio.onExport((v) => {
@@ -423,15 +427,29 @@ export function App() {
           setError(true);
         }
       });
+    const offRecovery = window.studio.onFlushRecovery?.(() => {
+      const snapshot = latest.current;
+      const write =
+        snapshot === saved.current
+          ? Promise.resolve()
+          : window.studio.autosave(snapshot);
+      void write
+        .catch(console.error)
+        .finally(() => window.studio.recoveryFlushed());
+    });
     return () => {
       audio.current?.dispose();
       offA();
       offE();
+      offRecovery?.();
     };
   }, []);
   useEffect(() => {
     setDirty(p !== saved.current);
-    const timer = setTimeout(() => run(() => window.studio.autosave(p)), 800);
+    if (p === saved.current) return;
+    const timer = setTimeout(() => {
+      if (p !== saved.current) run(() => window.studio.autosave(p));
+    }, 650);
     return () => clearTimeout(timer);
   }, [p]);
   useEffect(() => {
@@ -576,8 +594,24 @@ export function App() {
       clearInterval(interval);
     };
   }, [assetListKey, assetRevision]);
+  const audioSchedule = useMemo(() => {
+    if (!playing) return "";
+    const { music, audio } = previewProject;
+    return JSON.stringify([
+      music.asset,
+      music.offset,
+      music.trimStart,
+      music.trimEnd,
+      music.fadeIn,
+      music.fadeOut,
+      audio,
+      presentationDuration(previewProject, mode),
+      audioEvents(previewProject, mode),
+      mode === "storyboard" ? storyboardDuckEnvelope(previewProject) : null,
+    ]);
+  }, [playing, previewProject, mode]);
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || loadingAudio) return;
     let alive = true,
       raf = 0;
     const start = timeRef.current;
@@ -635,7 +669,16 @@ export function App() {
       cancelAnimationFrame(raf);
       audio.current?.stop();
     };
-  }, [playing, audition, mode, loopPreview, beforePreset, playbackSpeed]);
+  }, [
+    playing,
+    audition,
+    mode,
+    loopPreview,
+    beforePreset,
+    playbackSpeed,
+    audioSchedule,
+    loadingAudio,
+  ]);
   useEffect(() => {
     audio.current?.updateMusic(p, timeRef.current);
   }, [p.music.volume, p.music.muted, p.music.volumePoints]);
@@ -747,9 +790,9 @@ export function App() {
     tab,
     clearPresetPreview,
   ]);
-  function adopted(project: Project, file: string | null) {
+  function adopted(project: Project, file: string | null, recovered = false) {
     stop();
-    replace(project);
+    replace(project, false);
     setPath(file);
     setTime(0);
     sourceClock.current = 0;
@@ -764,12 +807,23 @@ export function App() {
     setSelected(0);
     setPicked(null);
     setChecked(new Set());
-    saved.current = project;
-    setDirty(false);
-    setRecovery(null);
+    saved.current = recovered ? null : project;
+    setDirty(recovered);
   }
   function confirmDiscard() {
-    return !dirty || confirm("Discard unsaved edits to this composition?");
+    return (
+      !dirty ||
+      confirm(
+        "Switch compositions? Unsaved edits will be kept in a recovery checkpoint.",
+      )
+    );
+  }
+  async function checkpointBeforeSwitch() {
+    const before = latest.current;
+    if (before === saved.current) return;
+    await window.studio.autosave(before);
+    if (window.studio.listRecovery)
+      setRecovery(await window.studio.listRecovery());
   }
   function save(as: boolean) {
     run(async () => {
@@ -780,6 +834,10 @@ export function App() {
         setDirty(latest.current !== snapshot);
         setPath(file);
         setRecent(await window.studio.recent());
+        if (latest.current === snapshot && window.studio.listRecovery) {
+          await window.studio.discardRecovery(snapshot.id);
+          setRecovery(await window.studio.listRecovery());
+        }
         message("Saved " + file);
       }
     });
@@ -787,6 +845,7 @@ export function App() {
   function open() {
     if (!confirmDiscard()) return;
     run(async () => {
+      await checkpointBeforeSwitch();
       const result = await window.studio.open();
       if (result) adopted(result.project, result.path);
     });
@@ -794,6 +853,7 @@ export function App() {
   function openRecent(f: string) {
     if (!confirmDiscard()) return;
     run(async () => {
+      await checkpointBeforeSwitch();
       const result = await window.studio.openPath(f);
       adopted(result.project, result.path);
     });
@@ -840,16 +900,31 @@ export function App() {
       | "square intro",
     badgeKind?: string,
     videoTrim?: Asset["videoTrim"],
+    videoSource?: Asset,
   ) {
     const projectId = latest.current.id;
-    const a = await window.studio.importAsset(kind, videoTrim);
-    if (!a || latest.current.id !== projectId) return;
+    const a =
+      videoSource && videoTrim
+        ? await window.studio.retimeIntro(videoSource, videoTrim)
+        : await window.studio.importAsset(kind, videoTrim);
+    if (
+      !a ||
+      latest.current.id !== projectId ||
+      (videoSource && latest.current.squareIntro.asset !== videoSource.id)
+    )
+      return;
     stop();
     edit("Import " + use, (p) => {
       if (use === "square intro") {
-        if (p.assets.length >= 150)
-          throw Error("This project already has 150 local assets.");
-        p.assets.push(a);
+        const at = videoSource
+          ? p.assets.findIndex((item) => item.id === videoSource.id)
+          : -1;
+        if (at >= 0) p.assets[at] = a;
+        else {
+          if (p.assets.length >= 150)
+            throw Error("This project already has 150 local assets.");
+          p.assets.push(a);
+        }
         p.squareIntro.asset = a.id;
         p.lead = Math.max(
           p.lead,
@@ -1086,6 +1161,24 @@ export function App() {
       `${shots.length} ${shots.length === 1 ? "move" : "moves"} added to storyboard. Undo is available.`,
     );
   }
+  function makeMoveShort() {
+    const move = p.moves[selected];
+    if (!move || p.storyboard.shots.length > 197) return;
+    const shots = moveShort(p, move.id);
+    const at = compileStoryboard(p).duration;
+    switchMode("storyboard");
+    edit("Make vertical short from move", (draft) => {
+      draft.format = "vertical";
+      draft.shorts.enabled = true;
+      draft.storyboard.shots.push(...shots);
+    });
+    storyClock.current = at;
+    timeRef.current = at;
+    setTime(at);
+    shotIdRef.current = shots[0].id;
+    setShotId(shots[0].id);
+    message(`Added a vertical short for ${move.san}. Undo is available.`);
+  }
   function addPosition() {
     const sourceTime =
       modeRef.current === "storyboard"
@@ -1135,7 +1228,18 @@ export function App() {
       stop();
       edit(label, fn);
     },
-    { begin: edit.begin, end: edit.end },
+    {
+      begin: edit.begin,
+      end: edit.end,
+      shot: (
+        label: string,
+        id: string,
+        change: (shot: Project["storyboard"]["shots"][number]) => void,
+      ) => {
+        stop();
+        edit.shot?.(label, id, change);
+      },
+    },
   );
   const annotationEdit = Object.assign(
     (label: string, fn: (draft: Project) => void) => {
@@ -1265,6 +1369,28 @@ export function App() {
     setTime(window.start);
     setPlaying(true);
   }
+  function comparePresetFrame(original: boolean) {
+    if (!activePreset) return;
+    const previous = movePreviewWindow(
+      beforePreset ? p : activePreset.preview,
+      activePreset.index,
+    );
+    const next = movePreviewWindow(
+      original ? p : activePreset.preview,
+      activePreset.index,
+    );
+    if (!previous || !next) return;
+    const phase = Math.max(
+      0,
+      Math.min(
+        1,
+        (timeRef.current - previous.start) /
+          Math.max(1e-6, previous.end - previous.start),
+      ),
+    );
+    setBeforePreset(original);
+    seek(next.start + phase * (next.end - next.start));
+  }
   function inspectMoveEffect(section: string) {
     workspace.patch({ hideRight: false });
     setIntroSelected(false);
@@ -1295,7 +1421,8 @@ export function App() {
   }
   function openExport() {
     clearPresetPreview();
-    if (!progressBusy) setExportProgress(null);
+    if (!progressBusy && exportProgress?.phase !== "Complete")
+      setExportProgress(null);
     setExportOpen(true);
   }
   const panels: Record<string, React.ComponentType<PanelProps> | null> = {
@@ -1391,7 +1518,11 @@ export function App() {
           <button
             title="New composition"
             onClick={() => {
-              if (confirmDiscard()) adopted(blank(), null);
+              if (confirmDiscard())
+                run(async () => {
+                  await checkpointBeforeSwitch();
+                  adopted(blank(), null);
+                });
             }}
           >
             <Plus size={16} />
@@ -1434,22 +1565,68 @@ export function App() {
           </button>
         </div>
       </header>
-      {recovery && (
+      {recovery.length > 0 && recoveryVisible && (
         <div className="recovery">
-          <span>
-            A recovery snapshot is available:{" "}
-            <strong>{recovery.project.title}</strong>
-          </span>
-          <button onClick={() => adopted(recovery.project, recovery.path)}>
+          <label>
+            Recovery checkpoint
+            <select
+              value={
+                recovery.some((r) => r.id === recoveryId)
+                  ? recoveryId
+                  : recovery[0].id
+              }
+              onChange={(e) => setRecoveryId(e.target.value)}
+            >
+              {recovery.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title} · {new Date(item.updated).toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            onClick={() => {
+              const id =
+                recovery.find((r) => r.id === recoveryId)?.id ?? recovery[0].id;
+              const sameProject = id === latest.current.id;
+              if (
+                sameProject && dirty
+                  ? !confirm(
+                      "Replace the current edits with this project's recovery checkpoint?",
+                    )
+                  : !confirmDiscard()
+              )
+                return;
+              run(async () => {
+                if (!sameProject) await checkpointBeforeSwitch();
+                const item = await window.studio.openRecovery(id);
+                adopted(item.project, item.path, true);
+                setRecoveryVisible(false);
+              });
+            }}
+          >
             Recover session
+          </button>
+          <button onClick={() => setRecoveryVisible(false)}>
+            Hide recovery
           </button>
           <button
             onClick={() => {
-              setRecovery(null);
-              run(() => window.studio.discardRecovery());
+              const id =
+                recovery.find((r) => r.id === recoveryId)?.id ?? recovery[0].id;
+              if (
+                !confirm(
+                  "Delete this recovery checkpoint? Saved project files are kept.",
+                )
+              )
+                return;
+              run(async () => {
+                await window.studio.discardRecovery(id);
+                setRecovery(await window.studio.listRecovery());
+              });
             }}
           >
-            Dismiss
+            Delete checkpoint
           </button>
         </div>
       )}
@@ -1476,6 +1653,15 @@ export function App() {
           >
             Storyboard · {p.storyboard.shots.length} shots
           </button>
+          {mode === "source" && (
+            <button
+              disabled={!p.moves[selected] || p.storyboard.shots.length > 197}
+              title="Append an opening position, the selected move, and a final hold. Set output to 9:16."
+              onClick={makeMoveShort}
+            >
+              Make a Short from this move
+            </button>
+          )}
         </div>
         <small>
           {mode === "storyboard"
@@ -1652,6 +1838,7 @@ export function App() {
                       onClick={() => {
                         if (confirmDiscard())
                           run(async () => {
+                            await checkpointBeforeSwitch();
                             const project = await window.studio.sample();
                             adopted(project, null);
                             message("Opera Game sample opened.");
@@ -1659,6 +1846,22 @@ export function App() {
                       }}
                     >
                       Open Opera Game with original music <span>↗</span>
+                    </button>
+                  )}
+                  {category === "files" && window.studio.listRecovery && (
+                    <button
+                      className="wide"
+                      onClick={() =>
+                        run(async () => {
+                          const entries = await window.studio.listRecovery();
+                          setRecovery(entries);
+                          setRecoveryVisible(true);
+                          if (!entries.length)
+                            message("No recovery checkpoints yet.");
+                        })
+                      }
+                    >
+                      Browse recovery checkpoints
                     </button>
                   )}
                   {category === "effects" && (
@@ -1708,6 +1911,7 @@ export function App() {
                         onBefore={(original) => {
                           if (activePreset) playPreset(activePreset, original);
                         }}
+                        onCompareFrame={comparePresetFrame}
                         onPreview={(effects, index) => {
                           const anchorMoveId = p.moves[selected]?.id;
                           if (!anchorMoveId || mode !== "source") return;
@@ -2248,7 +2452,10 @@ export function App() {
                     run(() => importAsset("image", "player intro"))
                   }
                   videoImporting={videoImporting}
-                  importVideo={(trim) =>
+                  active={introSelected && mode === "source"}
+                  openingTime={time}
+                  seekOpening={seek}
+                  importVideo={(trim, source) =>
                     run(async () => {
                       if (videoImporting) return;
                       setVideoImporting(true);
@@ -2263,6 +2470,7 @@ export function App() {
                           "square intro",
                           undefined,
                           trim,
+                          source,
                         );
                       } finally {
                         setVideoImporting(false);

@@ -1,4 +1,4 @@
-import { engineNotation } from "./badgeNotation";
+import { reviewNotation } from "./badgeNotation";
 import { firstMatchingIndex } from "./sorted";
 import { beatInMusic } from "./beatMarkers";
 import {
@@ -175,14 +175,7 @@ export function badge(m: Project["moves"][number]) {
   if (b === "none") return null;
   if (b) return b;
   const review = m.analysis.engine;
-  const rating =
-    review?.state === "done"
-      ? engineNotation(
-          review.loss,
-          review.label === "best",
-          review.label === "brilliant",
-        )
-      : null;
+  const rating = review?.state === "done" ? reviewNotation(review) : null;
   if (rating === "mistake" || rating === "brilliant") return rating;
   if (m.analysis.book?.state === "found") return "book";
   return rating;

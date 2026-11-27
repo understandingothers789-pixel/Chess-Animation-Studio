@@ -133,37 +133,46 @@ export function Inspector({
       : [p.moves[index]];
   const each = (p: Project, fn: (e: Effect) => void) =>
     targets(p).forEach((m) => fn(m.effect));
-  const applyMovement = (preset: Preset) =>
-    edit("Apply preset", (p) => {
-      const settings = animationPreset(preset);
-      for (const m of targets(p))
-        m.effect = applyPresetEffect(
-          m.effect,
-          settings,
-          p.format,
-          false,
-          "movement",
-          true,
-          false,
-        );
+  const editMoves = (
+    label: string,
+    change: (m: Project["moves"][number]) => void,
+  ) => {
+    if (edit.moves)
+      edit.moves(
+        label,
+        validChecked.size ? validChecked : new Set([move.id]),
+        change,
+      );
+    else edit(label, (p) => targets(p).forEach(change));
+  };
+  const editEffects = (label: string, change: (e: Effect) => void) =>
+    editMoves(label, (m) => change(m.effect));
+  const applyMovement = (preset: Preset) => {
+    const settings = animationPreset(preset);
+    editMoves("Apply preset", (m) => {
+      m.effect = applyPresetEffect(
+        m.effect,
+        settings,
+        project.format,
+        false,
+        "movement",
+        true,
+        false,
+      );
     });
+  };
   const resetFields = (keys: (keyof Effect)[]) =>
-    edit("Reset " + keys.join(","), (p) =>
-      each(p, (e) => {
-        const defaults = animationPreset(e.preset);
-        for (const key of keys)
-          (e as any)[key] = structuredClone(defaults[key]);
-      }),
-    );
+    editEffects("Reset " + keys.join(","), (e) => {
+      const defaults = animationPreset(e.preset);
+      for (const key of keys) (e as any)[key] = structuredClone(defaults[key]);
+    });
   const e =
       validChecked.size && !validChecked.has(move.id)
         ? targets(project)[0].effect
         : move.effect,
     change = <K extends keyof Effect>(key: K, value: Effect[K]) =>
-      edit(String(key), (p) => {
-        each(p, (e) => {
-          e[key] = structuredClone(value);
-        });
+      editEffects(String(key), (e) => {
+        e[key] = structuredClone(value);
       });
   const selectedEffects = targets(project).map((m) => m.effect);
   const frame = segments(project)[index];
@@ -224,35 +233,29 @@ export function Inspector({
     k: K,
     v: Effect["capture"][K],
   ) =>
-    edit("Capture " + k, (p) => {
-      each(p, (e) => {
-        e.capture[k] = v;
-      });
+    editEffects("Capture " + k, (e) => {
+      e.capture[k] = v;
     });
   const look = <K extends keyof Effect["highlight"]>(
     k: K,
     v: Effect["highlight"][K],
   ) =>
-    edit("Highlight " + k, (p) => {
-      each(p, (e) => {
-        e.highlight[k] = v;
-        if (k === "source" || k === "destination") {
-          e.highlight.byNotation = false;
-          e.highlight.byMover = false;
-        } else if (k === "whiteColor" || k === "blackColor") {
-          e.highlight.byNotation = false;
-          e.highlight.byMover = true;
-        }
-      });
+    editEffects("Highlight " + k, (e) => {
+      e.highlight[k] = v;
+      if (k === "source" || k === "destination") {
+        e.highlight.byNotation = false;
+        e.highlight.byMover = false;
+      } else if (k === "whiteColor" || k === "blackColor") {
+        e.highlight.byNotation = false;
+        e.highlight.byMover = true;
+      }
     });
   const badge = <K extends keyof Effect["badge"]>(
     k: K,
     v: Effect["badge"][K],
   ) =>
-    edit("Badge " + k, (p) => {
-      each(p, (e) => {
-        e.badge[k] = v;
-      });
+    editEffects("Badge " + k, (e) => {
+      e.badge[k] = v;
     });
   return (
     <aside className="inspector">
@@ -808,13 +811,11 @@ export function Inspector({
         {(() => {
           const c = e.cameras[project.format] ?? camera();
           const changeCamera = (key: keyof typeof c, value: unknown) =>
-            edit("Camera " + key, (p) => {
-              each(p, (e) => {
-                e.cameras[p.format] = {
-                  ...(e.cameras[p.format] ?? camera()),
-                  [key]: value,
-                };
-              });
+            editEffects("Camera " + key, (e) => {
+              e.cameras[project.format] = {
+                ...(e.cameras[project.format] ?? camera()),
+                [key]: value,
+              };
             });
           return (
             <div data-inspector-tab="camera" hidden={tab !== "camera"}>

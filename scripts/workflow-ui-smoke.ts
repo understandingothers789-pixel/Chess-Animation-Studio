@@ -63,6 +63,14 @@ try {
   await page.waitForFunction(() => !!(window as any).__workflow);
   const button = (name: string) =>
     page.getByRole("button", { name, exact: true });
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await expect
+    .poll(
+      async () =>
+        (await page.locator(".preview-host canvas").boundingBox())?.height ?? 0,
+    )
+    .toBeGreaterThan(170);
+  await page.setViewportSize({ width: 1440, height: 900 });
   const workspace = page.getByLabel("Workspace preset", { exact: true });
   const width = page.getByRole("separator", { name: "Left settings width" });
   const originalWidth = +(await width.getAttribute("aria-valuenow"))!;
@@ -90,6 +98,17 @@ try {
   await playhead.fill("0.83");
   const before = await playhead.inputValue();
   await button("presets").click();
+  await page
+    .locator(".animation-card")
+    .filter({ hasText: "Dramatic landing" })
+    .click();
+  const components = page.getByRole("group", { name: "Preset components" });
+  await expect(
+    components.getByRole("checkbox", { name: "After effect" }),
+  ).toBeChecked();
+  await button("View original at this frame").click();
+  await expect(button("View preset at this frame")).toBeVisible();
+  await button("Cancel preview").click();
   await page.locator(".animation-card").filter({ hasText: "Soft hop" }).click();
   await button("Cancel preview").click();
   await expect(playhead).toHaveValue(before);
@@ -222,7 +241,17 @@ try {
 
   await page.getByLabel("UI scale", { exact: true }).selectOption("100");
   await page.setViewportSize({ width: 1440, height: 900 });
-  await button("Storyboard mode").click();
+  await button("Make a Short from this move").click();
+  await expect
+    .poll(async () =>
+      (await state()).storyboard.shots.map((shot: any) => shot.kind),
+    )
+    .toEqual(["position-hold", "move-range", "position-hold"]);
+  await expect.poll(async () => (await state()).format).toBe("vertical");
+  await page.getByTitle("Undo", { exact: true }).click();
+  await expect
+    .poll(async () => (await state()).storyboard.shots.length)
+    .toBe(0);
   await button("Add 1 selected move").click();
   await button("+ Opening shot").click();
   await expect

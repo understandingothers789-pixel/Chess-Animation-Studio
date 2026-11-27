@@ -18,6 +18,9 @@ const launch = await electron.launch({
   args: [
     ...(packed ? [] : ["."]),
     ...(process.platform === "linux" ? ["--no-sandbox"] : []),
+    ...(process.platform === "linux" && !process.env.DISPLAY
+      ? ["--ozone-platform=headless"]
+      : []),
     "--use-gl=angle",
     "--use-angle=swiftshader",
     "--enable-unsafe-swiftshader",
@@ -1044,6 +1047,25 @@ try {
   await expect(
     page.getByRole("button", { name: "Preview video pullback", exact: true }),
   ).toBeEnabled({ timeout: 55000 });
+  await page.getByText("Source in-point and crop", { exact: true }).click();
+  const cropFrame = page.locator(".intro-source-frame img");
+  await expect(cropFrame).toBeVisible();
+  await page
+    .getByLabel("Video crop horizontal value", { exact: true })
+    .fill("70");
+  await page
+    .getByLabel("Video crop horizontal value", { exact: true })
+    .press("Enter");
+  await page
+    .getByRole("button", { name: "Apply trim and crop", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Replace intro video", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Apply trim and crop", exact: true }),
+  ).toBeDisabled();
+  await page.getByText("Source in-point and crop", { exact: true }).click();
   await page.getByLabel("Video square", { exact: true }).selectOption("b1");
   const openerPath = path.join(dir, "native-intro.castudio");
   await launch.evaluate((_, file) => {
@@ -1066,11 +1088,53 @@ try {
     (asset) => asset.id === opener.squareIntro.asset,
   );
   assert.equal(prepared?.kind, "filmstrip");
+  assert.equal(prepared?.videoTrim?.x, 0.7);
+  assert.equal(path.resolve(dir, prepared!.videoSource!), introInput);
   assert.ok(
     prepared && (await fs.stat(path.resolve(dir, prepared.path))).size > 0,
   );
   console.log(
     "PASS: packaged video picker, FFmpeg preparation, square controls and preview.",
+  );
+  const firstDraft = blank();
+  firstDraft.title = "Recovery test first";
+  firstDraft.id = "project-" + "a".repeat(940);
+  const secondDraft = blank();
+  secondDraft.title = "Recovery test second";
+  const drafts = await page.evaluate(
+    async ([first, second]) => {
+      await Promise.all([
+        window.studio.autosave(first),
+        window.studio.autosave(second),
+      ]);
+      return (await window.studio.listRecovery()).filter((checkpoint) =>
+        [first.id, second.id].includes(checkpoint.id),
+      );
+    },
+    [firstDraft, secondDraft] as const,
+  );
+  assert.deepEqual(drafts.map((item) => item.title).sort(), [
+    firstDraft.title,
+    secondDraft.title,
+  ]);
+  const trimmedDraft = await page.evaluate(
+    async ([first, second]) => {
+      await window.studio.discardRecovery(second);
+      return {
+        selected: (await window.studio.openRecovery(first)).project.title,
+        remaining: (await window.studio.listRecovery()).some(
+          (item) => item.id === second,
+        ),
+      };
+    },
+    [firstDraft.id, secondDraft.id] as const,
+  );
+  assert.deepEqual(trimmedDraft, {
+    selected: firstDraft.title,
+    remaining: false,
+  });
+  console.log(
+    "PASS: independent recovery checkpoints can be listed, selected and deleted.",
   );
   assert.deepEqual(errors, []);
   await fs.writeFile(

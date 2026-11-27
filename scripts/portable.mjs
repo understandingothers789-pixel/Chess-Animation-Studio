@@ -1,4 +1,4 @@
-// Standard portable Electron layout. The runtime executable is copied, never edited.
+// Standard portable Electron layout using the official runtime and an optional publisher signature.
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -11,6 +11,11 @@ const platform =
 if (platform !== "win32")
   throw Error(
     "Use the Windows workflow, or explicitly set PORTABLE_PLATFORM=win32 for an untested cross-package.",
+  );
+const appSigned = Boolean(process.env.STUDIO_SIGNING_PFX_BASE64);
+if (process.env.STUDIO_REQUIRE_SIGNATURE === "true" && !appSigned)
+  throw Error(
+    "Windows publisher signing is required, but the signing credential is unavailable.",
   );
 const target = path.resolve(
   "release",
@@ -44,8 +49,20 @@ await fs.rename(path.join(target, "electron.exe"), host);
 await fs.rm(path.join(target, "resources/default_app.asar"), { force: true });
 const app = path.join(target, "resources/app");
 await fs.mkdir(app, { recursive: true });
-for (const name of ["dist", "desktop-build", "samples", "docs"])
+for (const name of ["dist", "desktop-build", "samples"])
   await fs.cp(name, path.join(app, name), { recursive: true });
+const docs = path.join(app, "docs");
+await fs.mkdir(docs, { recursive: true });
+for (const name of [
+  "USER_GUIDE.md",
+  "BADGE_PACK.md",
+  "THIRD_PARTY.md",
+  "SOURCES.md",
+  "licenses",
+])
+  await fs.cp(path.join("docs", name), path.join(docs, name), {
+    recursive: true,
+  });
 await fs.copyFile("LICENSE", path.join(app, "LICENSE"));
 await fs.writeFile(
   path.join(app, "package.json"),
@@ -63,6 +80,23 @@ const sha = async (p) =>
 const before = await sha(path.join(runtime, "electron.exe"));
 if (before !== (await sha(host)))
   throw Error("Runtime executable was unexpectedly modified.");
+if (appSigned) {
+  if (process.platform !== "win32")
+    throw Error("Windows publisher signing requires a Windows build host.");
+  execFileSync(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-NonInteractive",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      path.resolve("scripts/sign-windows.ps1"),
+      host,
+    ],
+    { stdio: "inherit" },
+  );
+}
 const commit = execFileSync("git", ["rev-parse", "HEAD"], {
   encoding: "utf8",
 }).trim();
@@ -78,9 +112,11 @@ const manifest = {
   buildOS: process.platform,
   buildArch: process.arch,
   runtimeExecutableSha256: before,
-  packaging:
-    "Unmodified official Electron runtime; application payload in resources/app. No executable resource editing or app signing.",
-  appSigned: false,
+  packagedExecutableSha256: await sha(host),
+  packaging: appSigned
+    ? "Official Electron runtime with a verified publisher signature; application payload in resources/app."
+    : "Unmodified official Electron runtime; application payload in resources/app.",
+  appSigned,
 };
 await fs.writeFile(
   path.join(target, "BUILD.json"),
@@ -88,9 +124,12 @@ await fs.writeFile(
 );
 await fs.writeFile(
   path.join(target, "START-HERE.txt"),
-  `Chess Animation Studio ${pkg.version}\r\nExtract all files, then open Chess Animation Studio.exe. Keep the files together.\r\nThe official runtime bytes are unchanged. This runtime and application are unsigned unless BUILD/signature evidence states otherwise. Windows policy approval is not guaranteed.\r\nChoose FFmpeg in Files to enable MP4 export. Stockfish is optional.\r\n`,
+  `Chess Animation Studio ${pkg.version}\r\nExtract all files, then open Chess Animation Studio.exe. Keep the files together.\r\n${appSigned ? "The executable has a verified publisher signature." : "This build has no Studio publisher signature."}\r\nChoose FFmpeg in Files to enable MP4 export. Stockfish is optional.\r\n`,
 );
-const zip = target + ".zip";
+const zip = path.join(
+  path.dirname(target),
+  `Chess-Animation-Studio-${pkg.version}-Windows-x64.zip`,
+);
 if (process.platform === "win32") {
   const escaped = target.replace(/'/g, "''"),
     z = zip.replace(/'/g, "''");
@@ -131,7 +170,7 @@ if (process.platform === "win32") {
     [
       "-c",
       'import shutil,sys; shutil.make_archive(sys.argv[1],"zip",sys.argv[2])',
-      target,
+      zip.slice(0, -4),
       target,
     ],
     { stdio: "inherit" },

@@ -40,11 +40,15 @@ export function ShotInspector({
     entry = compileStoryboard(p).shots.find((e) => e.shot.id === id);
   const [name, setName] = useState(s?.name ?? "");
   useEffect(() => setName(s?.name ?? ""), [s?.id, s?.name]);
-  const change = (label: string, fn: (s: StoryboardShot) => void) =>
-    edit(label, (d) => {
-      const shot = d.storyboard.shots.find((s) => s.id === id);
-      if (shot) fn(shot);
-    });
+  const change = (label: string, fn: (s: StoryboardShot) => void) => {
+    if (!id) return;
+    if (edit.shot) edit.shot(label, id, fn);
+    else
+      edit(label, (d) => {
+        const shot = d.storyboard.shots.find((s) => s.id === id);
+        if (shot) fn(shot);
+      });
+  };
   const annotationProject = useMemo(
     () => ({
       ...p,

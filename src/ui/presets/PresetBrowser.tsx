@@ -14,6 +14,7 @@ import {
 import { personalPresets, storePersonalPreset } from "./personalLibrary";
 import {
   applyPresetEffect,
+  preserveLockedTiming,
   type SettingsKind,
   settingsKinds,
 } from "../../core/editing";
@@ -26,6 +27,46 @@ const filters = [
   ["recent", "Recent"],
   ["custom", "My presets"],
 ] as const;
+const visualComponents = {
+  capture: "Capture impact",
+  highlight: "Highlights and trail",
+  badge: "Move badge",
+  jam: "Beat zoom",
+  light: "Move light",
+};
+type VisualComponent = keyof typeof visualComponents;
+type PresetComponent = SettingsKind | VisualComponent;
+const components: PresetComponent[] = [
+  "movement",
+  "size",
+  "after-effect",
+  "camera",
+  "timing",
+  "capture",
+  "highlight",
+  "badge",
+  "jam",
+  "light",
+];
+
+function visualComponent(part: PresetComponent): part is VisualComponent {
+  return Object.hasOwn(visualComponents, part);
+}
+
+function authoredComponents(id: string): PresetComponent[] {
+  switch (id) {
+    case "flip":
+    case "capture":
+      return ["capture"];
+    case "dramatic":
+      return ["size", "after-effect"];
+    case "finale":
+      return ["size", "capture", "jam"];
+    default:
+      return [];
+  }
+}
+
 type PresetFilter = (typeof filters)[number][0];
 
 function preference(key: string) {
@@ -50,6 +91,7 @@ export function PresetBrowser({
   previewActive,
   before,
   onBefore,
+  onCompareFrame,
   report,
 }: {
   project: Project;
@@ -61,6 +103,7 @@ export function PresetBrowser({
   previewActive: boolean;
   before: boolean;
   onBefore: (before: boolean) => void;
+  onCompareFrame: (before: boolean) => void;
   report: (message: string) => void;
   onCancel: () => void;
   onPausePreview: () => void;
@@ -77,7 +120,8 @@ export function PresetBrowser({
     [filter, setFilter] = useState<PresetFilter>("all"),
     [replaceAll, setReplaceAll] = useState(false),
     [kind, setKind] = useState<SettingsKind>("movement"),
-    [preserveKeys, setPreserveKeys] = useState(true);
+    [preserveKeys, setPreserveKeys] = useState(true),
+    [extra, setExtra] = useState<PresetComponent[]>([]);
   const [demoPreset, setDemoPreset] = useState<Preset | null>(null);
   const items = useMemo(
     () => [
@@ -136,14 +180,39 @@ export function PresetBrowser({
     category = kind,
     replace = replaceAll,
     keep = preserveKeys,
+    additional = extra,
   ) =>
-    applyPresetEffect(target, source, p.format, replace, category, keep, false);
+    (replace || category === "everything"
+      ? ["everything" as const]
+      : [category, ...additional]
+    ).reduce((effect, part) => {
+      if (!visualComponent(part))
+        return applyPresetEffect(
+          effect,
+          source,
+          p.format,
+          replace,
+          part,
+          keep,
+          false,
+        );
+      const next = { ...effect, [part]: structuredClone(source[part]) };
+      if (part === "capture") next.capture.grow = effect.capture.grow;
+      if (effect.locked) {
+        // Lock handling can update nested fields beyond the visual component.
+        const locked = structuredClone(next);
+        preserveLockedTiming(effect, locked);
+        return locked;
+      }
+      return next;
+    }, target);
   const preview = (
     source: Effect,
     category = kind,
     replace = replaceAll,
     keep = preserveKeys,
     moves = targets,
+    additional = extra,
   ) => {
     const active = moves.find((m) => m.id === p.moves[index]?.id) ?? moves[0];
     if (!active) {
@@ -154,7 +223,7 @@ export function PresetBrowser({
       new Map(
         moves.map((m) => [
           m.id,
-          transform(m.effect, source, category, replace, keep),
+          transform(m.effect, source, category, replace, keep, additional),
         ]),
       ),
       p.moves.indexOf(active),
@@ -254,7 +323,16 @@ export function PresetBrowser({
             onChange={(event) => {
               const next = event.target.value as SettingsKind;
               setKind(next);
-              if (selected && previewActive) preview(selected.effect, next);
+              setExtra([]);
+              if (selected && previewActive)
+                preview(
+                  selected.effect,
+                  next,
+                  false,
+                  preserveKeys,
+                  targets,
+                  [],
+                );
             }}
           >
             {settingsKinds.map((k) => (
@@ -264,6 +342,45 @@ export function PresetBrowser({
             ))}
           </select>
         </label>
+        {selected && applyKind !== "everything" && (
+          <fieldset className="preset-components">
+            <legend>Preset components</legend>
+            {components.map((component) => (
+              <label key={component}>
+                <input
+                  type="checkbox"
+                  checked={
+                    kind === component ||
+                    extra.includes(component) ||
+                    (kind === "effects" && visualComponent(component))
+                  }
+                  disabled={
+                    kind === component ||
+                    (kind === "effects" && visualComponent(component))
+                  }
+                  onChange={(event) => {
+                    const next = event.target.checked
+                      ? [...extra, component]
+                      : extra.filter((part) => part !== component);
+                    setExtra(next);
+                    if (previewActive)
+                      preview(
+                        selected.effect,
+                        kind,
+                        false,
+                        preserveKeys,
+                        targets,
+                        next,
+                      );
+                  }}
+                />
+                {visualComponent(component)
+                  ? visualComponents[component]
+                  : settingsLabel(component)}
+              </label>
+            ))}
+          </fieldset>
+        )}
         <details className="preset-advanced">
           <summary>Advanced apply options</summary>
           <p className="hint">
@@ -312,6 +429,30 @@ export function PresetBrowser({
             {previewMove
               ? ` · ${settingsLabel(applyKind)} · ${targets.length === 1 ? previewMove.san : targets.length + " moves"}`
               : " · Check moves in the timeline to apply to a group."}
+            {previewMove &&
+              (() => {
+                const old = previewMove.effect;
+                const next = transform(old, selected.effect);
+                const fields = (Object.keys(next) as (keyof Effect)[])
+                  .filter(
+                    (field) =>
+                      JSON.stringify(old[field]) !==
+                      JSON.stringify(next[field]),
+                  )
+                  .map((field) =>
+                    field.replace(
+                      /[A-Z]/g,
+                      (letter) => " " + letter.toLowerCase(),
+                    ),
+                  );
+                return (
+                  <small>
+                    {fields.length
+                      ? `Will change on ${previewMove.san}: ${fields.join(", ")}`
+                      : `No settings will change on ${previewMove.san}.`}
+                  </small>
+                );
+              })()}
             {previewActive && previewMove && (
               <small>
                 {before ? "Original" : "Preview"} · {previewMove.san}
@@ -327,9 +468,16 @@ export function PresetBrowser({
             {previewActive ? "Replay preset" : "Preview preset"}
           </button>
           {previewActive && (
-            <button aria-pressed={before} onClick={() => onBefore(!before)}>
-              {before ? "Play preset" : "Play original"}
-            </button>
+            <>
+              <button aria-pressed={before} onClick={() => onBefore(!before)}>
+                {before ? "Play preset" : "Play original"}
+              </button>
+              <button onClick={() => onCompareFrame(!before)}>
+                {before
+                  ? "View preset at this frame"
+                  : "View original at this frame"}
+              </button>
+            </>
           )}
           <button
             disabled={!selected}
@@ -392,7 +540,16 @@ export function PresetBrowser({
               onClick={() => {
                 choose(v.id);
                 setKind(v.kind);
-                preview(v.effect, v.kind);
+                const next = v.custom < 0 ? authoredComponents(v.id) : [];
+                setExtra(next);
+                preview(
+                  v.effect,
+                  v.kind,
+                  replaceAll,
+                  preserveKeys,
+                  targets,
+                  next,
+                );
               }}
             >
               {v.custom < 0 && (

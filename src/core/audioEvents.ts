@@ -47,16 +47,22 @@ export function audioEvents(
     };
   });
   for (let i = 0; game && i < p.moves.length; i++) {
+    const move = p.moves[i];
+    const segment = timeline.segments[i];
+    const captured = game.steps[i].capturedId;
     if (p.audio.automatic)
       events.push({
         id: `auto-${p.moves[i].id}`,
         asset: null,
-        at: timeline.segments[i].land,
+        at:
+          captured && move.effect.capture.beat
+            ? segment.depart + move.effect.duration * move.effect.capture.impact
+            : segment.land,
         offset: 0,
         end: timeline.duration,
         duration: 0.2,
         volume: 0.7,
-        kind: game.steps[i].capturedId ? "capture" : "move",
+        kind: captured ? "capture" : "move",
         bus: "chess",
         moveId: p.moves[i].id,
       });

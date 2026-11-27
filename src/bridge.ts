@@ -24,6 +24,13 @@ export interface ExportProgress {
   total: number;
   path?: string;
   error?: string;
+  etaSeconds?: number;
+}
+export interface RecoverySummary {
+  id: string;
+  title: string;
+  path: string | null;
+  updated: number;
 }
 export interface Studio {
   chooseTranscript(): Promise<{ text: string; name: string } | null>;
@@ -41,13 +48,22 @@ export interface Studio {
   save(p: Project, as: boolean): Promise<string | null>;
   projectReport(p: Project): Promise<string | null>;
   recover(): Promise<{ project: Project; path: string | null } | null>;
-  discardRecovery(): Promise<void>;
+  listRecovery(): Promise<RecoverySummary[]>;
+  openRecovery(id: string): Promise<{ project: Project; path: string | null }>;
+  discardRecovery(id?: string): Promise<void>;
   autosave(p: Project): Promise<void>;
+  onFlushRecovery(cb: () => void): () => void;
+  recoveryFlushed(): void;
   recent(): Promise<string[]>;
   importAsset(
     kind: Asset["kind"],
     trim?: Asset["videoTrim"],
   ): Promise<Asset | null>;
+  retimeIntro(
+    asset: Asset,
+    trim: NonNullable<Asset["videoTrim"]>,
+  ): Promise<Asset>;
+  introSourceFrame(asset: Asset, time: number): Promise<string | null>;
   assetData(a: Asset): Promise<string | null>;
   assetStatus(assets: Asset[]): Promise<Record<string, string | null>>;
   collect(p: Project): Promise<{ project: Project; path: string } | null>;
@@ -74,6 +90,7 @@ export interface Studio {
   onAnalysis(cb: (v: { done: number; total: number }) => void): () => void;
   export(p: Project, options: ExportOptions): Promise<boolean>;
   cancelExport(): Promise<void>;
+  showExport(): Promise<void>;
   onExport(cb: (p: ExportProgress) => void): () => void;
   onTask(
     cb: (v: {

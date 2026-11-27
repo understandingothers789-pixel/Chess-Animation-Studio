@@ -1,5 +1,15 @@
 # User guide
 
+## Edit a vertical short
+
+1. Select a move in **Full Game**, then choose **Make a Short from this move**. This appends an opening position, the move, and a final hold to the storyboard and sets the output to 9:16.
+2. Open **Presets**, choose a preset, and check the components you want to apply. The library lists the changed settings for the previewed move. Pause on a frame and toggle between the original and preset to compare it.
+3. Expand **Move frames → Effect timing**. Choose an event and a music hit. **Pin to hit** adjusts the selected event, while the time readout shows how far it is from the hit in milliseconds and output frames. Check the readout again after editing the music or earlier moves.
+4. In the opening inspector, use **Source in-point and crop** to scrub through the original clip and drag its square crop. Apply the trim, then select **Play entire opening** to check the video and player reveal in the composition. Collect the project if you need to move its original video with it.
+5. Use **Export MP4** to check the output, track render progress, and reveal the finished file. Use **Files → Browse recovery checkpoints** to find unsaved edits by project.
+
+Historical screenshots and validation reports are in the GitHub repository.
+
 Extract the portable ZIP and open Chess Animation Studio.exe. The application works locally. Configure FFmpeg in Files before exporting; Stockfish is optional. Online opening lookups are optional and can fail without preventing editing or export.
 
 ## First composition
@@ -32,7 +42,7 @@ Choose **Bulk edit from [move]…** to review the source move, category, chess g
 
 The selection bar keeps Preview, Preset, Edit and More actions available without right-click. Music menus link directly to dark-square pulses and knight horse sound controls. Right-click a visible preview annotation to edit it, a board square to create annotations, or empty preview space for fit, zoom/pan reset, guides, FEN, PNG and fullscreen. Opening a menu keeps playback running; annotation edits pause when chosen. FEN is the position after the last landed move. PNG feedback confirms download initiation; the browser or operating system handles final placement.
 
-See the [0.2.29 report and screenshot gallery](context-menu-029/REPORT.md).
+See the [0.2.29 report and screenshot gallery](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/blob/studio-v0.2.54/docs/context-menu-029/REPORT.md).
 
 ## Import and legal input
 

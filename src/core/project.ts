@@ -210,6 +210,7 @@ export const effectSchema = z.object({
       delay: n(0, 3),
       duration: n(0.1, 5),
       strength: n(0, 1),
+      beat: str.nullable().optional(),
     })
     .default(() => ({ ...afterEffectDefaults })),
   jam: z
@@ -266,6 +267,7 @@ export const effectSchema = z.object({
     dustSpread: n(0.1, 2).default(0.85),
     dustSize: n(0.015, 0.15).default(0.055),
     impact: n(0.2, 0.95),
+    beat: str.nullable().optional(),
     glow: n(0, 2),
     radius: n(0.3, 3),
     color,
@@ -470,6 +472,8 @@ const assetSchema = z.object({
   path: z.string().max(4096),
   source: z.string().max(3000),
   videoTrim: z.object({ start: n(0, 7200), x: n(0, 1), y: n(0, 1) }).optional(),
+  videoSource: z.string().max(4096).optional(),
+  videoDuration: n(0, 7200).optional(),
   guidance: z.string().max(6000),
 });
 export type Asset = z.infer<typeof assetSchema>;
@@ -487,6 +491,8 @@ const analysisSchema = z.object({
       state: z.enum(["done", "unavailable"]),
       score: n(-1e6, 1e6),
       loss: n(0, 2e6),
+      mate: n(-10000, 10000).optional(),
+      bestMate: n(-10000, 10000).optional(),
       best: str,
       label: z.enum([
         "brilliant",

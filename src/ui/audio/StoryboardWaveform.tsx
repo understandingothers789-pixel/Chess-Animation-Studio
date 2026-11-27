@@ -1,3 +1,5 @@
+import { pinLabels, type PinEvent } from "../../core/beatPins";
+import { outputBeats } from "../../core/beatMarkers";
 import { activeBeats, strongestBeat } from "../../core/beatMarkers";
 import { useRef, useState, useMemo, useEffect } from "react";
 import type { Project } from "../../core/project";
@@ -37,6 +39,8 @@ export function StoryboardWaveform({
     [scroll, setScroll] = useState(0),
     [width, setWidth] = useState(800),
     [activeBeat, setActiveBeat] = useState<string | null>(null),
+    [pinEvent, setPinEvent] = useState<PinEvent>("landing"),
+    [pinMoveId, setPinMoveId] = useState(""),
     [point, setPoint] = useState<number | null>(null),
     host = useRef<HTMLDivElement>(null),
     drag = useRef<{
@@ -59,7 +63,7 @@ export function StoryboardWaveform({
     ),
     total = Math.max(width, c.duration * px),
     win = soundtrackWindow(p, c.duration),
-    beats = p.storyboard.beats,
+    beats = useMemo(() => outputBeats(p), [p]),
     targets = useMemo(
       () => [
         ...beats.filter((b) => b.enabled).map((b) => b.time),
@@ -112,6 +116,30 @@ export function StoryboardWaveform({
       ),
     [bins, rms, scroll, px, win.start, win.end],
   );
+  const pinShot = c.shots.find(
+    (entry) =>
+      entry.shot.id === selected &&
+      entry.shot.kind === "move-range" &&
+      !entry.issue,
+  );
+  const pinMoves =
+    pinShot?.project.moves.filter((move, index) =>
+      pinEvent === "capture"
+        ? pinShot.game.steps[index]?.capturedId
+        : pinEvent === "after"
+          ? move.effect.after.kind !== "none"
+          : pinEvent === "zoom"
+            ? move.effect.jam.enabled
+            : true,
+    ) ?? [];
+  const pinMove = pinMoves.find((move) => move.id === pinMoveId) ?? pinMoves[0];
+  const setBeatTime = (d: Project, index: number, time: number) => {
+    const edited = d.storyboard.beats[index];
+    if (!edited) return;
+    edited.time = time;
+    if (edited.sourceTime !== undefined)
+      edited.sourceTime = Math.max(0, Math.min(7200, musicAt(d, time)));
+  };
   const sourceBeats = useMemo(() => activeBeats(p), [p]);
   const patch = (fn: (p: Project) => void) =>
     edit("Soundtrack timing", (p) => {
@@ -143,7 +171,7 @@ export function StoryboardWaveform({
       delta = t - d.x;
     if (d.kind === "beat")
       edit("Move output beat", (p) => {
-        p.storyboard.beats[d.index].time = t;
+        setBeatTime(p, d.index, t);
       });
     else if (d.kind === "volume")
       edit("Move volume point", (p) => {
@@ -221,9 +249,7 @@ export function StoryboardWaveform({
         const delta = e.key === "ArrowLeft" ? -0.01 : 0.01;
         if (kind === "beat")
           edit("Nudge output beat", (p) => {
-            p.storyboard.beats[index].time = bounded(
-              p.storyboard.beats[index].time + delta,
-            );
+            setBeatTime(p, index, bounded(beats[index].time + delta));
           });
         else if (kind === "volume")
           edit("Nudge volume point", (p) => {
@@ -577,8 +603,76 @@ export function StoryboardWaveform({
           : "Import a soundtrack in Soundtrack & output beats to see its waveform."}{" "}
         Output {time.toFixed(3)}s · source {musicAt(p, time).toFixed(3)}s
       </p>
+      {pinShot?.shot.beatPin && (
+        <div className="wave-tools">
+          <span>
+            {pinShot.pinIssue ??
+              `${pinLabels[pinShot.shot.beatPin.event]} pinned in ${pinShot.shot.name}`}
+          </span>
+          <button
+            onClick={() =>
+              edit("Clear output beat pin", (d) => {
+                delete d.storyboard.shots[pinShot.index].beatPin;
+              })
+            }
+          >
+            Clear output pin
+          </button>
+        </div>
+      )}
       {beat && (
         <div className="wave-tools">
+          {pinShot && (
+            <label>
+              Shot event
+              <select
+                aria-label="Shot event to pin"
+                value={pinEvent}
+                onChange={(e) => setPinEvent(e.target.value as PinEvent)}
+              >
+                {(["landing", "capture", "zoom", "after"] as const).map(
+                  (event) => (
+                    <option key={event} value={event}>
+                      {pinLabels[event]}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          )}
+          {pinMoves.length > 1 && (
+            <label>
+              Source move
+              <select
+                aria-label="Move to pin to output beat"
+                value={pinMove.id}
+                onChange={(e) => setPinMoveId(e.target.value)}
+              >
+                {pinMoves.map((move) => (
+                  <option key={move.id} value={move.id}>
+                    {move.san}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {pinShot && (
+            <button
+              disabled={!beat.enabled || !pinMove}
+              onClick={() => {
+                if (!pinMove) return;
+                edit("Pin shot event to output beat", (d) => {
+                  d.storyboard.shots[pinShot.index].beatPin = {
+                    beatId: beat.id,
+                    moveId: pinMove.id,
+                    event: pinEvent,
+                  };
+                });
+              }}
+            >
+              Pin selected shot to hit
+            </button>
+          )}
           <label>
             Beat time
             <input
@@ -590,8 +684,11 @@ export function StoryboardWaveform({
               value={beat.time}
               onChange={(e) =>
                 edit("Beat time", (p) => {
-                  p.storyboard.beats.find((b) => b.id === beat.id)!.time =
-                    bounded(+e.target.value);
+                  setBeatTime(
+                    p,
+                    p.storyboard.beats.findIndex((b) => b.id === beat.id),
+                    bounded(+e.target.value),
+                  );
                 })
               }
             />

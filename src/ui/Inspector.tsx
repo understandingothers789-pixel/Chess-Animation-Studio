@@ -503,13 +503,18 @@ export function Inspector({
                   value={e.easing}
                   mixed={mixed((v) => v.easing)}
                   options={[
-                    "smooth",
-                    "linear",
-                    "soft",
-                    "accelerate",
-                    "bounce",
-                    "overshoot",
+                    ["smooth", "Smooth"],
+                    ["linear", "Linear"],
+                    ["ease-out", "Gentle ease-out"],
+                    ["soft", "Soft landing"],
+                    ["accelerate", "Accelerate"],
+                    ["bounce", "Bounce"],
+                    ["overshoot", "Overshoot"],
                   ]}
+                  optionDescriptions={{
+                    "ease-out":
+                      "Start slightly faster and slow smoothly into the destination square.",
+                  }}
                   onChange={(v) => change("easing", v)}
                 />
                 <Section title="Advanced movement" open={false}>

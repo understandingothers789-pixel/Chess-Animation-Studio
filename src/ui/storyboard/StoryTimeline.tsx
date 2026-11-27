@@ -37,7 +37,7 @@ export function StoryTimeline({
   selected: string | null;
   select: (id: string) => void;
   seek: (t: number) => void;
-  openSource: (i: number) => void;
+  openSource: (i: number, play?: boolean, line?: number) => void;
   exportStory: () => void;
   sourceIds: string[];
   report: (s: string) => void;
@@ -228,7 +228,9 @@ export function StoryTimeline({
               duplicate={() => duplicate(entry.shot.id)}
               remove={() => remove(entry.shot.id)}
               move={(dir) => move(entry.shot.id, dir)}
-              source={() => openSource(entry.startIndex)}
+              source={() =>
+                openSource(entry.startIndex, false, entry.sourceLine)
+              }
               dragStart={() => setDragging(entry.shot.id)}
               dragEnd={() => {
                 setDragging(null);

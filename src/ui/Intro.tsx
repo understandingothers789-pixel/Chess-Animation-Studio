@@ -1,5 +1,5 @@
 import { useEffect, useState, type PointerEvent } from "react";
-import { introFilm } from "../core/introVideo";
+import { assetFilm } from "../core/introVideo";
 import {
   blank,
   playerIntro,
@@ -51,7 +51,10 @@ export function IntroInspector({
   const changedTrim =
     trim.start !== originalTrim.start ||
     trim.x !== originalTrim.x ||
-    trim.y !== originalTrim.y;
+    trim.y !== originalTrim.y ||
+    trim.seconds !== originalTrim.seconds ||
+    trim.quality !== originalTrim.quality;
+  const film = assetFilm(video);
   const setTrim = (value: NonNullable<Asset["videoTrim"]>) =>
     setTrimDraft({ project: p.id, asset: clip.asset, value });
   const prepared = clip.asset ? images[clip.asset] : undefined;
@@ -393,6 +396,24 @@ export function IntroInspector({
               unit="%"
               onChange={(y) => setTrim({ ...trim, y: y / 100 })}
             />
+            <Range
+              label="Prepare footage length"
+              value={trim.seconds ?? 3}
+              min={0.25}
+              max={6}
+              step={0.25}
+              unit="s"
+              onChange={(seconds) => setTrim({ ...trim, seconds })}
+            />
+            <Select
+              label="Video detail"
+              value={trim.quality ?? "balanced"}
+              options={[
+                ["balanced", "Balanced · 24 fps"],
+                ["detail", "Sharper · 30 fps"],
+              ]}
+              onChange={(quality) => setTrim({ ...trim, quality })}
+            />
             {video?.videoSource ? (
               <button
                 type="button"
@@ -416,7 +437,7 @@ export function IntroInspector({
               aria-label="Prepared video crop preview"
               style={{
                 backgroundImage: `url("${prepared}")`,
-                backgroundSize: `${introFilm.columns * 100}% ${introFilm.rows * 100}%`,
+                backgroundSize: `${film.columns * 100}% ${film.rows * 100}%`,
               }}
             />
           )}
@@ -427,6 +448,27 @@ export function IntroInspector({
           )}
           {clip.asset && (
             <>
+              <p className="hint">
+                {(film.frames / film.fps).toFixed(2)} s of prepared footage ·{" "}
+                {film.fps} fps · {film.cell}px per frame.
+                {videoTime > film.frames / film.fps
+                  ? " The pullback lasts longer than the prepared footage."
+                  : ""}
+              </p>
+              <Select
+                label="When footage ends"
+                value={clip.endMode ?? "hold"}
+                options={[
+                  ["hold", "Hold last frame"],
+                  ["loop", "Loop footage"],
+                  ["fade", "Fade video away"],
+                ]}
+                onChange={(endMode) =>
+                  edit("Opening footage ending", (d) => {
+                    d.squareIntro.endMode = endMode;
+                  })
+                }
+              />
               <Select
                 label="Video square"
                 value={clip.square}
@@ -474,7 +516,7 @@ export function IntroInspector({
             </>
           )}
           <p className="hint">
-            Uses up to 3 seconds from the chosen in-point without audio and
+            Uses the prepared section from the chosen in-point without audio and
             holds the final frame if needed. The video pulls back into the
             chosen square. An enabled player photo appears next.
           </p>

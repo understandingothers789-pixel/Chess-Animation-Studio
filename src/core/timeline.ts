@@ -20,6 +20,7 @@ export const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 export function ease(t: number, kind = "smooth") {
   t = clamp(t);
   if (kind === "linear") return t;
+  if (kind === "ease-out") return 1 - (1 - t) ** 1.5;
   if (kind === "soft") return 1 - (1 - t) ** 3;
   if (kind === "accelerate") return t ** 3;
   if (kind === "bounce")

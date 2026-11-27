@@ -3,7 +3,7 @@ import type { Project } from "../../core/project";
 import type { ExportOptions } from "../../bridge";
 import type { ThumbnailPort } from "../storyboard/thumbnails";
 import { buildGame } from "../../core/chess";
-import { compileStoryboard, sourceToStoryboard } from "../../core/storyboard";
+import { compileStoryboard } from "../../core/storyboard";
 import { compileTimeline } from "../../core/timeline";
 import { squareVideoEnd } from "../../core/introVideo";
 import { safeDefaults, safeRect } from "../../core/captions/safeAreas";
@@ -68,18 +68,37 @@ export function ExportPreview({
   }, [prepared, at, width, height, mode, port, revision, retry]);
   const moments = useMemo(() => {
     const source = compileTimeline(project);
-    const game = buildGame(project);
-    const capture = game.steps
-      .flatMap((step, i) => {
-        if (!step.capturedId) return [];
-        const seg = source.segments[i];
-        const time =
-          seg.depart +
-          step.move.effect.duration * step.move.effect.capture.impact;
-        return mode === "storyboard"
-          ? sourceToStoryboard(project, time).map((hit) => hit.time)
-          : [time];
-      })
+    const captures =
+      mode === "storyboard"
+        ? compileStoryboard(project).shots.flatMap((shot) => {
+            const length = shot.sourceEnd - shot.sourceStart;
+            if (shot.issue || shot.shot.kind !== "move-range" || length <= 0)
+              return [];
+            const active =
+              shot.shot.duration - shot.shot.preHold - shot.shot.postHold;
+            return shot.game.steps.flatMap((step, index) => {
+              if (!step.capturedId) return [];
+              const seg = shot.sourceTimeline.segments[shot.startIndex + index];
+              const t =
+                seg.depart +
+                step.move.effect.duration * step.move.effect.capture.impact;
+              return t >= shot.sourceStart && t < shot.sourceEnd
+                ? [
+                    shot.start +
+                      shot.shot.preHold +
+                      ((t - shot.sourceStart) * active) / length,
+                  ]
+                : [];
+            });
+          })
+        : buildGame(project).steps.flatMap((step, i) => {
+            if (!step.capturedId) return [];
+            return [
+              source.segments[i].depart +
+                step.move.effect.duration * step.move.effect.capture.impact,
+            ];
+          });
+    const capture = captures
       .filter((t) => t >= start && t < end)
       .sort((a, b) => a - b)[0];
     const opening =

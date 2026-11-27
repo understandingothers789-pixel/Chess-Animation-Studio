@@ -1,3 +1,6 @@
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
+import { filmLayout } from "../src/core/introVideo";
 import { installStockfishDev } from "./stockfishSetup";
 import {
   introDuration,
@@ -17,6 +20,8 @@ import {
   shell,
   safeStorage,
   Menu,
+  protocol,
+  nativeImage,
 } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -24,7 +29,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   parseProject,
-  projectSchema,
   type Project,
   type Asset,
   VERSION,
@@ -35,7 +39,7 @@ import {
   readProject,
   writeProject,
   collectProject,
-  dataUrl,
+  assetMime,
   validAsset,
   readPack,
 } from "./files";
@@ -47,6 +51,108 @@ import type {
   ExportProgress,
   RecoverySummary,
 } from "../src/bridge";
+const mediaScheme = "studio-media";
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: mediaScheme,
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
+const mediaEntries = new Map<string, { file: string; type: string }>();
+const mediaTokens = new Map<string, string>();
+
+async function mediaUrl(asset: Asset, preview: boolean) {
+  ensureAsset(asset);
+  const stat = await validAsset(asset);
+  const key = JSON.stringify([asset.path, stat.size, stat.mtimeMs, preview]);
+  const existing = mediaTokens.get(key);
+  if (existing && mediaEntries.has(existing)) {
+    const entry = mediaEntries.get(existing)!;
+    mediaEntries.delete(existing);
+    mediaEntries.set(existing, entry);
+    return `${mediaScheme}://asset/${existing}`;
+  }
+  let file = asset.path,
+    type = assetMime(asset);
+  if (preview && asset.kind === "image" && !/\.svg$/i.test(file)) {
+    const image = nativeImage.createFromPath(file);
+    const { width, height } = image.getSize();
+    if (Math.max(width, height) > 1280) {
+      const thumbnail = path.join(
+        app.getPath("userData"),
+        "previews",
+        createHash("sha256").update(key).digest("hex") + ".png",
+      );
+      const resized =
+        width >= height
+          ? image.resize({ width: 1280 })
+          : image.resize({ height: 1280 });
+      if (!(await fs.stat(thumbnail).catch(() => null)))
+        await atomic(thumbnail, resized.toPNG());
+      file = thumbnail;
+      type = "image/png";
+    }
+  }
+  const token = randomUUID();
+  mediaTokens.set(key, token);
+  mediaEntries.set(token, { file, type });
+  if (mediaEntries.size > 900) {
+    const oldest = mediaEntries.keys().next().value!;
+    mediaEntries.delete(oldest);
+    for (const [name, value] of mediaTokens)
+      if (value === oldest) mediaTokens.delete(name);
+  }
+  return `${mediaScheme}://asset/${token}`;
+}
+
+async function serveMedia(request: Request) {
+  const url = new URL(request.url);
+  const entry =
+    url.hostname === "asset"
+      ? mediaEntries.get(url.pathname.slice(1))
+      : undefined;
+  if (!entry || !["GET", "HEAD"].includes(request.method))
+    return new Response(null, { status: 404 });
+  const stat = await fs.stat(entry.file).catch(() => null);
+  if (!stat?.isFile() || stat.size > 256 * 1024 * 1024)
+    return new Response(null, { status: 404 });
+  const headers = new Headers({
+    "Content-Type": entry.type,
+    "Accept-Ranges": "bytes",
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": "private, max-age=60",
+  });
+  const range = request.headers.get("range");
+  let start = 0,
+    end = stat.size - 1;
+  if (range) {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+    if (!match || (!match[1] && !match[2]))
+      return new Response(null, { status: 416 });
+    const [, from, to] = match;
+    start = from ? Number(from) : Math.max(0, stat.size - Number(to));
+    end = from && to ? Math.min(end, Number(to)) : end;
+    if (start > end || start >= stat.size || !Number.isSafeInteger(start)) {
+      headers.set("Content-Range", `bytes */${stat.size}`);
+      return new Response(null, { status: 416, headers });
+    }
+    headers.set("Content-Range", `bytes ${start}-${end}/${stat.size}`);
+  }
+  headers.set("Content-Length", String(end - start + 1));
+  const stream =
+    request.method === "HEAD" || stat.size === 0
+      ? null
+      : (Readable.toWeb(
+          createReadStream(entry.file, { start, end }),
+        ) as ReadableStream<Uint8Array>);
+  return new Response(stream, { status: range ? 206 : 200, headers });
+}
 const root = path.resolve(__dirname, "..");
 let editor: BrowserWindow | null = null,
   presentation: BrowserWindow | null = null,
@@ -179,12 +285,20 @@ function handle(
   });
 }
 const recoveryDir = () => store("recovery");
-const recoveryFile = (id: string) =>
-  path.join(
-    recoveryDir(),
-    createHash("sha256").update(id).digest("hex") + ".json",
-  );
+function recoveryGroup(projectId: string, file: string | null) {
+  const resolved = file && path.resolve(file);
+  const identity =
+    process.platform === "win32" ? resolved?.toLowerCase() : resolved;
+  return createHash("sha256")
+    .update(JSON.stringify([projectId, identity]))
+    .digest("hex");
+}
 type Checkpoint = { project: Project; path: string | null };
+const checkpointFile = (id: string) =>
+  id === "legacy"
+    ? store("recovery.json")
+    : path.join(recoveryDir(), id + ".json");
+const checkpointId = /^(?:legacy|[0-9a-f]{64}(?:-\d{13}-[0-9a-f-]{36})?)$/;
 function queueRecovery(work: () => Promise<void>) {
   const action = recoveryWrite.then(work);
   recoveryWrite = action.catch((e) =>
@@ -194,8 +308,6 @@ function queueRecovery(work: () => Promise<void>) {
 }
 async function readCheckpoint(file: string): Promise<Checkpoint | null> {
   try {
-    const state = await fs.stat(file);
-    if (state.size > 32 * 1024 * 1024) return null;
     const item = JSON.parse(await fs.readFile(file, "utf8"));
     return {
       project: parseProject(item.project),
@@ -205,36 +317,82 @@ async function readCheckpoint(file: string): Promise<Checkpoint | null> {
     return null;
   }
 }
-async function recoveryList(): Promise<RecoverySummary[]> {
-  await recoveryWrite;
+async function listCheckpoints(): Promise<RecoverySummary[]> {
   const files = await fs.readdir(recoveryDir()).catch(() => []);
-  const candidates = [
-    store("recovery.json"),
+  const ids = [
     ...files
-      .filter((name) => /^[0-9a-f]{64}\.json$/.test(name))
-      .map((name) => path.join(recoveryDir(), name)),
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => name.slice(0, -5))
+      .filter((id) => checkpointId.test(id)),
+    "legacy",
   ];
-  const unique = new Map<string, RecoverySummary>();
-  for (const file of candidates) {
-    const item = await readCheckpoint(file);
+  const result: RecoverySummary[] = [];
+  for (const id of ids) {
+    const file = checkpointFile(id);
     const stat = await fs.stat(file).catch(() => null);
-    if (item && stat)
-      unique.set(item.project.id, {
-        id: item.project.id,
+    if (!stat) continue;
+    const item = await readCheckpoint(file);
+    if (item)
+      result.push({
+        id,
+        projectId: item.project.id,
         title: item.project.title,
         path: item.path,
         updated: stat.mtimeMs,
       });
   }
-  return [...unique.values()].sort((a, b) => b.updated - a.updated);
+  return result.sort(
+    (a, b) => b.updated - a.updated || b.id.localeCompare(a.id),
+  );
+}
+async function recoveryList(includeSaved = false) {
+  await recoveryWrite;
+  const items = await listCheckpoints();
+  if (includeSaved) return items;
+  const newest = new Map<string, RecoverySummary>();
+  for (const item of items) {
+    const group = recoveryGroup(item.projectId, item.path);
+    if (!newest.has(group)) newest.set(group, item);
+  }
+  const active = await Promise.all(
+    [...newest].map(async ([group, item]) => {
+      const saved = await json(path.join("recovery", group + ".saved"), 0);
+      return item.updated > Number(saved) ? item : null;
+    }),
+  );
+  return active.filter((item): item is RecoverySummary => !!item);
 }
 async function recoveryItem(id: string) {
-  if (!projectSchema.shape.id.safeParse(id).success)
+  if (typeof id !== "string" || !checkpointId.test(id))
     throw Error("Invalid recovery checkpoint.");
-  const checkpoint =
-    (await readCheckpoint(recoveryFile(id))) ??
-    (await readCheckpoint(store("recovery.json")));
-  return checkpoint?.project.id === id ? checkpoint : null;
+  return readCheckpoint(checkpointFile(id));
+}
+async function writeCheckpoint(item: Checkpoint, preserve?: string) {
+  const group = recoveryGroup(item.project.id, item.path);
+  const files = await fs.readdir(recoveryDir()).catch(() => []);
+  const older = files
+    .filter((name) => name.startsWith(group + "-") && name.endsWith(".json"))
+    .sort()
+    .reverse();
+  const data = JSON.stringify(item);
+  if (
+    older[0] &&
+    (await fs
+      .readFile(path.join(recoveryDir(), older[0]), "utf8")
+      .catch(() => "")) === data
+  ) {
+    const stat = await fs.stat(path.join(recoveryDir(), older[0]));
+    const saved = await json(path.join("recovery", group + ".saved"), 0);
+    if (stat.mtimeMs > Number(saved)) return;
+  }
+  const id = group + "-" + Date.now() + "-" + randomUUID();
+  await atomic(checkpointFile(id), data);
+  await Promise.all(
+    older
+      .slice(3)
+      .filter((name) => name !== preserve + ".json")
+      .map((name) => fs.rm(path.join(recoveryDir(), name), { force: true })),
+  );
 }
 function adoptRecovery(item: Checkpoint) {
   permit(item.project);
@@ -261,7 +419,8 @@ async function chooseFile(filters: Electron.FileFilter[]) {
 async function save(p: Project, as: boolean) {
   p = parseProject(p);
   checkAssets(p);
-  let file = pathProjectId === p.id ? currentPath : null;
+  const previousPath = pathProjectId === p.id ? currentPath : null;
+  let file = previousPath;
   if (as || !file) {
     const r = await dialog.showSaveDialog(editor!, {
       defaultPath: p.title.replace(/[^a-z0-9 _-]/gi, "") + ".castudio",
@@ -271,6 +430,25 @@ async function save(p: Project, as: boolean) {
     file = r.filePath;
   }
   await writeProject(file, p);
+  const group = recoveryGroup(p.id, file);
+  await queueRecovery(async () => {
+    const groups = new Set([
+      group,
+      ...(previousPath ? [] : [recoveryGroup(p.id, null)]),
+    ]);
+    for (const key of groups) {
+      const latest = (await listCheckpoints()).find(
+        (item) => recoveryGroup(item.projectId, item.path) === key,
+      );
+      if (!latest) continue;
+      const snapshot = await recoveryItem(latest.id);
+      if (JSON.stringify(snapshot?.project) === JSON.stringify(p))
+        await atomic(
+          store(path.join("recovery", key + ".saved")),
+          JSON.stringify(latest.updated),
+        );
+    }
+  });
   currentPath = file;
   pathProjectId = p.id;
   await remember(file);
@@ -285,9 +463,16 @@ async function importIntro(
     throw Error("Choose FFmpeg before preparing an intro video.");
   const id = randomUUID();
   const output = store(path.join("intro-media", id + ".jpg"));
-  await prepareIntroVideo(preferences.ffmpeg, input, output, trim);
   const duration =
     knownDuration ?? (await introDuration(preferences.ffmpeg, input));
+  const seconds = Math.min(
+    trim?.seconds ?? 3,
+    duration ? Math.max(0, duration - (trim?.start ?? 0)) : 6,
+  );
+  if (seconds <= 0)
+    throw Error("Choose an in-point before the end of the original video.");
+  const film = filmLayout(seconds, trim?.quality === "detail");
+  await prepareIntroVideo(preferences.ffmpeg, input, output, trim, film);
   const a: Asset = {
     id,
     kind: "filmstrip",
@@ -295,10 +480,11 @@ async function importIntro(
     path: output,
     source: "Intro video",
     videoTrim: trim,
+    film,
     videoSource: input,
     videoDuration: duration,
     guidance:
-      "Silent three-second clip. Keep the original video to change its crop or in-point.",
+      "Silent prepared clip. Keep the original media to change its crop or in-point.",
   };
   allowed.set(id, path.resolve(output));
   allowedIntroSources.set(id, path.resolve(input));
@@ -330,6 +516,7 @@ async function failExport(error: unknown) {
   void log("Export failed: " + message);
 }
 app.whenReady().then(async () => {
+  protocol.handle(mediaScheme, serveMedia);
   const saved = (await json("settings.json", {})) as Partial<Settings>;
   preferences = {
     ...preferences,
@@ -424,16 +611,14 @@ app.whenReady().then(async () => {
     await fs.writeFile(r.filePath, JSON.stringify(report, null, 2), "utf8");
     return r.filePath;
   });
-  handle("autosave", async (value: unknown) => {
+  handle("autosave", async (value: unknown, preserve?: string) => {
     const project = parseProject(value);
     checkAssets(project);
     const checkpoint = {
       project,
       path: pathProjectId === project.id ? currentPath : null,
     };
-    return queueRecovery(() =>
-      atomic(recoveryFile(project.id), JSON.stringify(checkpoint)),
-    );
+    return queueRecovery(() => writeCheckpoint(checkpoint, preserve));
   });
   handle("listRecovery", recoveryList);
   handle("openRecovery", async (id: string) => {
@@ -449,17 +634,8 @@ app.whenReady().then(async () => {
   });
   handle("discardRecovery", async (id?: string) => {
     const target = id ?? (await recoveryList())[0]?.id;
-    if (
-      typeof target !== "string" ||
-      !projectSchema.shape.id.safeParse(target).success
-    )
-      return;
-    return queueRecovery(async () => {
-      await fs.rm(recoveryFile(target), { force: true });
-      const legacy = store("recovery.json");
-      if ((await readCheckpoint(legacy))?.project.id === target)
-        await fs.rm(legacy, { force: true });
-    });
+    if (typeof target !== "string" || !checkpointId.test(target)) return;
+    return queueRecovery(() => fs.rm(checkpointFile(target), { force: true }));
   });
   handle("recent", () => json("recent.json", []));
   handle("chooseTranscript", async () => {
@@ -559,8 +735,8 @@ app.whenReady().then(async () => {
           throw Error("Choose FFmpeg before importing an intro video.");
         const input = await chooseFile([
           {
-            name: "Intro video",
-            extensions: ["mp4", "mov", "webm", "mkv", "m4v"],
+            name: "Video or animated reaction",
+            extensions: ["mp4", "mov", "webm", "mkv", "m4v", "gif", "webp"],
           },
         ]);
         if (!input) return null;
@@ -609,7 +785,7 @@ app.whenReady().then(async () => {
   handle("assetData", async (a: Asset) => {
     ensureAsset(a);
     try {
-      return await dataUrl(a);
+      return await mediaUrl(a, true);
     } catch {
       return null;
     }
@@ -800,7 +976,7 @@ app.whenReady().then(async () => {
       const assets: Record<string, string> = {};
       for (const a of p.assets)
         if (a.kind !== "audio" && needed.has(a.id))
-          assets[a.id] = await dataUrl(a);
+          assets[a.id] = await mediaUrl(a, false);
       if (job !== active) {
         await active.clean();
         return false;

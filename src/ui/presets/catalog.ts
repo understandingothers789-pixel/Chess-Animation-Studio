@@ -15,7 +15,7 @@ export const presetLabels: Record<Preset, string> = {
 
 export const presetDescriptions: Record<Preset, string> = {
   slide:
-    "Slides directly to the destination square with an even, smooth start and finish.",
+    "Slides directly to the destination, starting a little faster and easing into the square.",
   soft: "Moves out quickly, then slows down gently as it reaches the destination.",
   spin: "Sweeps across the board while turning once around its vertical axis to reveal the piece edge.",
   somersault:

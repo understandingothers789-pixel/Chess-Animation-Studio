@@ -550,6 +550,20 @@ export function Preview({
         />
       )}
       <ViewportTools
+        inspectBoard={
+          project.format === "vertical" ||
+          project.format === "square-in-vertical"
+            ? () => {
+                if (view.zoom > 1) fit();
+                else
+                  setView((current) => ({
+                    ...current,
+                    zoom: 1.8,
+                    offset: { x: 0, y: 0 },
+                  }));
+              }
+            : undefined
+        }
         addCaption={onAddCaption}
         transcript={onTranscript}
         captionGuides={captionGuides}

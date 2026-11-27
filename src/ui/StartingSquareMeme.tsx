@@ -1,3 +1,5 @@
+import { assetFilm } from "../core/introVideo";
+import { useState } from "react";
 import { memeTiming, type Effect, type Project } from "../core/project";
 import { memeWindow } from "../core/timeline";
 import { Range, Section, Select } from "./controls";
@@ -24,12 +26,21 @@ export function StartingSquareMeme({
   segment: Parameters<typeof memeWindow>[1];
   standalone?: boolean;
 }) {
+  const [trimDraft, setTrimDraft] = useState<{
+    id: string;
+    start: number;
+    seconds: number;
+  }>();
+  const [preparing, setPreparing] = useState(false);
   const move = project.moves[index];
   const active = (targets.find((m) => m.id === move.id) ?? targets[0]).effect;
   const meme = active.preMoveMeme;
   const preview = memeWindow(move.effect, segment);
-  const assets = project.assets.filter((a) => a.kind === "image");
+  const assets = project.assets.filter(
+    (a) => a.kind === "image" || a.kind === "filmstrip",
+  );
   const asset = assets.find((a) => a.id === meme?.asset);
+  const animated = asset?.kind === "filmstrip" ? assetFilm(asset) : undefined;
   const mixed = targets.some(
     (m) => m.effect.preMoveMeme?.asset !== meme?.asset,
   );
@@ -57,36 +68,86 @@ export function StartingSquareMeme({
         if (effect.preMoveMeme) effect.preMoveMeme[field] = value;
     });
 
+  const trim =
+    asset?.id === trimDraft?.id
+      ? trimDraft
+      : {
+          id: asset?.id ?? "",
+          start: asset?.videoTrim?.start ?? 0,
+          seconds: asset?.videoTrim?.seconds ?? 2,
+        };
+  const prepareReaction = async () => {
+    if (!asset?.videoSource || !trim) return;
+    setPreparing(true);
+    try {
+      const replacement = await window.studio.retimeIntro(asset, {
+        x: 0.5,
+        y: 0.5,
+        ...asset.videoTrim,
+        start: trim.start,
+        seconds: trim.seconds,
+      });
+      edit("Re-trim starting-square reaction", (draft) => {
+        if (draft.id !== project.id || draft.line !== project.line) return;
+        const moves = group(draft).filter(
+          ({ effect }) => effect.preMoveMeme?.asset === asset.id,
+        );
+        if (!moves.length) return;
+        if (draft.assets.length >= 150)
+          throw Error("This project already has 150 local assets.");
+        draft.assets.push(replacement);
+        for (const { effect } of moves)
+          effect.preMoveMeme!.asset = replacement.id;
+      });
+    } finally {
+      setPreparing(false);
+    }
+  };
   const controls = (
     <>
       <div className="button-row">
-        <button
-          type="button"
-          autoFocus={standalone}
-          disabled={targets.every((m) => !canAdd(m.effect))}
-          onClick={() =>
-            run(async () => {
-              const image = await window.studio.importAsset("image");
-              if (!image) return;
-              edit("Import starting-square meme", (draft) => {
-                if (draft.id !== project.id || draft.line !== project.line)
-                  return;
-                const eligible = group(draft).filter((m) => canAdd(m.effect));
-                if (!eligible.length) return;
-                const existing = draft.assets.find(
-                  (a) => a.kind === image.kind && a.path === image.path,
+        {(["image", "filmstrip"] as const).map((kind) => (
+          <button
+            key={kind}
+            type="button"
+            autoFocus={standalone && kind === "image"}
+            disabled={targets.every((m) => !canAdd(m.effect))}
+            onClick={() =>
+              run(async () => {
+                if (
+                  kind === "filmstrip" &&
+                  !(await window.studio.settings()).ffmpeg
+                ) {
+                  const tools = await window.studio.tool("ffmpeg");
+                  if (!tools.ffmpeg) return;
+                }
+                const image = await window.studio.importAsset(
+                  kind,
+                  kind === "filmstrip"
+                    ? { start: 0, x: 0.5, y: 0.5, seconds: 2 }
+                    : undefined,
                 );
-                if (!existing && draft.assets.length >= 150)
-                  throw Error("This project already has 150 local assets.");
-                if (!existing) draft.assets.push(image);
-                for (const m of eligible)
-                  setImage(m.effect, (existing ?? image).id);
-              });
-            })
-          }
-        >
-          Import meme image
-        </button>
+                if (!image) return;
+                edit("Import starting-square meme", (draft) => {
+                  if (draft.id !== project.id || draft.line !== project.line)
+                    return;
+                  const eligible = group(draft).filter((m) => canAdd(m.effect));
+                  if (!eligible.length) return;
+                  const existing = draft.assets.find(
+                    (a) => a.kind === image.kind && a.path === image.path,
+                  );
+                  if (!existing && draft.assets.length >= 150)
+                    throw Error("This project already has 150 local assets.");
+                  if (!existing) draft.assets.push(image);
+                  for (const m of eligible)
+                    setImage(m.effect, (existing ?? image).id);
+                });
+              })
+            }
+          >
+            {kind === "image" ? "Import meme image" : "Import GIF or video"}
+          </button>
+        ))}
         {preview && seek && (
           <button
             type="button"
@@ -96,6 +157,38 @@ export function StartingSquareMeme({
           </button>
         )}
       </div>
+      {animated && (
+        <p className="hint">
+          Animated reaction · {(animated.frames / animated.fps).toFixed(2)} s ·
+          loops until the piece moves.
+        </p>
+      )}
+      {animated && asset?.videoSource && trim && (
+        <details>
+          <summary>Trim reaction footage</summary>
+          <Range
+            label="Reaction source start"
+            value={trim.start}
+            min={0}
+            max={Math.max(0, (asset.videoDuration ?? 7200) - 0.05)}
+            step={0.05}
+            unit="s"
+            onChange={(start) => setTrimDraft({ ...trim, start })}
+          />
+          <Range
+            label="Reaction footage length"
+            value={trim.seconds}
+            min={0.25}
+            max={6}
+            step={0.25}
+            unit="s"
+            onChange={(seconds) => setTrimDraft({ ...trim, seconds })}
+          />
+          <button disabled={preparing} onClick={() => run(prepareReaction)}>
+            {preparing ? "Preparing reaction…" : "Apply reaction trim"}
+          </button>
+        </details>
+      )}
       <Select
         label="Meme image"
         value={meme?.asset ?? ""}
@@ -114,7 +207,7 @@ export function StartingSquareMeme({
           })
         }
       />
-      {meme && images[meme.asset] && (
+      {meme && !animated && images[meme.asset] && (
         <div className="starting-square-meme-image">
           <img
             src={images[meme.asset]}

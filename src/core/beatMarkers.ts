@@ -18,6 +18,21 @@ export function activeBeats(p: Project) {
   return p.beats.filter((beat) => beat.enabled && beatInMusic(p, beat));
 }
 
+export function outputBeats(p: Project) {
+  return p.storyboard.beats.map((beat) =>
+    beat.sourceTime === undefined
+      ? beat
+      : {
+          ...beat,
+          enabled: beat.enabled && beatInMusic(p, beat),
+          time: Math.max(
+            0,
+            beat.sourceTime - p.music.trimStart + p.music.offset,
+          ),
+        },
+  );
+}
+
 export function beatStrength(b: { accent: boolean; strength?: number }) {
   return b.accent
     ? Math.max(0.8, b.strength ?? 1)

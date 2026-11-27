@@ -1,5 +1,7 @@
+import { beatEventTime } from "./beatPins";
+import { outputBeats } from "./beatMarkers";
 import { annotation, annotationOpacity, type Annotation } from "./annotations";
-import { buildGame, type Game } from "./chess";
+import { buildGame, viewLine, type Game } from "./chess";
 import {
   compileTimeline,
   evaluate,
@@ -25,9 +27,12 @@ export type CompiledShot = {
   end: number;
   sourceStart: number;
   sourceEnd: number;
+  sourceLine: number;
+  sourceTimeline: CompiledTimeline;
   startIndex: number;
   endIndex: number;
   issue: string | null;
+  pinIssue?: string;
   project: Project;
   game: Game;
   initialCameras: Record<Format, Frame["camera"]>;
@@ -61,6 +66,10 @@ function sourceContext(p: Project) {
     shorts: p.shorts.enabled,
     pulse: p.pulse,
     beats: p.beats,
+    layouts: p.layouts,
+    style: p.style,
+    boardFX: p.boardFX,
+    squareIntro: p.squareIntro,
   });
   let value = sourceContexts.get(key);
   if (!value) {
@@ -80,16 +89,49 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 export function compileStoryboard(p: Project): CompiledStoryboard {
   const cached = cache.get(p);
   if (cached) return cached;
-  const context = sourceContext(p);
-  const timeline = context.timeline,
-    game = context.game,
-    indices = new Map(p.moves.map((m, i) => [m.id, i]));
+  const active = sourceContext(p);
+  const lines = new Map<
+    number,
+    { project: Project; indices: Map<string, number>; context?: typeof active }
+  >();
+  const readLine = (line: number) => {
+    let data = lines.get(line);
+    if (!data) {
+      const project = viewLine(p, line);
+      data = {
+        project,
+        indices: new Map(project.moves.map((m, i) => [m.id, i])),
+      };
+      lines.set(line, data);
+    }
+    return data;
+  };
   let at = 0;
-  const shots = p.storyboard.shots.map((shot, index): CompiledShot => {
+  const beats = outputBeats(p);
+  const shots = p.storyboard.shots.map((authored, index): CompiledShot => {
+    let shot = authored;
     const start = at;
     at = Math.round((at + shot.duration) * 1e9) / 1e9;
-    const i = indices.get(shot.source?.startMoveId ?? "") ?? -1,
-      j = indices.get(shot.source?.endMoveId ?? "") ?? -1;
+    const from = shot.source?.startMoveId ?? "";
+    const to = shot.source?.endMoveId ?? "";
+    const preferred = shot.source?.line;
+    let line =
+      preferred !== undefined && p.lines[preferred] ? preferred : p.line;
+    const matches = (index: number) => {
+      const { indices } = readLine(index);
+      return indices.has(from) && indices.has(to);
+    };
+    if (from && from !== "@start" && !matches(line))
+      line = matches(p.line)
+        ? p.line
+        : p.lines.findIndex((_, candidate) => matches(candidate));
+    if (line < 0) line = p.line;
+    const branch = readLine(line);
+    const context = (branch.context ??=
+      line === p.line ? active : sourceContext(branch.project));
+    const { game, timeline } = context;
+    const i = branch.indices.get(from) ?? -1;
+    const j = branch.indices.get(to) ?? -1;
     const starting =
       shot.kind === "position-hold" &&
       shot.source?.startMoveId === "@start" &&
@@ -108,6 +150,54 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       b - a - shot.trimStart - shot.trimEnd < 0.01
     )
       issue = "Trims remove the entire source range.";
+    let pinIssue: string | undefined;
+    if (shot.beatPin && !issue && shot.kind === "move-range") {
+      const pin = shot.beatPin;
+      const beat = beats.find((item) => item.enabled && item.id === pin.beatId);
+      const targetIndex = branch.indices.get(pin.moveId) ?? -1;
+      const segment = timeline.segments[targetIndex];
+      const effect = branch.project.moves[targetIndex]?.effect;
+      const eventTime =
+        segment &&
+        effect &&
+        targetIndex >= i &&
+        targetIndex <= j &&
+        (pin.event !== "capture" || game.steps[targetIndex]?.capturedId) &&
+        beatEventTime(branch.project, effect, segment.depart, pin.event);
+      const trimStart = a + shot.trimStart;
+      const trimEnd = b - shot.trimEnd;
+      if (
+        !beat ||
+        beat.time <= start ||
+        beat.time >= at ||
+        typeof eventTime !== "number" ||
+        eventTime <= trimStart ||
+        eventTime >= trimEnd
+      ) {
+        pinIssue =
+          "The pinned beat or event is outside this shot. Check its trim, timing, and soundtrack.";
+      } else {
+        const fraction = (eventTime - trimStart) / (trimEnd - trimStart);
+        const local = beat.time - start;
+        const expected =
+          shot.preHold +
+          fraction * (shot.duration - shot.preHold - shot.postHold);
+        let { preHold, postHold } = shot;
+        if (local > expected) preHold += (local - expected) / (1 - fraction);
+        else postHold += (expected - local) / fraction;
+        if (effect!.locked && Math.abs(expected - local) > 0.001)
+          pinIssue =
+            "The move’s timing is locked. Unlock it or choose another hit.";
+        else if (
+          preHold > 120 ||
+          postHold > 120 ||
+          preHold + postHold >= shot.duration - 0.01
+        )
+          pinIssue =
+            "This hit needs more room in the shot. Adjust its holds or choose another hit.";
+        else shot = { ...shot, preHold, postHold };
+      }
+    }
     let projection: Project = {
       ...p,
       boardFX: { ...p.boardFX, intro: opening && p.boardFX.intro },
@@ -123,7 +213,7 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
         (Object.keys(p.layouts) as Format[]).map((f) => [
           f,
           evaluate(
-            p,
+            branch.project,
             shot.kind === "position-hold" && shot.source?.position === "after"
               ? (timeline.segments[i]?.finish ?? 0)
               : a,
@@ -136,22 +226,38 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       context.cameras.set(cameraKey, initialCameras);
     }
     if (shot.kind === "move-range") {
-      const moves = p.moves.slice(Math.max(0, i), j + 1).map((m) => {
-        let e =
-          shot.preset === "inherit"
-            ? m.effect
-            : pasteSettings(m.effect, {
-                kind: "movement",
-                source: effect(shot.preset),
-                format: p.format,
-              });
-        if (shot.camera) {
-          e = { ...e, cameras: { ...e.cameras } };
-          for (const f of Object.keys(p.layouts) as Format[])
-            e.cameras[f] = { ...shot.camera };
-        }
-        return { ...m, effect: e };
-      });
+      const moves = branch.project.moves
+        .slice(Math.max(0, i), j + 1)
+        .map((m) => {
+          let e =
+            shot.preset === "inherit"
+              ? m.effect
+              : pasteSettings(m.effect, {
+                  kind: "movement",
+                  source: effect(shot.preset),
+                  format: p.format,
+                });
+          if (
+            !pinIssue &&
+            shot.beatPin?.event === "zoom" &&
+            shot.beatPin.moveId === m.id
+          )
+            e = {
+              ...e,
+              jam: {
+                ...e.jam,
+                beat: shot.beatPin.beatId,
+                clock: "auto",
+                rhythm: e.jam.rhythm === "alternate" ? "punch" : e.jam.rhythm,
+              },
+            };
+          if (shot.camera) {
+            e = { ...e, cameras: { ...e.cameras } };
+            for (const f of Object.keys(p.layouts) as Format[])
+              e.cameras[f] = { ...shot.camera };
+          }
+          return { ...m, effect: e };
+        });
       projection = {
         ...projection,
         fen: game.steps[i]?.fen ?? p.fen,
@@ -169,7 +275,7 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       const rate =
         (b - a - shot.trimStart - shot.trimEnd) /
         (shot.duration - shot.preHold - shot.postHold);
-      projection.beats = p.storyboard.beats
+      projection.beats = beats
         .filter((beat) => beat.time >= start && beat.time < at)
         .map((beat) => ({
           ...beat,
@@ -277,9 +383,12 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
       end: at,
       sourceStart: a + shot.trimStart,
       sourceEnd: opening ? shot.duration : b - shot.trimEnd,
+      sourceLine: line,
+      sourceTimeline: timeline,
       startIndex: i,
       endIndex: j,
       issue,
+      pinIssue,
       project: projection,
       game: shotGame,
       initialCameras,
@@ -291,8 +400,8 @@ export function compileStoryboard(p: Project): CompiledStoryboard {
     issues: shots
       .filter((s) => s.issue)
       .map((s) => ({ id: s.shot.id, message: s.issue! })),
-    source: timeline,
-    game,
+    source: active.timeline,
+    game: active.game,
   };
   cache.set(p, result);
   return result;
@@ -326,8 +435,8 @@ export function resolveStoryboardFrame(p: Project, outputTime: number) {
       : s.kind === "opening"
         ? localTime
         : s.source?.position === "after"
-          ? (compiled.source.segments[entry.startIndex]?.finish ?? 0)
-          : (compiled.source.segments[entry.startIndex]?.start ?? 0);
+          ? (entry.sourceTimeline.segments[entry.startIndex]?.finish ?? 0)
+          : (entry.sourceTimeline.segments[entry.startIndex]?.start ?? 0);
   return {
     ...entry,
     outputTime: t,
@@ -344,10 +453,19 @@ export function resolveStoryboardFrame(p: Project, outputTime: number) {
   };
 }
 /** Return all occurrences, since one source moment may appear repeatedly in a reel. */
-export function sourceToStoryboard(p: Project, sourceTime: number) {
+export function sourceToStoryboard(
+  p: Project,
+  sourceTime: number,
+  line = p.line,
+) {
   const c = compileStoryboard(p);
   return c.shots.flatMap<{ id: string; time: number; end?: number }>((e) => {
-    if (e.issue || e.shot.kind === "title-card") return [];
+    if (
+      e.issue ||
+      e.shot.kind === "title-card" ||
+      (e.shot.kind !== "opening" && e.sourceLine !== line)
+    )
+      return [];
     if (e.shot.kind === "opening")
       return sourceTime >= 0 && sourceTime < e.shot.duration
         ? [{ id: e.shot.id, time: e.start + sourceTime }]
@@ -355,8 +473,8 @@ export function sourceToStoryboard(p: Project, sourceTime: number) {
     if (e.shot.kind === "position-hold") {
       const held =
         e.shot.source?.position === "after"
-          ? (c.source.segments[e.startIndex]?.finish ?? 0)
-          : (c.source.segments[e.startIndex]?.start ?? 0);
+          ? (e.sourceTimeline.segments[e.startIndex]?.finish ?? 0)
+          : (e.sourceTimeline.segments[e.startIndex]?.start ?? 0);
       return Math.abs(sourceTime - held) < 1e-9
         ? [{ id: e.shot.id, time: e.start, end: e.end }]
         : [];
@@ -389,6 +507,7 @@ export function shotFromMove(
         startMoveId: "@start",
         endMoveId: "@start",
         position: "before",
+        line: p.line,
       },
       annotations: [],
     };
@@ -402,7 +521,7 @@ export function shotFromMove(
         ? `Position ${position} ${p.moves[i].san}`
         : p.moves[i].san,
     kind,
-    source: { startMoveId: id, endMoveId: id, position },
+    source: { startMoveId: id, endMoveId: id, position, line: p.line },
     duration: kind === "move-range" ? Math.max(0.1, seg.end - seg.start) : 3,
     preHold: 0,
     postHold: 0,

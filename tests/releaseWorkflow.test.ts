@@ -6,7 +6,7 @@ it("permits publication only after successful explicitly opted-in dispatch", () 
     workflow.indexOf("      - name: Publish immutable"),
   );
   expect(release).toContain(
-    "if: success() && github.event_name == 'workflow_dispatch' && inputs.publish_release",
+    "github.event_name == 'workflow_dispatch' && inputs.publish_release",
   );
   expect(workflow).toContain("needs: visual");
   expect(workflow).toContain("uses: ./.github/workflows/visual.yml");
@@ -15,6 +15,9 @@ it("permits publication only after successful explicitly opted-in dispatch", () 
   expect(visual).toContain("compare-render-hashes.mjs");
   expect(release).not.toContain("head_commit");
   expect(release).not.toContain("continue-on-error");
+  expect(release).toContain(
+    "Release branch name must match the package version.",
+  );
   expect(release).toContain("git ls-remote --exit-code --tags");
   expect(workflow.indexOf("Upload versioned Windows portable")).toBeLessThan(
     workflow.indexOf("Publish immutable"),

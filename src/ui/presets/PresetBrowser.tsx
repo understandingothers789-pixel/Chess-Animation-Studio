@@ -103,7 +103,7 @@ export function PresetBrowser({
   previewActive: boolean;
   before: boolean;
   onBefore: (before: boolean) => void;
-  onCompareFrame: (before: boolean) => void;
+  onCompareFrame: (before: boolean, checkpoint?: string) => void;
   report: (message: string) => void;
   onCancel: () => void;
   onPausePreview: () => void;
@@ -489,6 +489,23 @@ export function PresetBrowser({
             Cancel preview
           </button>
         </div>
+        {previewActive && (
+          <label>
+            Compare checkpoint
+            <select
+              aria-label="Compare checkpoint"
+              value=""
+              onChange={(e) => onCompareFrame(before, e.target.value)}
+            >
+              <option value="" disabled>
+                Choose a frame
+              </option>
+              {["Departure", "Mid-move", "Landing", "Settled"].map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="button-row preset-apply">
           <button
             className="primary"

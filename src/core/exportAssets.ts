@@ -57,32 +57,48 @@ export function requiredAssetIds(p: Project, o: ExportOptions) {
     )
       ids.add(p.playerIntro.asset);
   }
-  if (p.moves.some((move) => move.effect.preMoveMeme)) {
-    const source = compileTimeline(p).segments;
-    const ranges =
-      o.mode !== "storyboard"
-        ? [{ first: 0, last: p.moves.length - 1, start: o.start, end: o.end }]
-        : compileStoryboard(p).shots.flatMap((shot) =>
-            shot.shot.kind === "move-range" &&
-            !shot.issue &&
-            shot.start <= o.end &&
-            shot.end >= o.start
-              ? [
-                  {
-                    first: shot.startIndex,
-                    last: shot.endIndex,
-                    start: shot.sourceStart,
-                    end: shot.sourceEnd,
-                  },
-                ]
-              : [],
-          );
-    for (const range of ranges)
-      for (let i = range.first; i <= range.last; i++) {
-        const window = memeWindow(p.moves[i].effect, source[i]);
-        if (window && window.start < range.end && window.end > range.start)
+  if (o.mode === "storyboard") {
+    for (const entry of compileStoryboard(p).shots) {
+      if (
+        entry.shot.kind !== "move-range" ||
+        entry.issue ||
+        entry.start >= o.end ||
+        entry.end <= o.start
+      )
+        continue;
+      const active =
+        entry.shot.duration - entry.shot.preHold - entry.shot.postHold;
+      const toSource = (time: number) =>
+        entry.sourceStart +
+        Math.min(
+          1,
+          Math.max(0, (time - entry.start - entry.shot.preHold) / active),
+        ) *
+          (entry.sourceEnd - entry.sourceStart);
+      const start = toSource(o.start);
+      const end = toSource(o.end);
+      if (end <= start) {
+        // A hold can display a source frame throughout the requested export.
+        for (const move of entry.project.moves)
+          if (move.effect.preMoveMeme) ids.add(move.effect.preMoveMeme.asset);
+        continue;
+      }
+      for (const [index, move] of entry.project.moves.entries()) {
+        const window = memeWindow(
+          move.effect,
+          entry.sourceTimeline.segments[entry.startIndex + index],
+        );
+        if (window && window.start < end && window.end > start)
           ids.add(window.asset);
       }
+    }
+  } else {
+    const source = compileTimeline(p).segments;
+    for (const [index, move] of p.moves.entries()) {
+      const window = memeWindow(move.effect, source[index]);
+      if (window && window.start < o.end && window.end > o.start)
+        ids.add(window.asset);
+    }
   }
   if (p.music.asset && !p.music.muted) ids.add(p.music.asset);
   for (const event of audioEvents(p, o.mode))

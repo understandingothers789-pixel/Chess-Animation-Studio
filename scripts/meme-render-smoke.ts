@@ -9,7 +9,7 @@ import { duration, segments } from "../src/core/timeline";
 import { openingShot, shotFromMove } from "../src/core/storyboard";
 import { VideoJob } from "../desktop/export";
 import { prepareIntroVideo } from "../desktop/introVideo";
-import { dataUrl } from "../desktop/files";
+import { assetFixtureUrl } from "../desktop/files";
 const dir = path.resolve("test-results/customization-render");
 await fs.mkdir(dir, { recursive: true });
 const imagePath = path.join(dir, "meme-reaction.svg");
@@ -114,8 +114,8 @@ try {
     {
       p,
       urls: {
-        reaction: await dataUrl(p.assets[0]),
-        portrait: await dataUrl(p.assets[1]),
+        reaction: await assetFixtureUrl(p.assets[0]),
+        portrait: await assetFixtureUrl(p.assets[1]),
       },
     },
   );
@@ -298,10 +298,10 @@ try {
     {
       project: p,
       urls: {
-        reaction: await dataUrl(p.assets[0]),
-        portrait: await dataUrl(p.assets[1]),
-        [filmAsset.id]: await dataUrl(filmAsset),
-        trimmed: await dataUrl({ ...filmAsset, path: trimmedFilm }),
+        reaction: await assetFixtureUrl(p.assets[0]),
+        portrait: await assetFixtureUrl(p.assets[1]),
+        [filmAsset.id]: await assetFixtureUrl(filmAsset),
+        trimmed: await assetFixtureUrl({ ...filmAsset, path: trimmedFilm }),
       },
     },
   );

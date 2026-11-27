@@ -137,6 +137,36 @@ describe("legal state and stable identities", () => {
   });
 });
 describe("deterministic evaluation", () => {
+  it("starts new clean slides briskly and slows to the authored landing", () => {
+    const p = importPgn(blank(), "1. e4 e5 2. Nf3");
+    const move = p.moves[1];
+    expect(move.effect.easing).toBe("ease-out");
+    expect(animationPreset("slide").easing).toBe(move.effect.easing);
+
+    const { pieceId } = buildGame(p).steps[1];
+    const { depart, land, finish } = segments(p)[1];
+    const position = (time: number) =>
+      evaluate(p, time).pieces.find((piece) => piece.id === pieceId)!.y;
+    const start = position(depart);
+    const end = position(land);
+    const [first, half, third] = [0.25, 0.5, 0.75].map(
+      (phase) =>
+        (position(depart + (land - depart) * phase) - start) / (end - start),
+    );
+    const advances = [first, half - first, third - half, 1 - third];
+    expect(half).toBeGreaterThan(0.6);
+    expect(half).toBeLessThan(0.7);
+    for (let i = 1; i < advances.length; i++)
+      expect(advances[i]).toBeLessThan(advances[i - 1]);
+    expect(position((land + finish) / 2)).toBeCloseTo(end);
+
+    move.effect.easing = "linear";
+    const authored = parseProject(p);
+    expect(authored.moves[1].effect.easing).toBe("linear");
+    expect(
+      moveChannelSampler(authored, 1, "travel", false)(move.effect.landing / 2),
+    ).toBeCloseTo(0.5);
+  });
   it("sways slowly once each way and settles, independent of travel easing", () => {
     const p = importPgn(blank(), "1. e4");
     p.moves[0].effect = effect("sway");

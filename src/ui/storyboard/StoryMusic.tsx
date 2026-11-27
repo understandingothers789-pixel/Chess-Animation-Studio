@@ -1,4 +1,4 @@
-import { activeBeats } from "../../core/beatMarkers";
+import { activeBeats, outputBeats } from "../../core/beatMarkers";
 import { compileStoryboard } from "../../core/storyboard";
 import { normalizeMusicRange } from "../../core/audio/timing";
 import { syncMarkers } from "../../core/audio";
@@ -25,9 +25,10 @@ export function StoryMusic({
       d.storyboard.beats = hits
         .filter((b) => !accentsOnly || b.accent)
         .slice(0, 10000)
-        .map(({ id, time, enabled, accent, strength }) => ({
+        .map(({ id, time, sourceTime, enabled, accent, strength }) => ({
           id,
           time,
+          sourceTime,
           enabled,
           accent,
           strength,
@@ -135,7 +136,7 @@ export function StoryMusic({
       >
         Add beat at {time.toFixed(2)}s
       </button>
-      {p.storyboard.beats.map((b) => (
+      {outputBeats(p).map((b) => (
         <div className="button-row" key={b.id}>
           <small>{b.time.toFixed(2)}s</small>
           <Toggle

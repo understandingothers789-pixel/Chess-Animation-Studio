@@ -105,7 +105,7 @@ import {
   type PanelProps,
 } from "./Panels";
 import { Timeline } from "./Timeline";
-import { movePreviewWindow } from "./movePreview";
+import { moveFrameStops, movePreviewWindow } from "./movePreview";
 import { SettingsSearch } from "./SettingsSearch";
 import { clock, Select, Range, SettingsScope } from "./controls";
 import type { Settings, ExportProgress } from "../bridge";
@@ -818,10 +818,10 @@ export function App() {
       )
     );
   }
-  async function checkpointBeforeSwitch() {
+  async function checkpointBeforeSwitch(preserveCheckpoint?: string) {
     const before = latest.current;
     if (before === saved.current) return;
-    await window.studio.autosave(before);
+    await window.studio.autosave(before, preserveCheckpoint);
     if (window.studio.listRecovery)
       setRecovery(await window.studio.listRecovery());
   }
@@ -835,7 +835,6 @@ export function App() {
         setPath(file);
         setRecent(await window.studio.recent());
         if (latest.current === snapshot && window.studio.listRecovery) {
-          await window.studio.discardRecovery(snapshot.id);
           setRecovery(await window.studio.listRecovery());
         }
         message("Saved " + file);
@@ -919,7 +918,17 @@ export function App() {
         const at = videoSource
           ? p.assets.findIndex((item) => item.id === videoSource.id)
           : -1;
-        if (at >= 0) p.assets[at] = a;
+        const shared =
+          videoSource &&
+          [
+            p.defaults,
+            ...p.moves.map((m) => m.effect),
+            ...p.lines.flatMap(
+              (line) => line.moves?.map((m) => m.effect) ?? [],
+            ),
+            ...p.presets.map((preset) => preset.effect),
+          ].some((fx) => fx.preMoveMeme?.asset === videoSource.id);
+        if (at >= 0 && !shared) p.assets[at] = a;
         else {
           if (p.assets.length >= 150)
             throw Error("This project already has 150 local assets.");
@@ -1206,17 +1215,22 @@ export function App() {
     shotIdRef.current = shot.id;
     message("Position hold added to storyboard.");
   }
-  function openSource(index: number, play = false) {
+  function openSource(index: number, play = false, line = p.line) {
     if (index === -1) {
       switchMode("source");
       selectIntro();
       return;
     }
-    if (!p.moves[index]) return;
+    const source = line === p.line ? p : selectLine(p, line);
+    if (!source.moves[index]) return;
     switchMode("source");
+    if (source !== p) {
+      latest.current = source;
+      replace(source);
+    }
     setSelected(index);
     setIntroSelected(false);
-    const seg = segments(p)[index];
+    const seg = segments(source)[index];
     seek(seg.start);
     if (play) {
       setAudition({ time: seg.start, playing: false, end: seg.end });
@@ -1369,27 +1383,27 @@ export function App() {
     setTime(window.start);
     setPlaying(true);
   }
-  function comparePresetFrame(original: boolean) {
+  function comparePresetFrame(original: boolean, checkpoint?: string) {
     if (!activePreset) return;
-    const previous = movePreviewWindow(
-      beforePreset ? p : activePreset.preview,
-      activePreset.index,
-    );
-    const next = movePreviewWindow(
-      original ? p : activePreset.preview,
-      activePreset.index,
-    );
-    if (!previous || !next) return;
-    const phase = Math.max(
-      0,
-      Math.min(
-        1,
-        (timeRef.current - previous.start) /
-          Math.max(1e-6, previous.end - previous.start),
-      ),
-    );
+    const current = beforePreset ? p : activePreset.preview;
+    const next = original ? p : activePreset.preview;
+    const index = activePreset.index;
+    const frames = moveFrameStops(current, index);
+    if (!frames.length) return;
+    const at = timeRef.current;
+    const reference =
+      checkpoint ??
+      frames.reduce((best, frame) =>
+        Math.abs(frame.time - at) < Math.abs(best.time - at) ? frame : best,
+      ).label;
+    const comparable =
+      moveFrameStops(next, index).find((frame) => frame.label === reference) ??
+      moveFrameStops(next, index).find((frame) => frame.label === "Mid-move");
+    if (!comparable) return;
+    stop();
     setBeforePreset(original);
-    seek(next.start + phase * (next.end - next.start));
+    timeRef.current = comparable.time;
+    setTime(comparable.time);
   }
   function inspectMoveEffect(section: string) {
     workspace.patch({ hideRight: false });
@@ -1579,16 +1593,19 @@ export function App() {
             >
               {recovery.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.title} · {new Date(item.updated).toLocaleString()}
+                  {item.title} · {item.path?.split(/[\\/]/).at(-1) ?? "Unsaved"}{" "}
+                  · {new Date(item.updated).toLocaleString()}
                 </option>
               ))}
             </select>
           </label>
           <button
             onClick={() => {
-              const id =
-                recovery.find((r) => r.id === recoveryId)?.id ?? recovery[0].id;
-              const sameProject = id === latest.current.id;
+              const chosen =
+                recovery.find((r) => r.id === recoveryId) ?? recovery[0];
+              const id = chosen.id;
+              const sameProject =
+                chosen.projectId === latest.current.id && chosen.path === path;
               if (
                 sameProject && dirty
                   ? !confirm(
@@ -1598,7 +1615,7 @@ export function App() {
               )
                 return;
               run(async () => {
-                if (!sameProject) await checkpointBeforeSwitch();
+                await checkpointBeforeSwitch(id);
                 const item = await window.studio.openRecovery(id);
                 adopted(item.project, item.path, true);
                 setRecoveryVisible(false);
@@ -1853,7 +1870,8 @@ export function App() {
                       className="wide"
                       onClick={() =>
                         run(async () => {
-                          const entries = await window.studio.listRecovery();
+                          const entries =
+                            await window.studio.listRecovery(true);
                           setRecovery(entries);
                           setRecoveryVisible(true);
                           if (!entries.length)

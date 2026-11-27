@@ -1,5 +1,5 @@
 import type { Project, PlaybackMode } from "./project";
-import { buildGame } from "./chess";
+import { buildGame, viewLine } from "./chess";
 import { compileTimeline } from "./timeline";
 import { compileStoryboard } from "./storyboard";
 export type AudioEvent = {
@@ -87,22 +87,44 @@ export function audioEvents(
   let result = events;
   if (storyboard) {
     result = [];
+    const branches = new Map<number, AudioEvent[]>([[p.line, events]]);
     for (const entry of storyboard.shots) {
       if (entry.shot.kind !== "move-range" || entry.issue) continue;
-      const ids = new Set(
-        p.moves.slice(entry.startIndex, entry.endIndex + 1).map((m) => m.id),
-      );
+      const ids = new Set(entry.project.moves.map((m) => m.id));
+      let sourceEvents = branches.get(entry.sourceLine);
+      if (!sourceEvents) {
+        sourceEvents = audioEvents(viewLine(p, entry.sourceLine));
+        branches.set(entry.sourceLine, sourceEvents);
+      }
       const rate =
         (entry.sourceEnd - entry.sourceStart) /
         (entry.shot.duration - entry.shot.preHold - entry.shot.postHold);
-      for (const event of events) {
+      for (const event of sourceEvents) {
         if (event.moveId && !ids.has(event.moveId)) continue;
-        if (!event.moveId && event.at < entry.sourceStart) continue;
-        if (event.at >= entry.sourceEnd) continue;
+        let sourceTime = event.at;
+        const pin = entry.shot.beatPin;
+        if (
+          !entry.pinIssue &&
+          pin?.event === "capture" &&
+          event.id === `auto-${pin.moveId}`
+        ) {
+          const index = entry.project.moves.findIndex(
+            (move) => move.id === pin.moveId,
+          );
+          if (index >= 0) {
+            const segment =
+              entry.sourceTimeline.segments[entry.startIndex + index];
+            const effect = entry.project.moves[index].effect;
+            sourceTime =
+              segment.depart + effect.duration * effect.capture.impact;
+          }
+        }
+        if (!event.moveId && sourceTime < entry.sourceStart) continue;
+        if (sourceTime >= entry.sourceEnd) continue;
         const rawAt =
           entry.start +
           entry.shot.preHold +
-          (event.at - entry.sourceStart) / rate;
+          (sourceTime - entry.sourceStart) / rate;
         const at = Math.max(entry.start, rawAt),
           end = Math.min(entry.end, rawAt + (event.duration ?? Infinity));
         if (at >= end) continue;

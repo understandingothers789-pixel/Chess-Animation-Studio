@@ -1108,7 +1108,7 @@ try {
         window.studio.autosave(second),
       ]);
       return (await window.studio.listRecovery()).filter((checkpoint) =>
-        [first.id, second.id].includes(checkpoint.id),
+        [first.id, second.id].includes(checkpoint.projectId),
       );
     },
     [firstDraft, secondDraft] as const,
@@ -1127,7 +1127,10 @@ try {
         ),
       };
     },
-    [firstDraft.id, secondDraft.id] as const,
+    [
+      drafts.find((item) => item.projectId === firstDraft.id)!.id,
+      drafts.find((item) => item.projectId === secondDraft.id)!.id,
+    ] as const,
   );
   assert.deepEqual(trimmedDraft, {
     selected: firstDraft.title,

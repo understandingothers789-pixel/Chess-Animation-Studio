@@ -236,6 +236,13 @@ export function FilesPanel(q: PanelProps) {
         ))}
       </Section>
       <BadgeArtworkPanel {...q} />
+      <Section title="Project compatibility">
+        <p className="hint">
+          Use Studio {p.appVersion} for this project’s full editing and playback
+          features. Older builds use Smooth easing for gentle slides and may
+          display newer storyboard and video settings differently.
+        </p>
+      </Section>
       <Section title="Local asset references">
         {p.assets.map((a) => (
           <div className="asset-card" key={a.id}>

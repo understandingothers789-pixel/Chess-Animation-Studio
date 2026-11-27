@@ -28,6 +28,7 @@ export interface ExportProgress {
 }
 export interface RecoverySummary {
   id: string;
+  projectId: string;
   title: string;
   path: string | null;
   updated: number;
@@ -48,10 +49,10 @@ export interface Studio {
   save(p: Project, as: boolean): Promise<string | null>;
   projectReport(p: Project): Promise<string | null>;
   recover(): Promise<{ project: Project; path: string | null } | null>;
-  listRecovery(): Promise<RecoverySummary[]>;
+  listRecovery(includeSaved?: boolean): Promise<RecoverySummary[]>;
   openRecovery(id: string): Promise<{ project: Project; path: string | null }>;
   discardRecovery(id?: string): Promise<void>;
-  autosave(p: Project): Promise<void>;
+  autosave(p: Project, preserveCheckpoint?: string): Promise<void>;
   onFlushRecovery(cb: () => void): () => void;
   recoveryFlushed(): void;
   recent(): Promise<string[]>;

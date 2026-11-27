@@ -29,7 +29,18 @@ export async function readProject(file: string): Promise<Project> {
   const stat = await fs.stat(file);
   if (stat.size > 32 * 1024 * 1024)
     throw Error("Project is larger than 32 MB.");
-  const p = parseProject(JSON.parse(await fs.readFile(file, "utf8")));
+  const raw = JSON.parse(await fs.readFile(file, "utf8"));
+  let p: Project;
+  try {
+    p = parseProject(raw);
+  } catch (error) {
+    if (typeof raw?.appVersion === "string")
+      throw new Error(
+        `Could not open this project. It was saved with Chess Animation Studio ${raw.appVersion}. Open it with that version or a newer one. ${(error as Error).message}`,
+        { cause: error },
+      );
+    throw error;
+  }
   for (const a of p.assets) {
     a.path = path.resolve(path.dirname(file), a.path);
     if (a.videoSource)
@@ -44,7 +55,17 @@ export async function writeProject(file: string, p: Project) {
     if (a.videoSource)
       a.videoSource = path.relative(path.dirname(file), a.videoSource);
   }
-  await atomic(file, JSON.stringify(copy, null, 2));
+  await atomic(
+    file,
+    JSON.stringify(
+      copy,
+      (key, value) =>
+        (key === "defaults" || key === "effect") && value?.easing === "ease-out"
+          ? { ...value, easing: "smooth", travelEasing: "ease-out" }
+          : value,
+      2,
+    ),
+  );
 }
 export async function validAsset(a: Asset) {
   if (!extensions[a.kind].has(path.extname(a.path).toLowerCase()))
@@ -54,16 +75,18 @@ export async function validAsset(a: Asset) {
     throw Error("Asset must be a file smaller than 256 MB.");
   return s;
 }
-export async function dataUrl(a: Asset) {
+export function assetMime(a: Asset) {
+  const ext = path.extname(a.path).slice(1).toLowerCase();
+  return ext === "svg"
+    ? "image/svg+xml"
+    : a.kind !== "audio"
+      ? `image/${ext === "jpg" ? "jpeg" : ext}`
+      : `audio/${ext === "mp3" ? "mpeg" : ext === "m4a" ? "mp4" : ext}`;
+}
+// Browser render fixtures use a data URL. The desktop application streams media.
+export async function assetFixtureUrl(a: Asset) {
   await validAsset(a);
-  const ext = path.extname(a.path).slice(1).toLowerCase(),
-    mime =
-      ext === "svg"
-        ? "image/svg+xml"
-        : a.kind !== "audio"
-          ? `image/${ext === "jpg" ? "jpeg" : ext}`
-          : `audio/${ext === "mp3" ? "mpeg" : ext === "m4a" ? "mp4" : ext}`;
-  return `data:${mime};base64,${(await fs.readFile(a.path)).toString("base64")}`;
+  return `data:${assetMime(a)};base64,${(await fs.readFile(a.path)).toString("base64")}`;
 }
 export async function collectProject(p: Project, dir: string) {
   const copy = structuredClone(p),

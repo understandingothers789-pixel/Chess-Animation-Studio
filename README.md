@@ -2,6 +2,8 @@
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
 
+The [0.2.56 source update](docs/releases/0.2.56.md) improves recovery, variation-aware storyboards, beat pins, portrait previews, and animated reactions.
+
 The [0.2.55 source update](docs/releases/0.2.55.md) adds one-click vertical storyboards, preset component previews, precise music sync, and adjustable opening video crops. See the [editing guide](docs/USER_GUIDE.md) for the workflow.
 
 Version **0.2.42** adds **Starting-square meme**. Choose an image to fill the piece’s square just before it moves, set the duration, and inspect it in **Move frames**. See the [0.2.42 release notes](docs/releases/0.2.42.md).

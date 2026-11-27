@@ -37,9 +37,13 @@ it("writes and reads projects atomically, preserving relative references", async
   ];
   const f = path.join(dir, "p.castudio");
   await writeProject(f, p);
-  expect(JSON.parse(await fs.readFile(f, "utf8")).assets[0].path).toBe(
-    "tone.wav",
-  );
+  const saved = JSON.parse(await fs.readFile(f, "utf8"));
+  expect(saved.assets[0].path).toBe("tone.wav");
+  expect(saved.defaults).toMatchObject({
+    easing: "smooth",
+    travelEasing: "ease-out",
+  });
+  expect((await readProject(f)).defaults.easing).toBe("ease-out");
   expect((await readProject(f)).assets[0].path).toBe(p.assets[0].path);
   expect((await fs.readdir(dir)).some((x) => x.includes(".tmp-"))).toBe(false);
 });

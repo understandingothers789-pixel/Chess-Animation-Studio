@@ -302,6 +302,12 @@ export function EffectTiming({
               {event.time.toFixed(3)} s on the source timeline
               {drift !== undefined && ` · ${formatDrift(drift)}`}
               {!beat && event.beat ? " · Assigned hit is unavailable" : ""}
+              {beat &&
+              event.beat === beat.id &&
+              drift !== undefined &&
+              Math.abs(drift) > 0.001
+                ? " · Pin conflict. Check timing locks and the event’s range."
+                : ""}
             </output>
             {beat &&
               outputTimes.slice(0, 4).map((item) => (
@@ -348,6 +354,24 @@ export function EffectTiming({
               <button type="button" onClick={() => seek(event.time)}>
                 View event frame
               </button>
+              {event.beat && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    edit("Clear source beat pin", (draft) => {
+                      const target = draft.moves[index].effect;
+                      if (event.id === "landing") target.landingBeat = null;
+                      else if (event.id === "capture")
+                        target.capture.beat = null;
+                      else if (event.id === "zoom") target.jam.beat = null;
+                      else target.after.beat = null;
+                      setPinTarget(undefined);
+                    })
+                  }
+                >
+                  Clear pin
+                </button>
+              )}
             </div>
           </div>
         )}

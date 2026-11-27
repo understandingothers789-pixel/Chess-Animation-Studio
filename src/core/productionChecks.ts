@@ -1,3 +1,4 @@
+import { outputBeats } from "./beatMarkers";
 import { requiredAssetIds } from "./exportAssets";
 import type { Project } from "./project";
 import type { ExportOptions } from "../bridge";
@@ -117,7 +118,18 @@ export function productionChecks(
     if (p.music.muted)
       issues.push({ severity: "info", message: "The soundtrack is muted." });
   }
-  if (o.mode === "storyboard" && p.storyboard.beats.some((b) => b.time > end))
+  if (o.mode === "storyboard")
+    for (const entry of story.shots)
+      if (entry.pinIssue && entry.start < end && entry.end > o.start)
+        issues.push({
+          severity: "warning",
+          message: `${entry.shot.name}: ${entry.pinIssue}`,
+          time: entry.start,
+        });
+  if (
+    o.mode === "storyboard" &&
+    outputBeats(p).some((b) => b.enabled && b.time > end)
+  )
     issues.push({
       severity: "warning",
       message: "Some output beats fall beyond the storyboard duration.",

@@ -23,7 +23,26 @@ function hash(s: string) {
   for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
   return (h >>> 0).toString(16);
 }
+type LegalGame = Omit<Game, "steps"> & { steps: Omit<Step, "move">[] };
+const legalGames = new Map<string, LegalGame>();
+
 export function buildGame(p: Project): Game {
+  const key = JSON.stringify([p.fen, p.moves.map((move) => move.san)]);
+  let legal = legalGames.get(key);
+  if (legal) legalGames.delete(key);
+  else legal = buildLegalGame(p);
+  legalGames.set(key, legal);
+  if (legalGames.size > 6) legalGames.delete(legalGames.keys().next().value!);
+  return {
+    ...legal,
+    steps: legal.steps.map((step, index) => ({
+      ...step,
+      move: p.moves[index],
+    })),
+  };
+}
+
+function buildLegalGame(p: Project): LegalGame {
   const chess = new Chess(p.fen),
     initial: Piece[] = chess.board().flatMap((row) =>
       row.flatMap((v) =>
@@ -40,7 +59,7 @@ export function buildGame(p: Project): Game {
       ),
     );
   let pieces = structuredClone(initial);
-  const steps: Step[] = [];
+  const steps: LegalGame["steps"] = [];
   for (const move of p.moves) {
     const before = structuredClone(pieces),
       fen = chess.fen(),
@@ -64,7 +83,6 @@ export function buildGame(p: Project): Game {
       r.square = to;
     }
     steps.push({
-      move,
       before,
       after: structuredClone(pieces),
       from: m.from,
@@ -192,6 +210,16 @@ function saveActiveLine(next: Project, current: Project) {
     sans: current.moves.map((move) => move.san),
     moves: structuredClone(current.moves),
   };
+}
+
+/** Read another variation without moving the editor or copying the entire project. */
+export function viewLine(p: Project, index: number): Project {
+  if (index === p.line) return p;
+  const target = p.lines[index];
+  if (!target) return p;
+  return target.moves
+    ? { ...p, moves: target.moves, line: index }
+    : { ...setLine(p, target.sans), line: index };
 }
 
 export function selectLine(p: Project, index: number): Project {

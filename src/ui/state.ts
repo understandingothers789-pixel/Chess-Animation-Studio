@@ -1,3 +1,4 @@
+import { reconcileBeatPins } from "../core/beatPins";
 import { updateAnnotations } from "../core/annotationEdit";
 import type { Annotation } from "../core/annotations";
 import { preserveLockedTiming } from "../core/editing";
@@ -76,7 +77,7 @@ export function useProject() {
     h.at = now;
     h.future = [];
     next.appVersion = VERSION;
-    commit(next);
+    commit(reconcileBeatPins(next));
   };
   const edit = useCallback(
     Object.assign(

@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { introFilm as film } from "../src/core/introVideo";
+import { introFilm, type FilmLayout } from "../src/core/introVideo";
 
 const run = promisify(execFile);
 export async function validIntroSource(input: string) {
@@ -10,9 +10,9 @@ export async function validIntroSource(input: string) {
   if (
     !stat.isFile() ||
     stat.size > 256 * 1024 * 1024 ||
-    !/\.(mp4|mov|webm|mkv|m4v)$/i.test(input)
+    !/\.(mp4|mov|webm|mkv|m4v|gif|webp)$/i.test(input)
   )
-    throw Error("Choose an MP4, MOV, WebM or MKV video under 256 MB.");
+    throw Error("Choose a supported video or animated image under 256 MB.");
 }
 
 export async function introDuration(ffmpeg: string, input: string) {
@@ -97,6 +97,10 @@ export async function prepareIntroVideo(
   input: string,
   output: string,
   trim = { start: 0, x: 0.5, y: 0.5 },
+  film: FilmLayout = {
+    ...introFilm,
+    frames: introFilm.fps * introFilm.seconds,
+  },
 ) {
   if (
     !Number.isFinite(trim.start) ||
@@ -106,13 +110,14 @@ export async function prepareIntroVideo(
   )
     throw Error("Choose a valid video in-point and crop.");
   await validIntroSource(input);
-  const frames = film.fps * film.seconds;
+  const frames = film.frames,
+    seconds = frames / film.fps;
   const filter = [
     `fps=${film.fps}`,
     `scale=${film.cell}:${film.cell}:force_original_aspect_ratio=increase:force_divisible_by=2`,
     `crop=${film.cell}:${film.cell}:(iw-ow)*${trim.x}:(ih-oh)*${trim.y}`,
     "setsar=1",
-    `tpad=stop_mode=clone:stop_duration=${film.seconds}`,
+    `tpad=stop_mode=clone:stop_duration=${seconds}`,
     `trim=end_frame=${frames}`,
     `tile=${film.columns}x${film.rows}:nb_frames=${frames}`,
   ].join(",");
@@ -133,7 +138,7 @@ export async function prepareIntroVideo(
         "-ss",
         String(trim.start),
         "-t",
-        String(film.seconds),
+        String(seconds),
         "-i",
         input,
         "-map",

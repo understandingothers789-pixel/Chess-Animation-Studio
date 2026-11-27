@@ -1,6 +1,10 @@
 import * as T from "three";
 import { xy } from "../../core/chess";
-import { introFilm, squareVideoFrame } from "../../core/introVideo";
+import {
+  assetFilm,
+  filmPosition,
+  squareVideoFrame,
+} from "../../core/introVideo";
 import { ease, memeWindow } from "../../core/timeline";
 import type { RenderFrame } from "../engine/frame";
 
@@ -44,7 +48,9 @@ export class StartingSquareMeme {
     if (opener) {
       const texture = this.assets.get(opener.asset);
       if (!texture) return;
-      const { columns, rows, cell } = introFilm;
+      const { columns, rows, cell } = assetFilm(
+        frame.p.assets.find((asset) => asset.id === opener.asset),
+      );
       const inset = 0.5 / cell;
       this.crop(
         (opener.column + inset) / columns,
@@ -61,17 +67,32 @@ export class StartingSquareMeme {
     const effect = frame.e.effect;
     const settings = effect?.preMoveMeme;
     if (!meme || !texture || !effect || !settings) return;
+    const window = memeWindow(effect, frame.timeline.segments[frame.e.index]);
+    const asset = frame.p.assets.find((item) => item.id === meme.asset);
     const { width, height } = texture.image;
     const zoom = settings.zoom ?? 1;
-    const w = Math.min(1, height / width) / zoom;
-    const h = Math.min(1, width / height) / zoom;
-    this.crop(
-      (1 - w) * (settings.x ?? 0.5),
-      (1 - h) * (1 - (settings.y ?? 0.5)),
-      w,
-      h,
-    );
-    const window = memeWindow(effect, frame.timeline.segments[frame.e.index]);
+    const x = settings.x ?? 0.5;
+    const y = 1 - (settings.y ?? 0.5);
+    if (asset?.kind === "filmstrip" && window) {
+      const film = assetFilm(asset);
+      const { column, row } = filmPosition(
+        film,
+        frame.time - window.start,
+        true,
+      );
+      const inset = 0.5 / film.cell;
+      const side = (1 - 2 * inset) / zoom;
+      this.crop(
+        (column + inset + (1 - 2 * inset - side) * x) / film.columns,
+        1 - (row + 1 - inset - (1 - 2 * inset - side) * y) / film.rows,
+        side / film.columns,
+        side / film.rows,
+      );
+    } else {
+      const w = Math.min(1, height / width) / zoom;
+      const h = Math.min(1, width / height) / zoom;
+      this.crop((1 - w) * x, (1 - h) * y, w, h);
+    }
     const fade = Math.min(settings.fade ?? 0, settings.duration / 3);
     const opacity =
       fade && window

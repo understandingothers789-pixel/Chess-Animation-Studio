@@ -14,6 +14,7 @@ export const initialViewport: Viewport = {
 };
 export function ViewportTools({
   addCaption,
+  inspectBoard,
   transcript,
   view,
   captionGuides,
@@ -27,6 +28,7 @@ export function ViewportTools({
   toggle,
 }: {
   addCaption?: () => void;
+  inspectBoard?: () => void;
   transcript?: () => void;
   captionGuides?: boolean;
   onCaptionGuides?: () => void;
@@ -47,6 +49,15 @@ export function ViewportTools({
       >
         Fit
       </button>
+      {inspectBoard && (
+        <button
+          aria-pressed={view.zoom > 1}
+          title="Magnify the board in the editor while keeping the output framing"
+          onClick={inspectBoard}
+        >
+          Board detail
+        </button>
+      )}
       <ControlGroup
         label="Tools"
         name="Preview tools menu"

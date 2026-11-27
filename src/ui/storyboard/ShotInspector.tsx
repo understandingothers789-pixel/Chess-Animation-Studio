@@ -1,3 +1,4 @@
+import { viewLine } from "../../core/chess";
 import { useEffect, useMemo, useState } from "react";
 import type { Project, StoryboardShot } from "../../core/project";
 import { camera, presets } from "../../core/project";
@@ -28,7 +29,7 @@ export function ShotInspector({
   id: string | null;
   edit: Edit;
   sourceId: string | null;
-  openSource: (i: number) => void;
+  openSource: (i: number, play?: boolean, line?: number) => void;
   preview: (id: string) => void;
   annotationId: string | null;
   annotationIds?: string[];
@@ -82,7 +83,8 @@ export function ShotInspector({
       </aside>
     );
   const cam = s.camera;
-  const sourceOptions = p.moves.map(
+  const sourceMoves = viewLine(p, entry.sourceLine).moves;
+  const sourceOptions = sourceMoves.map(
     (m, i) => [m.id, `${i + 1}. ${m.san}`] as const,
   );
   return (
@@ -91,6 +93,11 @@ export function ShotInspector({
         SHOT {entry.index + 1} · {s.kind}
       </span>
       <h2>{s.name}</h2>
+      {entry.pinIssue && (
+        <p role="alert" className="danger">
+          {entry.pinIssue}
+        </p>
+      )}
       <p className="hint">
         Output {entry.start.toFixed(2)}–{entry.end.toFixed(2)}s. Source game
         stays unchanged.
@@ -401,6 +408,32 @@ export function ShotInspector({
             </p>
           )}
           <Select
+            label="Shot source variation"
+            value={String(entry.sourceLine)}
+            options={p.lines.map((line, i) => [String(i), line.name] as const)}
+            onChange={(value) =>
+              change("Change shot variation", (shot) => {
+                const line = Number(value);
+                const moves = viewLine(p, line).moves;
+                if (!moves.length || !shot.source) return;
+                const rebind = (id: string, at: number) =>
+                  id === "@start" || moves.some((m) => m.id === id)
+                    ? id
+                    : moves[Math.max(0, Math.min(at, moves.length - 1))].id;
+                shot.source.startMoveId = rebind(
+                  shot.source.startMoveId,
+                  entry.startIndex,
+                );
+                shot.source.endMoveId = rebind(
+                  shot.source.endMoveId,
+                  entry.endIndex,
+                );
+                shot.source.line = line;
+                shot.trimStart = shot.trimEnd = 0;
+              })
+            }
+          />
+          <Select
             label="Shot source start"
             value={s.source.startMoveId}
             options={[
@@ -409,13 +442,14 @@ export function ShotInspector({
                 : []),
               ...sourceOptions,
               ...(s.source.startMoveId !== "@start" &&
-              !p.moves.some((m) => m.id === s.source!.startMoveId)
+              !sourceMoves.some((m) => m.id === s.source!.startMoveId)
                 ? [[s.source.startMoveId, "Missing source"] as const]
                 : []),
             ]}
             onChange={(v) =>
               change("Relink shot", (s) => {
                 s.source!.startMoveId = v;
+                s.source!.line = entry.sourceLine;
                 if (s.kind === "position-hold") s.source!.endMoveId = v;
               })
             }
@@ -454,6 +488,7 @@ export function ShotInspector({
                   startMoveId: sourceId!,
                   endMoveId: sourceId!,
                   position: "after",
+                  line: p.line,
                 };
                 s.trimStart = 0;
                 s.trimEnd = 0;
@@ -464,7 +499,9 @@ export function ShotInspector({
           </button>
           <button
             disabled={entry.startIndex < 0 || !!entry.issue}
-            onClick={() => openSource(entry.startIndex)}
+            onClick={() =>
+              openSource(entry.startIndex, false, entry.sourceLine)
+            }
           >
             Open source move
           </button>

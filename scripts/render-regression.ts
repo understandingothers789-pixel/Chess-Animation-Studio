@@ -95,6 +95,13 @@ try {
     ctx.fillStyle = "#345678";
     ctx.fillRect(0, 0, 160, 90);
     await scene.setAsset("background", imageCanvas.toDataURL());
+    const historicalGame = (pgn: string) => {
+      const project = blank();
+      // These PGNs were authored before Gentle ease-out became the default.
+      // Keep their historical travel for the byte-identical renderer gate.
+      project.defaults.easing = "smooth";
+      return importPgn(project, pgn);
+    };
     const fixtures = [
       ["image", image],
       ["visual", visual],
@@ -103,8 +110,8 @@ try {
         importPgn(promoted, '[FEN "7k/P7/8/8/8/8/8/7K w - - 0 1"] 1. a8=Q+'),
       ],
       ["sample", sample],
-      ["castling", importPgn(blank(), "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. O-O")],
-      ["en-passant", importPgn(blank(), "1. e4 a6 2. e5 d5 3. exd6")],
+      ["castling", historicalGame("1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. O-O")],
+      ["en-passant", historicalGame("1. e4 a6 2. e5 d5 3. exd6")],
     ] as const;
     // Keep the reference's historical size curve for pixel parity. The
     // current size profiles have their own decoded-render validation.

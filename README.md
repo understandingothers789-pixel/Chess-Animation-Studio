@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.58
+# Chess Animation Studio · 0.2.59
 
 A local desktop studio for animated chess videos. Import a game, shape each move, align landings to music, and render MP4 directly. Storyboard development continues on `architecture/effect-compositor`; earlier downloads are preserved.
 
@@ -43,6 +43,8 @@ Right-click a timeline clip, or click the **⋯** on its track header, to open i
 Use **Copy** and **Paste** to transfer movement, piece size, after-effects, camera, effects, timing, or everything. **Apply [move]’s settings to…** offers selected moves and counted chess groups such as knights, captures, checks, and castling. **Bulk edit from [move]…** shows the source, settings category, target count, and timing locks before you choose Apply. Locked moves keep their timing. The selection toolbar and inspector show the current scope. Hover over a submenu arrow to open an adjacent flyout; parents stay visible. **Right arrow** opens a child and **Left arrow** returns. Narrow layouts use **Back** when panels cannot fit side by side. Edit commands focus their requested controls. Right-click a preview square for annotations, FEN, and frame commands; right-click empty preview space for view, guides, and fullscreen controls. Viewing commands keep playback running; annotation editing pauses when chosen.
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.59 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.59/Chess-Animation-Studio-0.2.59-Windows-x64.zip?download=1).** Enlarges portrait fullscreen previews and adds color-matched corner badges and a bundled Opera Game review. [SHA-256 checksum](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.59/Chess-Animation-Studio-0.2.59-Windows-x64.zip.sha256)
 
 **[Download Chess Animation Studio 0.2.58 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.58/Chess-Animation-Studio-0.2.58-Windows-x64.zip?download=1).** Adds beat flash sensitivity, individual overrides, and a filterable flash list. [Release notes](docs/releases/0.2.58.md) · [SHA-256 checksum](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.58/Chess-Animation-Studio-0.2.58-Windows-x64.zip.sha256)
 

@@ -1,4 +1,4 @@
-# Chess Animation Studio · 0.2.58
+# Chess Animation Studio · 0.2.59
 
 A local desktop editor for chess videos. Import a PGN/FEN, play an animated first draft, refine individual moves, align landings to music, and render an MP4. Built with Electron, React, TypeScript, Three.js, chess.js, and FFmpeg.
 
@@ -7,6 +7,8 @@ Current editor source and the editing guide are on [architecture/effect-composit
 ![Earlier version 0.1 editor](docs/images/editor.png)
 
 ## Windows downloads
+
+**[Download Chess Animation Studio 0.2.59 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.59/Chess-Animation-Studio-0.2.59-Windows-x64.zip?download=1).** Enlarges portrait fullscreen previews and adds color-matched corner badges and a bundled Opera Game review. [SHA-256 checksum](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.59/Chess-Animation-Studio-0.2.59-Windows-x64.zip.sha256)
 
 **[Download Chess Animation Studio 0.2.58 for Windows (x64)](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.58/Chess-Animation-Studio-0.2.58-Windows-x64.zip?download=1).** Adds dark-square flash sensitivity, per-beat flash controls, and a filterable flash list. [SHA-256 checksum](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/releases/download/studio-v0.2.58/Chess-Animation-Studio-0.2.58-Windows-x64.zip.sha256)
 

@@ -82,6 +82,8 @@ try {
     visual.ambient.enabled = true;
     visual.boardFX.enabled = true;
     for (const move of visual.moves) {
+      // The historical evaluation-bar fixture has no engine review.
+      delete move.analysis.engine;
       move.effect.jam.enabled = true;
       move.effect.highlight.trail = true;
     }

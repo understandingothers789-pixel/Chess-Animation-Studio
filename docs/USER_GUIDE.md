@@ -18,6 +18,12 @@ Extract the portable ZIP and open Chess Animation Studio.exe. The application wo
 - Choose **Tactical Breakdown** to spotlight a move and show its route. The final shot also marks a checked king and its attackers, or the rook's path when castling. Edit the arrows, rings, and caption in the shot inspector.
 - Select a move shot in **Storyboard**, set **Replay speed**, and click **Add slow-motion replay**. The replay appears immediately after that shot and plays at the chosen fraction of its speed. You can trim it and edit its captions, effects, and camera independently.
 
+## Edit dark-square music flashes
+
+In **Music → Dark-square beat pulse**, enable **Pulse dark squares** and choose a sensitivity. **Lenient** uses every enabled beat in range. **Balanced** keeps stronger hits and accents. **Accents only** uses all marked accents. **Strict** keeps the strongest accents and spaces automatic flashes at least 0.4 seconds apart.
+
+Open **Edit individual flashes** to seek to and adjust any marker. The list follows the playhead until you browse to another page. Filter to beats that will flash or to manually edited beats. You can also right-click a beat on the Full Game timeline and choose **Dark-square flash**. **Skip** suppresses the flash, **Always flash** overrides sensitivity, and **Auto** follows the current sensitivity. The beat stays available for timing. In Storyboard, these controls use output markers under **Soundtrack & output beats**. You can also select a beat on the storyboard waveform and edit its flash there.
+
 ## First composition
 
 Open **Opera Game with original music**. Space plays/pauses, the transport slider seeks, and the timeline selects moves. Click a move in Game to edit its effect. Selecting a move seeks to its departure; play or scrub through it to inspect the animation.

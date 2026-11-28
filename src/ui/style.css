@@ -696,6 +696,51 @@ small {
   color: #ccdcba;
   overflow-wrap: anywhere;
 }
+.pulse-list {
+  margin-block: 8px;
+}
+.pulse-rule {
+  margin: 4px 0 8px;
+}
+.pulse-list > .select-field {
+  margin-top: 8px;
+}
+.pulse-list > summary {
+  cursor: pointer;
+}
+.pulse-pages {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.pulse-markers {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  max-height: 255px;
+  overflow-y: auto;
+}
+.pulse-markers li {
+  display: grid;
+  grid-template-columns: minmax(64px, auto) minmax(0, 1fr) max-content;
+  gap: 5px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.pulse-markers button,
+.pulse-markers select {
+  padding: 4px 5px;
+  min-height: 26px;
+}
+.pulse-markers li[data-nearest="true"] > button {
+  border-color: #b2cc8e;
+  color: #e8f2d9;
+}
+.pulse-markers [data-flash="true"] {
+  color: #d1e5ac;
+}
 .marker-list {
   max-height: 180px;
   overflow: auto;

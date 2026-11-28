@@ -117,7 +117,11 @@ export function updateMusicAnalysis(p: Project, analysis: MusicAnalysis) {
     const prior = found?.beat;
     if (prior) matched.add(prior.id);
     const stable =
-      prior && (prior.corrected || linked.has(prior.id) || !prior.enabled);
+      prior &&
+      (prior.corrected ||
+        prior.pulseOverride ||
+        linked.has(prior.id) ||
+        !prior.enabled);
     const sourceTime = stable ? prior.sourceTime! : hit.time;
     next.push({
       id: prior?.id ?? uid(),
@@ -128,6 +132,7 @@ export function updateMusicAnalysis(p: Project, analysis: MusicAnalysis) {
       accent: prior?.corrected ? prior.accent : hit.accent,
       strength: hit.strength,
       ...(prior?.corrected ? { corrected: true } : {}),
+      ...(prior?.pulseOverride ? { pulseOverride: prior.pulseOverride } : {}),
     });
   }
   const keep = p.beats.filter(
@@ -135,6 +140,7 @@ export function updateMusicAnalysis(p: Project, analysis: MusicAnalysis) {
       !matched.has(b.id) &&
       (b.sourceTime === undefined ||
         b.corrected ||
+        b.pulseOverride ||
         linked.has(b.id) ||
         !b.enabled ||
         b.strength === undefined),

@@ -1,3 +1,4 @@
+import { boardPulseAt } from "../../core/boardPulse";
 import { annotation } from "../../core/annotations";
 import {
   compileStoryboard,
@@ -123,19 +124,6 @@ export function evaluatePresentationFrame(
     c.viewY = 0;
   }
   // Source animation clock and soundtrack marker clock are deliberately distinct.
-  let pulse = 0;
-  if (p.pulse.enabled)
-    for (const beat of p.storyboard.beats) {
-      if (!beat.enabled || (p.pulse.accentsOnly && !beat.accent)) continue;
-      const age = r.outputTime - beat.time;
-      if (age >= -p.pulse.attack && age <= p.pulse.decay)
-        pulse = Math.max(
-          pulse,
-          age < 0
-            ? 1 + age / p.pulse.attack
-            : Math.exp((-age / p.pulse.decay) * 4),
-        );
-    }
-  c.e.pulse = pulse * p.pulse.intensity;
+  c.e.pulse = boardPulseAt(p, r.outputTime, "storyboard", true);
   return c;
 }

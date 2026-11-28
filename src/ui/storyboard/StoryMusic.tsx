@@ -4,17 +4,20 @@ import { normalizeMusicRange } from "../../core/audio/timing";
 import { syncMarkers } from "../../core/audio";
 import type { Project } from "../../core/project";
 import type { Edit } from "../state";
+import { BoardPulseControls } from "../audio/BoardPulseControls";
 import { Range, Toggle } from "../controls";
 export function StoryMusic({
   p,
   edit,
   time,
+  seek,
   importMusic,
   analyze,
 }: {
   p: Project;
   edit: Edit;
   time: number;
+  seek: (time: number) => void;
   importMusic: () => void;
   analyze: () => void;
 }) {
@@ -22,6 +25,9 @@ export function StoryMusic({
   const hits = activeBeats(p).filter((b) => !duration || b.time < duration);
   const copyHits = (accentsOnly: boolean) =>
     edit("Use detected soundtrack beats", (d) => {
+      const prior = new Map(
+        d.storyboard.beats.map((beat) => [beat.id, beat.pulseOverride]),
+      );
       d.storyboard.beats = hits
         .filter((b) => !accentsOnly || b.accent)
         .slice(0, 10000)
@@ -32,6 +38,7 @@ export function StoryMusic({
           enabled,
           accent,
           strength,
+          pulseOverride: prior.get(id),
         }));
     });
   return (
@@ -90,6 +97,13 @@ export function StoryMusic({
             d.pulse.enabled = v;
           })
         }
+      />
+      <BoardPulseControls
+        p={p}
+        mode="storyboard"
+        time={time}
+        seek={seek}
+        edit={edit}
       />
       <Range
         label="Storyboard pulse intensity"

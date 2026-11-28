@@ -1,3 +1,4 @@
+import { boardPulseAt } from "./boardPulse";
 import { reviewNotation } from "./badgeNotation";
 import { firstMatchingIndex } from "./sorted";
 import { beatInMusic } from "./beatMarkers";
@@ -551,30 +552,6 @@ export function evaluate(
     cam.y = mix(cam.y, y, afterPulse);
     cam.zoom *= 1 + afterPulse * 0.55;
   }
-  let pulse = 0;
-  if (p.pulse.enabled) {
-    const beats = compiled ? indexedBeats(p) : p.beats;
-    const first = compiled
-      ? firstMatchingIndex(beats, (b) => time - b.time <= p.pulse.decay)
-      : 0;
-    for (let i = first; i < beats.length; i++) {
-      const b = beats[i];
-      const dt = time - b.time;
-      if (compiled && dt < -p.pulse.attack) break;
-      if (
-        (p.pulse.accentsOnly && !b.accent) ||
-        (!compiled && (!b.enabled || !beatInMusic(p, b)))
-      )
-        continue;
-      if (dt >= -p.pulse.attack && dt <= p.pulse.decay)
-        pulse = Math.max(
-          pulse,
-          dt < 0
-            ? 1 + dt / p.pulse.attack
-            : Math.exp((-dt / p.pulse.decay) * 4),
-        );
-    }
-  }
   const dust: CaptureDust[] = [];
   // Reconstruct recent captures from time, including dust that outlives a move.
   for (let j = index; j >= 0; j--) {
@@ -648,7 +625,7 @@ export function evaluate(
     impact,
     badge: shown,
     badgePosition: anchor,
-    pulse: pulse * p.pulse.intensity,
+    pulse: boardPulseAt(p, time, "source", !!compiled),
   };
 }
 const random = (v: number) => {

@@ -1722,6 +1722,7 @@ export function App() {
                   p={p}
                   edit={storyEdit}
                   time={time}
+                  seek={seek}
                   importMusic={() => run(() => importAsset("audio", "music"))}
                   analyze={() => run(analyzeMusic)}
                 />

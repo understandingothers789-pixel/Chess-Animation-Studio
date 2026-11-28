@@ -1,3 +1,4 @@
+import { setPulseOverride, type PulseOverride } from "../../core/boardPulse";
 import { removeMusicBeat, setBeatTime } from "../../core/beatMarkers";
 import { moveCommands } from "./moveCommands";
 import { annotationCommands, type AnnotationStyle } from "./annotationCommands";
@@ -201,6 +202,22 @@ export function timelineCommands({
         const beat = p.beats.find((b) => b.id === menu.id);
         if (beat) {
           add("Move playhead here", () => seek(beat.time));
+          const choices: [PulseOverride, string][] = [
+            ["auto", "Auto"],
+            ["off", "Skip"],
+            ["on", "Always flash"],
+          ];
+          actions.push({
+            label: "Dark-square flash",
+            children: choices.map(([value, label]) => ({
+              label,
+              checked: (beat.pulseOverride ?? "auto") === value,
+              run: () =>
+                edit("Set individual dark-square flash", (draft) =>
+                  setPulseOverride(draft, "source", beat.id, value),
+                ),
+            })),
+          });
           add(
             "Set beat to playhead",
             () =>

@@ -1,3 +1,4 @@
+import { PulseOverrideSelect } from "./BoardPulseControls";
 import { pinLabels, type PinEvent } from "../../core/beatPins";
 import { outputBeats } from "../../core/beatMarkers";
 import { activeBeats, strongestBeat } from "../../core/beatMarkers";
@@ -622,6 +623,10 @@ export function StoryboardWaveform({
       )}
       {beat && (
         <div className="wave-tools">
+          <label>
+            Dark-square flash
+            <PulseOverrideSelect beat={beat} mode="storyboard" edit={edit} />
+          </label>
           {pinShot && (
             <label>
               Shot event

@@ -5,6 +5,7 @@ import {
   removeMusicBeat,
   setBeatTime,
 } from "../../core/beatMarkers";
+import { BoardPulseControls } from "../audio/BoardPulseControls";
 import { RainbowControls } from "./RainbowControls";
 import { settingHelp } from "../help";
 import { useState } from "react";
@@ -192,14 +193,12 @@ export function MusicPanel(q: PanelProps) {
             })
           }
         />
-        <Toggle
-          label="Accents only"
-          checked={p.pulse.accentsOnly}
-          onChange={(v) =>
-            edit("Pulse accents", (p) => {
-              p.pulse.accentsOnly = v;
-            })
-          }
+        <BoardPulseControls
+          p={p}
+          mode="source"
+          time={q.time}
+          seek={q.seek}
+          edit={edit}
         />
         <RainbowControls
           label="Pulse"

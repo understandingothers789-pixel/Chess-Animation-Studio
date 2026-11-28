@@ -733,6 +733,7 @@ export const storyboardSchema = z
           enabled: z.boolean(),
           accent: z.boolean(),
           strength: n(0, 1).optional(),
+          pulseOverride: z.enum(["on", "off"]).optional(),
           sourceTime: n(0, 7200).optional(),
         }),
       )
@@ -903,6 +904,9 @@ export const projectSchema = z.object({
     attack: n(0.01, 0.4),
     decay: n(0.05, 1),
     accentsOnly: z.boolean(),
+    sensitivity: z
+      .enum(["lenient", "balanced", "accents", "strict"])
+      .optional(),
   }),
   assets: z.array(assetSchema).max(150),
   badgeAssets: z.record(z.string(), str),
@@ -955,6 +959,7 @@ export const projectSchema = z.object({
         enabled: z.boolean(),
         sourceTime: n(0, 7200).optional(),
         strength: n(0, 1).optional(),
+        pulseOverride: z.enum(["on", "off"]).optional(),
         corrected: z.boolean().optional(),
         detectedAt: n(0, 7200).optional(),
       }),

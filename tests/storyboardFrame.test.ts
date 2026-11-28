@@ -161,3 +161,44 @@ it("preserves inherited game framing and applies hold camera overrides before Sh
   );
   expect(frame.e.pieces.every((x) => !x.moving)).toBe(true);
 });
+
+it("renders individual output flash overrides at the trimmed music time", () => {
+  const p = make();
+  p.storyboard.shots = [shotFromMove(p, p.moves[0].id)];
+  p.pulse.enabled = true;
+  p.pulse.sensitivity = "strict";
+  p.music.trimStart = 2;
+  p.music.trimEnd = 3.5;
+  p.music.offset = 0.25;
+  p.storyboard.beats = [
+    {
+      id: "forced",
+      sourceTime: 2.25,
+      time: 1.5,
+      enabled: true,
+      accent: false,
+      pulseOverride: "on",
+    },
+    {
+      id: "skipped",
+      time: 1.2,
+      enabled: true,
+      accent: true,
+      pulseOverride: "off",
+    },
+    {
+      id: "trimmed",
+      sourceTime: 4,
+      time: 1.6,
+      enabled: true,
+      accent: true,
+      pulseOverride: "on",
+    },
+  ];
+  const frame = (at: number) =>
+    evaluatePresentationFrame(p, at, 640, 360, undefined, "storyboard").e;
+  expect(frame(0.5).pulse).toBe(p.pulse.intensity);
+  expect(frame(1.2).pulse).toBe(0);
+  expect(frame(1.5).pulse).toBe(0);
+  expect(frame(1.6).pulse).toBe(0);
+});

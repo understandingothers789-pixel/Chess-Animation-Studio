@@ -1,3 +1,4 @@
+import { applyOperaReview } from "./operaReview";
 import { Chess } from "chess.js";
 import { blank, effect, uid, type Project, type Move } from "./project";
 export type Piece = { id: string; type: string; color: string; square: string };
@@ -307,10 +308,10 @@ export function sample(): Project {
   p.moves[2].effect = effect("sway");
   p.moves[4].effect = effect("spin");
   p.moves[6].effect = effect("capture");
-  p.moves[6].effect.badge.manual = "brilliant";
   p.moves[12].effect = effect("dramatic");
   p.moves[18].effect = effect("hop");
   for (const i of [2, 4, 6, 12, 18]) delete p.moves[i].autoPreset;
   p.moves[0].effect.highlight.trail = true;
+  applyOperaReview(p);
   return p;
 }

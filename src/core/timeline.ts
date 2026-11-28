@@ -437,7 +437,12 @@ export function evaluate(
     }
     if (u >= e.badge.start && time <= seg.finish + e.badge.end) {
       shown = badge(step.move);
-      anchor = [v.x + e.badge.offsetX, v.y + e.badge.offsetY];
+      if (shown === "custom") {
+        anchor = [v.x + e.badge.offsetX, v.y + e.badge.offsetY];
+      } else if (shown) {
+        const sign = p.style.orientation === "white" ? 1 : -1;
+        anchor = [b[0] + sign * e.badge.offsetX, b[1] + sign * e.badge.offsetY];
+      }
     }
     if (u >= 1) {
       pieces = step.after.map((v) => ({

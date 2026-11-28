@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
   Group,
   type Mesh,
@@ -7,10 +8,10 @@ import {
 import { MotionSystem } from "../src/render/systems/MotionSystem";
 import { it, expect } from "vitest";
 import { blank, parseProject } from "../src/core/project";
-import { importPgn, buildGame } from "../src/core/chess";
+import { importPgn, buildGame, sample, xy } from "../src/core/chess";
 import { evaluateRenderFrame } from "../src/render/engine/frame";
 import { captureImpact } from "../src/render/engine/impact";
-import { segments } from "../src/core/timeline";
+import { badge, segments } from "../src/core/timeline";
 import { squareToWorld, worldToSquare } from "../src/render/engine/coordinates";
 import { Resources } from "../src/render/engine/resources";
 it("reconstructs frames independently without modifying persistent projects", () => {
@@ -159,4 +160,63 @@ it("matches both highlight endpoints to the notation palette with project and mo
   highlight.showSource = false;
   expect(colors(project)[0]).toBeNull();
   motion.dispose();
+});
+
+it("anchors rated notation to the destination's top-right even before landing and with Black at the bottom", () => {
+  const p = importPgn(blank(), "1. e4");
+  const move = p.moves[0];
+  move.effect.badge.manual = "mistake";
+  move.effect.badge.start = 0.2;
+  const timing = segments(p)[0];
+  const early = timing.depart + move.effect.duration * 0.25;
+  const [x, y] = xy("e4");
+  for (const [orientation, sign] of [
+    ["white", 1],
+    ["black", -1],
+  ] as const) {
+    const project = { ...p, style: { ...p.style, orientation } };
+    for (const time of [early, timing.finish]) {
+      const { e } = evaluateRenderFrame(project, time, 320, 320, "square");
+      expect(e.badge).toBe("mistake");
+      expect(e.badgePosition).toEqual([
+        x + sign * move.effect.badge.offsetX,
+        y + sign * move.effect.badge.offsetY,
+      ]);
+    }
+  }
+});
+
+it("shows engine-backed badges on both versions of the bundled Opera Game while preserving manual choices", () => {
+  const raw = JSON.parse(readFileSync("samples/Opera.castudio", "utf8"));
+  for (const project of [sample(), parseProject(raw)]) {
+    expect(
+      project.moves.every((move) => move.analysis.engine?.state === "done"),
+    ).toBe(true);
+    expect(project.moves.slice(0, 3).map(badge)).toEqual([
+      "book",
+      "book",
+      "book",
+    ]);
+    expect(badge(project.moves.find((move) => move.san === "Bg4")!)).toBe(
+      "mistake",
+    );
+    for (const san of ["Nxb5", "Qb8+"]) {
+      const i = project.moves.findIndex((move) => move.san === san);
+      const time = segments(project)[i].finish;
+      expect(project.moves[i].analysis.engine?.sacrifice).toBeDefined();
+      expect(
+        evaluateRenderFrame(project, time, 360, 640, "vertical").e.badge,
+      ).toBe("brilliant");
+    }
+  }
+  raw.moves[0].effect.badge.manual = "none";
+  raw.moves[1].analysis.engine = {
+    ...sample().moves[1].analysis.engine,
+    message: "Saved user review",
+  };
+  const recovered = parseProject(raw);
+  expect(badge(recovered.moves[0])).toBeNull();
+  expect(recovered.moves[1].analysis.engine?.message).toBe("Saved user review");
+  raw.id = crypto.randomUUID();
+  expect(parseProject(raw).moves[2].analysis.engine).toBeUndefined();
 });

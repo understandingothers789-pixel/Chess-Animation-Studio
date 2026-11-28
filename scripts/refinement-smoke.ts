@@ -152,6 +152,10 @@ try {
   await expect(
     page.getByRole("button", { name: "Play preview", exact: true }),
   ).toBeVisible();
+  const zoom = page.getByLabel("Preview zoom", { exact: true });
+  await expect(zoom).toHaveValue("165");
+  await page.getByRole("button", { name: "Fit", exact: true }).click();
+  await expect(zoom).toHaveValue("100");
   await shot("fullscreen");
   await page
     .getByRole("button", { name: "Exit full preview", exact: true })

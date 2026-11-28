@@ -93,7 +93,8 @@ export function Preview({
   const [textBounds, setTextBounds] = useState<TextBounds[]>([]);
   const geometryKey = useRef("");
   const [captionGuides, setCaptionGuides] = useState(false);
-  const [view, setView] = useState(initialViewport);
+  const [editorView, setEditorView] = useState(initialViewport);
+  const [fullView, setFullView] = useState(initialViewport);
   const panDrag = useRef<{
     x: number;
     y: number;
@@ -102,6 +103,8 @@ export function Preview({
   } | null>(null);
   const shell = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const view = fullscreen ? fullView : editorView;
+  const setView = fullscreen ? setFullView : setEditorView;
   useEffect(() => {
     const update = () =>
       setFullscreen(document.fullscreenElement === shell.current);
@@ -126,7 +129,7 @@ export function Preview({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [setView]);
   const canvas = useRef<HTMLCanvasElement>(null),
     host = useRef<HTMLDivElement>(null),
     scene = useRef<Scene | null>(null),
@@ -329,6 +332,20 @@ export function Preview({
     }
   };
   const full = () => {
+    if (!document.fullscreenElement) {
+      const portrait =
+        project.format === "vertical" ||
+        project.format === "square-in-vertical";
+      const shellAspect = window.innerWidth / Math.max(1, window.innerHeight);
+      setFullView({
+        ...editorView,
+        zoom: portrait
+          ? Math.max(1, Math.min(1.65, (shellAspect * 16) / 9))
+          : 1,
+        offset: { x: 0, y: 0 },
+        pan: false,
+      });
+    }
     const action = document.fullscreenElement
       ? document.exitFullscreen()
       : shell.current?.requestFullscreen();

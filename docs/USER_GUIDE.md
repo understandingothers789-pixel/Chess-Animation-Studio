@@ -52,7 +52,7 @@ Copy/Paste separates Movement, Camera, Effects, Timing and Everything. Right-cli
 
 Choose **Bulk edit from [move]…** to review the source move, category, chess group, affected count and locked count. Nothing changes until Apply; one Undo restores the whole operation. Quick **Apply [move]’s settings to…** flyouts offer the same chess groups. Camera configuration uses the active output format; Everything includes all formats.
 
-The selection bar keeps Preview, Preset, Edit and More actions available without right-click. Music menus link directly to dark-square pulses and knight horse sound controls. Right-click a visible preview annotation to edit it, a board square to create annotations, or empty preview space for fit, zoom/pan reset, guides, FEN, PNG and fullscreen. Opening a menu keeps playback running; annotation edits pause when chosen. FEN is the position after the last landed move. PNG feedback confirms download initiation; the browser or operating system handles final placement.
+The selection bar keeps Preview, Preset, Edit and More actions available without right-click. Music menus link directly to dark-square pulses and knight horse sound controls. Right-click a visible preview annotation to edit it, a board square to create annotations, or empty preview space for fit, zoom/pan reset, guides, FEN, PNG and fullscreen. Full preview opens portrait compositions enlarged. Choose **Fit** to see the full frame. Opening a menu keeps playback running; annotation edits pause when chosen. FEN is the position after the last landed move. PNG feedback confirms download initiation; the browser or operating system handles final placement.
 
 See the [0.2.29 report and screenshot gallery](https://github.com/understandingothers789-pixel/Chess-Animation-Studio/blob/studio-v0.2.54/docs/context-menu-029/REPORT.md).
 
@@ -78,7 +78,7 @@ Choose Landscape, Vertical, Square or Square in vertical. Camera settings and co
 
 Choose Stockfish in Files before engine analysis. Analyze the selected, checked, or all moves. Book suggestions require enough Masters games and configured frequency; a service failure is labeled unavailable rather than not-found. Some deployments of Masters require a bearer token; enter it locally if needed. Windows credential encryption protects it; it is never part of the project.
 
-Manual badges override suggestions without deleting the book/engine data. Built-in badge art is original. Import a local image or version-1 badge manifest for alternate artwork; source and guidance are preserved. See BADGE_PACK.md.
+Rated moves display a colored badge at the top-right of their destination square. Play the move or choose **Move frames → Settled** to inspect it. The bundled **Opera Game with original music** includes a Stockfish 17.1 review and starter-book markings, so it shows notation offline. Manual badges override suggestions without deleting the book or engine data. Built-in badge art is original. Import a local image or version-1 badge manifest for alternate artwork; source and guidance are preserved. See BADGE_PACK.md.
 
 Missing files are shown in Files and in the status bar. Relink replaces references across music, sounds, badges and layouts. Removed or changed files invalidate preview/audio caches. Collect assets into portable project writes a new project folder with copied assets and relative paths.
 

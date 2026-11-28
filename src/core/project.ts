@@ -1,3 +1,4 @@
+import { applyOperaReview, bundledOperaId } from "./operaReview";
 import { reviewColorDefaults } from "./badgeNotation";
 import { transcriptSchema } from "./transcriptModel";
 import { annotationSchema } from "./annotations";
@@ -1180,5 +1181,6 @@ export function parseProject(value: unknown): Project {
     throw Error("Duplicate asset identities.");
   if (p.music.trimEnd > 0 && p.music.trimEnd <= p.music.trimStart)
     throw Error("Music trim end must follow its start.");
+  if (p.id === bundledOperaId) applyOperaReview(p);
   return p;
 }

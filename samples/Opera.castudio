@@ -764,7 +764,7 @@
           "persist": false
         },
         "badge": {
-          "manual": "brilliant",
+          "manual": null,
           "text": "!",
           "size": 0.52,
           "opacity": 1,

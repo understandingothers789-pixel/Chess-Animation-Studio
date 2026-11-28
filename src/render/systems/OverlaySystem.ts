@@ -121,7 +121,10 @@ export class OverlaySystem {
         entryScale = b.entry === "pop" ? 0.6 + 0.4 * easeLocal(entry) : 1;
       this.badge.position.set(
         e.badgePosition[0],
-        e.badgePosition[1] + (b.entry === "rise" ? (1 - entry) * -0.25 : 0),
+        e.badgePosition[1] +
+          (b.entry === "rise"
+            ? (1 - entry) * -0.25 * (e.badge === "custom" ? 1 : c.sign)
+            : 0),
         0.45,
       );
       this.badge.scale.setScalar(b.size * entryScale);
@@ -163,13 +166,6 @@ export class OverlaySystem {
     x.textAlign = "center";
     x.textBaseline = "middle";
     if (automaticSacrifice) {
-      x.fillStyle = "#103d48";
-      x.strokeStyle = color;
-      x.lineWidth = 6;
-      x.beginPath();
-      x.arc(128, 128, 89, 0, Math.PI * 2);
-      x.fill();
-      x.stroke();
       x.fillStyle = "#f5fffb";
       for (const center of [105, 151]) {
         x.beginPath();
